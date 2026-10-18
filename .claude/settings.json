@@ -1,0 +1,34 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(php -r '$j=json_decode(stream_get_contents(STDIN),true); echo $j[\"tool_input\"][\"file_path\"] ?? \"\";'); case \"$f\" in *.php) vendor/bin/pint \"$f\" 2>&1 || true ;; esac"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(php -r '$j=json_decode(stream_get_contents(STDIN),true); echo str_replace(\"\\\\\", \"/\", $j[\"tool_input\"][\"file_path\"] ?? \"\");'); case \"$f\" in */db/schema.sql|*/db/migrations/*) echo 'Reminder: re-apply this migration to a scratch database and confirm it runs clean before committing.' ;; esac"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "php artisan test 2>&1 | tail -30"
+          }
+        ]
+      }
+    ]
+  }
+}

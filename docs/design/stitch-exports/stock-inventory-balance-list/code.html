@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-highest": "#d3e4fe", "surface-container-high": "#dce9ff", "on-secondary-container": "#571a00", "surface-variant": "#d3e4fe", "secondary": "#a73a00", "on-error-container": "#93000a", "surface": "#f8f9ff", "primary-fixed-dim": "#adc8f5", "on-primary": "#ffffff", "outline": "#74777f", "secondary-container": "#fd651e", "surface-container-lowest": "#ffffff", "on-secondary-fixed": "#370e00", "on-tertiary": "#ffffff", "surface-container-low": "#eff4ff", "error-container": "#ffdad6", "surface-bright": "#f8f9ff", "background": "#f8f9ff", "primary-fixed": "#d5e3ff", "inverse-surface": "#213145", "on-tertiary-fixed-variant": "#3f465c", "error": "#ba1a1a", "tertiary-fixed-dim": "#bec6e0", "on-background": "#0b1c30", "inverse-primary": "#adc8f5", "surface-container": "#e5eeff", "tertiary-fixed": "dae2fd", "on-tertiary-container": "#9ba3bb", "on-primary-container": "#8aa4cf", "tertiary-container": "#31394e", "inverse-on-surface": "#eaf1ff", "on-surface-variant": "#43474e", "secondary-fixed": "#ffdbce", "primary": "#022448", "primary-container": "#1e3a5f", "on-primary-fixed": "#001c3b", "on-secondary-fixed-variant": "#7f2b00", "surface-dim": "#cbdbf5", "on-error": "#ffffff", "tertiary": "#1c2337", "secondary-fixed-dim": "#ffb599", "on-surface": "#0b1c30", "on-secondary": "#ffffff", "outline-variant": "#c4c6cf", "surface-tint": "#455f87", "on-tertiary-fixed": "#131b2e", "on-primary-fixed-variant": "#2d486d" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "margin": "1rem", "gutter-desktop": "1.5rem", "space-lg": "1rem", "space-sm": "0.5rem", "space-2xl": "2rem", "space-xs": "0.25rem", "space-md": "0.75rem", "space-xl": "1.5rem", "margin-desktop": "2rem", "gutter": "1rem" }, "fontFamily": { "headline-lg": ["Inter"], "body-sm": ["Inter"], "headline-md": ["Inter"], "display-lg": ["Inter"], "label-lg": ["Inter"], "label-mono": ["Inter"], "label-md": ["Inter"], "body-lg": ["Inter"], "body-md": ["Inter"], "headline-sm": ["Inter"] }, "fontSize": { "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0", "fontWeight": "400" }], "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }], "label-mono": ["13px", { "lineHeight": "18px", "letterSpacing": "0.05em", "fontWeight": "600" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }], "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0", "fontWeight": "400" }], "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0", "fontWeight": "400" }], "headline-sm": ["16px", { "lineHeight": "24px", "letterSpacing": "0", "fontWeight": "600" }] } } } };</script></head><body class="bg-surface font-body-md text-on-surface"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between"><div class="flex flex-col flex-1 overflow-y-auto"><div class="h-16 px-space-xl flex items-center gap-space-sm bg-surface-container-lowest"><div class="w-9 h-9 rounded-lg bg-primary-container flex items-center justify-center"><span class="material-symbols-outlined text-surface">inventory_2</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary tracking-tight leading-none">CedarLogistics</span><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mt-space-xs">WMS CORE</span></div></div><div class="px-space-md py-space-sm"><div class="px-space-md py-space-xs font-label-md text-label-md text-outline uppercase tracking-wider">Transactions</div><nav class="mt-space-xs flex flex-col gap-space-xs" data-active-classes="bg-surface-container text-primary font-semibold"><a class="h-11 px-space-md flex items-center gap-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all" data-path="receive" href="#"><span class="font-label-lg text-label-lg">Receive</span></a><a class="h-11 px-space-md flex items-center gap-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all" data-path="issue" href="#"><span class="font-label-lg text-label-lg">Issue</span></a><a class="h-11 px-space-md flex items-center gap-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all" data-path="transfer" href="#"><span class="font-label-lg text-label-lg">Transfer</span></a><a class="h-11 px-space-md flex items-center gap-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all" data-path="adjustment" href="#"><span class="font-label-lg text-label-lg">Adjustment</span></a><a class="h-11 px-space-md flex items-center gap-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all" data-path="damage" href="#"><span class="font-label-lg text-label-lg">Damage</span></a><a class="h-11 px-space-md flex items-center gap-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all" data-path="opening-balance" href="#"><span class="font-label-lg text-label-lg">Opening Balance</span></a></nav></div><div class="mx-space-lg my-space-xs h-[1px] bg-surface-container-high"></div><div class="px-space-md py-space-sm"><div class="px-space-md py-space-xs font-label-md text-label-md text-outline uppercase tracking-wider">Master Data</div><nav class="mt-space-xs flex flex-col gap-space-xs" data-active-classes="bg-surface-container text-primary font-semibold"><a aria-current="page" class="h-11 px-space-md flex items-center gap-space-md rounded-lg transition-all bg-surface-container text-primary font-semibold" data-path="stock" href="#"><span class="font-label-lg text-label-lg">Stock</span></a><a class="h-11 px-space-md flex items-center gap-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all" data-path="items" href="#"><span class="font-label-lg text-label-lg">Items</span></a><a class="h-11 px-space-md flex items-center gap-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all" data-path="settings" href="#"><span class="font-label-lg text-label-lg">Settings</span></a></nav></div></div><div class="p-space-lg bg-surface-container-lowest shadow-[0_-1px_4px_rgba(0,0,0,0.02)]"><div class="h-11 px-space-md bg-surface-container-low rounded-lg flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-2 h-2 rounded-full bg-outline"></div><span class="font-label-mono text-label-mono text-on-surface font-semibold">STATION-04A</span></div><span class="font-label-md text-label-md text-outline font-semibold tracking-wider">ONLINE</span></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-gutter-desktop"><div class="flex items-center gap-space-md"><div class="h-11 px-space-md bg-surface-container-low hover:bg-surface-container rounded-lg flex items-center gap-space-sm cursor-pointer transition-colors"><span class="material-symbols-outlined text-on-surface-variant text-[20px]">domain</span><span class="font-label-lg text-label-lg text-on-surface">Beirut Main</span><span class="material-symbols-outlined text-outline text-[18px]">expand_more</span></div></div><div class="flex items-center gap-space-lg"><button class="w-11 h-11 rounded-lg bg-surface-container-low hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">light_mode</span></button><div class="h-11 bg-surface-container-low rounded-lg p-space-xs flex items-center gap-space-xs"><button class="h-full px-space-md bg-surface-container-lowest text-primary rounded-lg font-label-md text-label-md shadow-[0_1px_2px_rgba(0,0,0,0.04)]" type="button">EN</button><button class="h-full px-space-md text-on-surface-variant hover:text-on-surface rounded-lg font-label-md text-label-md transition-colors" type="button">عربي</button><button class="h-full px-space-md text-on-surface-variant hover:text-on-surface rounded-lg font-label-md text-label-md transition-colors" type="button">FR</button></div><div class="h-8 w-[1px] bg-surface-container-high"></div><div class="flex items-center gap-space-md"><div class="flex flex-col text-right"><span class="font-label-lg text-label-lg text-on-surface leading-tight">Rami K.</span><span class="font-label-md text-label-md text-on-surface-variant leading-tight">Beirut Main</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-surface"><div class="flex flex-col w-full px-gutter-desktop py-space-xl">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md mb-space-xl">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-primary-container text-surface flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[26px]">inventory</span>
+</div>
+<div>
+<h1 class="font-headline-lg text-headline-lg text-primary tracking-tight">Stock</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">Current inventory levels across warehouse facilities and batch expirations.</p>
+</div>
+</div>
+<div class="flex items-center gap-space-sm self-start md:self-auto">
+<button class="h-11 px-space-lg rounded-xl bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors shadow-sm font-label-md text-label-md flex items-center gap-space-xs" type="button">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">file_download</span>
+        Export CSV
+      </button>
+<button class="h-11 w-11 rounded-xl bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors shadow-sm flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">print</span>
+</button>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-md mb-space-lg">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-space-md items-center">
+<div class="md:col-span-4 relative">
+<span class="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+<input class="w-full h-11 pl-11 pr-space-md bg-surface-container-lowest rounded-xl text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary-container/20 transition-all" id="stock-search" placeholder="Search item by name or code..." type="text"/>
+</div>
+<div class="md:col-span-3">
+<div class="relative">
+<select class="w-full h-11 px-space-md pr-9 bg-surface-container-lowest rounded-xl text-on-surface font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary-container/20 appearance-none cursor-pointer">
+<option value="all">All Customers</option>
+<option value="acme">Acme Foods</option>
+<option value="cedar">Cedar Trading</option>
+<option value="levant">Levant Distributors</option>
+<option value="medsupply">MedSupply Logistics</option>
+</select>
+<span class="material-symbols-outlined absolute right-space-md top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="md:col-span-3">
+<div class="relative">
+<select class="w-full h-11 px-space-md pr-9 bg-surface-container-lowest rounded-xl text-on-surface font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary-container/20 appearance-none cursor-pointer">
+<option selected="" value="beirut">Beirut Main</option>
+<option value="all">All Warehouses</option>
+<option value="tripoli">Tripoli</option>
+<option value="saida">Saida</option>
+<option value="zahle">Zahle</option>
+</select>
+<span class="material-symbols-outlined absolute right-space-md top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="md:col-span-2 flex justify-start md:justify-end">
+<button class="w-full md:w-auto h-11 px-space-md rounded-xl bg-surface-container-low text-on-surface-variant hover:text-on-surface font-label-md text-label-md flex items-center justify-center gap-space-xs transition-colors cursor-pointer select-none" id="filter-expiring-btn" onclick="toggleExpiringFilter()" type="button">
+<span class="material-symbols-outlined text-[18px] text-secondary">schedule</span>
+<span>Expiring &lt; 30d</span>
+</button>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="h-10 bg-surface-container-low/70">
+<th class="pl-space-lg pr-space-md font-label-md text-label-md uppercase tracking-wider text-outline">Item &amp; Code</th>
+<th class="px-space-md font-label-md text-label-md uppercase tracking-wider text-outline">Customer</th>
+<th class="px-space-md font-label-md text-label-md uppercase tracking-wider text-outline">Warehouse</th>
+<th class="px-space-md font-label-md text-label-md uppercase tracking-wider text-outline">Qty (Base Unit)</th>
+<th class="px-space-md font-label-md text-label-md uppercase tracking-wider text-outline">Qty (Larger Unit)</th>
+<th class="px-space-md font-label-md text-label-md uppercase tracking-wider text-outline">Nearest Expiry</th>
+<th class="w-12 pr-space-lg"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-high/40" id="stock-tbody">
+<tr class="h-14 hover:bg-surface-container-low transition-colors cursor-pointer group bg-surface-container-low/20" onclick="handleRowSelect(this, 'CB-400')">
+<td class="pl-space-lg pr-space-md py-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="font-headline-sm text-headline-sm text-primary group-hover:text-primary-container transition-colors">Canned Beans 400g</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-md">CB-400</span>
+</div>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Acme Foods</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Beirut Main</td>
+<td class="px-space-md py-space-sm">
+<span class="font-label-mono text-label-mono font-semibold text-primary">64</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">Piece</span>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface-variant">5 Box + 4 Piece</td>
+<td class="px-space-md py-space-sm">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#FFFBEB] text-[#B45309]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#B45309]"></span>
+<span class="font-label-md text-label-md">&lt; 30 days</span>
+<span class="text-xs opacity-75 hidden sm:inline">(18 Oct 2026 · 18d left)</span>
+</div>
+</td>
+<td class="pr-space-lg py-space-sm text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary group-hover:translate-x-0.5 transition-all text-[20px]">chevron_right</span>
+</td>
+</tr>
+<tr class="h-14 hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="handleRowSelect(this, 'OO-1L')">
+<td class="pl-space-lg pr-space-md py-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="font-headline-sm text-headline-sm text-primary group-hover:text-primary-container transition-colors">Olive Oil 1L</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-md">OO-1L</span>
+</div>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Acme Foods</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Beirut Main</td>
+<td class="px-space-md py-space-sm">
+<span class="font-label-mono text-label-mono font-semibold text-primary">120</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">Bottle</span>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface-variant">10 Box (12/box)</td>
+<td class="px-space-md py-space-sm">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#ECFDF5] text-[#047857]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#047857]"></span>
+<span class="font-label-md text-label-md">OK</span>
+<span class="text-xs opacity-75 hidden sm:inline">(15 Oct 2027)</span>
+</div>
+</td>
+<td class="pr-space-lg py-space-sm text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary group-hover:translate-x-0.5 transition-all text-[20px]">chevron_right</span>
+</td>
+</tr>
+<tr class="h-14 hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="handleRowSelect(this, 'RC-5K')">
+<td class="pl-space-lg pr-space-md py-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="font-headline-sm text-headline-sm text-primary group-hover:text-primary-container transition-colors">Rice 5kg</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-md">RC-5K</span>
+</div>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Cedar Trading</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Beirut Main</td>
+<td class="px-space-md py-space-sm">
+<span class="font-label-mono text-label-mono font-semibold text-primary">80</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">Bag</span>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface-variant">8 Bale (10/bale)</td>
+<td class="px-space-md py-space-sm">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#ECFDF5] text-[#047857]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#047857]"></span>
+<span class="font-label-md text-label-md">OK</span>
+<span class="text-xs opacity-75 hidden sm:inline">(20 Dec 2027)</span>
+</div>
+</td>
+<td class="pr-space-lg py-space-sm text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary group-hover:translate-x-0.5 transition-all text-[20px]">chevron_right</span>
+</td>
+</tr>
+<tr class="h-14 hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="handleRowSelect(this, 'TP-800')">
+<td class="pl-space-lg pr-space-md py-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="font-headline-sm text-headline-sm text-primary group-hover:text-primary-container transition-colors">Tomato Paste 800g</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-md">TP-800</span>
+</div>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Levant Distributors</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Beirut Main</td>
+<td class="px-space-md py-space-sm">
+<span class="font-label-mono text-label-mono font-semibold text-primary">36</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">Can</span>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface-variant">3 Box</td>
+<td class="px-space-md py-space-sm">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#FEF2F2] text-[#B91C1C]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#B91C1C]"></span>
+<span class="font-label-md text-label-md">Expired</span>
+<span class="text-xs opacity-75 hidden sm:inline">(12 Sep 2026)</span>
+</div>
+</td>
+<td class="pr-space-lg py-space-sm text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary group-hover:translate-x-0.5 transition-all text-[20px]">chevron_right</span>
+</td>
+</tr>
+<tr class="h-14 hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="handleRowSelect(this, 'SO-5L')">
+<td class="pl-space-lg pr-space-md py-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="font-headline-sm text-headline-sm text-primary group-hover:text-primary-container transition-colors">Sunflower Oil 5L</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-md">SO-5L</span>
+</div>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Acme Foods</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Beirut Main</td>
+<td class="px-space-md py-space-sm">
+<span class="font-label-mono text-label-mono font-semibold text-primary">45</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">Jug</span>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface-variant">15 Box (3/box)</td>
+<td class="px-space-md py-space-sm">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#FFFBEB] text-[#B45309]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#B45309]"></span>
+<span class="font-label-md text-label-md">&lt; 30 days</span>
+<span class="text-xs opacity-75 hidden sm:inline">(24 Oct 2026)</span>
+</div>
+</td>
+<td class="pr-space-lg py-space-sm text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary group-hover:translate-x-0.5 transition-all text-[20px]">chevron_right</span>
+</td>
+</tr>
+<tr class="h-14 hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="handleRowSelect(this, 'SG-10K')">
+<td class="pl-space-lg pr-space-md py-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="font-headline-sm text-headline-sm text-primary group-hover:text-primary-container transition-colors">Sugar 10kg</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-md">SG-10K</span>
+</div>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Cedar Trading</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Beirut Main</td>
+<td class="px-space-md py-space-sm">
+<span class="font-label-mono text-label-mono font-semibold text-primary">50</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">Bag</span>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface-variant">50 Bag</td>
+<td class="px-space-md py-space-sm">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#ECFDF5] text-[#047857]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#047857]"></span>
+<span class="font-label-md text-label-md">OK</span>
+<span class="text-xs opacity-75 hidden sm:inline">(30 Jun 2028)</span>
+</div>
+</td>
+<td class="pr-space-lg py-space-sm text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary group-hover:translate-x-0.5 transition-all text-[20px]">chevron_right</span>
+</td>
+</tr>
+<tr class="h-14 hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="handleRowSelect(this, 'DL-1K')">
+<td class="pl-space-lg pr-space-md py-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="font-headline-sm text-headline-sm text-primary group-hover:text-primary-container transition-colors">Dry Lentils 1kg</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-md">DL-1K</span>
+</div>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Levant Distributors</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Beirut Main</td>
+<td class="px-space-md py-space-sm">
+<span class="font-label-mono text-label-mono font-semibold text-primary">110</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">Bag</span>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface-variant">11 Box (10/box)</td>
+<td class="px-space-md py-space-sm">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#ECFDF5] text-[#047857]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#047857]"></span>
+<span class="font-label-md text-label-md">OK</span>
+<span class="text-xs opacity-75 hidden sm:inline">(14 Nov 2027)</span>
+</div>
+</td>
+<td class="pr-space-lg py-space-sm text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary group-hover:translate-x-0.5 transition-all text-[20px]">chevron_right</span>
+</td>
+</tr>
+<tr class="h-14 hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="handleRowSelect(this, 'PKG-01')">
+<td class="pl-space-lg pr-space-md py-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="font-headline-sm text-headline-sm text-primary group-hover:text-primary-container transition-colors">Cardboard Master Carton</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-md">PKG-01</span>
+</div>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Acme Foods</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface">Beirut Main</td>
+<td class="px-space-md py-space-sm">
+<span class="font-label-mono text-label-mono font-semibold text-primary">200</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">Piece</span>
+</td>
+<td class="px-space-md py-space-sm font-body-md text-body-md text-on-surface-variant">20 Bundle</td>
+<td class="px-space-md py-space-sm">
+<span class="text-outline font-label-md text-label-md pl-2">—</span>
+</td>
+<td class="pr-space-lg py-space-sm text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary group-hover:translate-x-0.5 transition-all text-[20px]">chevron_right</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-space-lg py-space-md bg-surface-container-low/40 flex flex-col sm:flex-row items-center justify-between gap-space-md">
+<div class="font-body-sm text-body-sm text-on-surface-variant">
+        Showing <span class="font-semibold text-on-surface">1</span> to <span class="font-semibold text-on-surface">8</span> of <span class="font-semibold text-on-surface">42</span> items
+      </div>
+<div class="flex items-center gap-1">
+<button class="h-9 w-9 rounded-lg flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container-high/60 transition-colors disabled:opacity-40" disabled="" type="button">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<button class="h-9 w-9 rounded-lg bg-primary-container text-surface font-label-md text-label-md font-semibold flex items-center justify-center shadow-xs" type="button">
+          1
+        </button>
+<button class="h-9 w-9 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface font-label-md text-label-md flex items-center justify-center transition-colors" type="button">
+          2
+        </button>
+<button class="h-9 w-9 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface font-label-md text-label-md flex items-center justify-center transition-colors" type="button">
+          3
+        </button>
+<span class="h-9 w-6 flex items-center justify-center text-outline font-label-md text-label-md select-none">…</span>
+<button class="h-9 w-9 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface font-label-md text-label-md flex items-center justify-center transition-colors" type="button">
+          6
+        </button>
+<button class="h-9 px-space-sm rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors gap-0.5 font-label-md text-label-md" type="button">
+<span>Next</span>
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<div class="hidden mt-space-md p-space-md rounded-xl bg-surface-container text-on-surface flex items-center justify-between animate-fade-in shadow-xs" id="selection-banner">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">info</span>
+<span class="font-body-md text-body-md">Selected Item: <strong class="text-primary font-label-mono" id="selected-item-code">CB-400</strong></span>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="h-9 px-space-md rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md" onclick="clearSelection()" type="button">
+        Clear
+      </button>
+<button class="h-9 px-space-md rounded-lg bg-primary-container text-surface hover:bg-primary transition-colors font-label-md text-label-md flex items-center gap-1 shadow-xs" type="button">
+<span>View Item Detail</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<script>
+    let filterActive = false;
+
+    function toggleExpiringFilter() {
+      filterActive = !filterActive;
+      const btn = document.getElementById('filter-expiring-btn');
+      if (filterActive) {
+        btn.classList.remove('bg-surface-container-low', 'text-on-surface-variant');
+        btn.classList.add('bg-secondary-container', 'text-on-secondary-container', 'font-semibold');
+      } else {
+        btn.classList.remove('bg-secondary-container', 'text-on-secondary-container', 'font-semibold');
+        btn.classList.add('bg-surface-container-low', 'text-on-surface-variant');
+      }
+    }
+
+    function handleRowSelect(rowElement, itemCode) {
+      document.querySelectorAll('#stock-tbody tr').forEach(r => {
+        r.classList.remove('bg-surface-container-low', 'shadow-xs');
+      });
+      rowElement.classList.add('bg-surface-container-low', 'shadow-xs');
+      
+      const banner = document.getElementById('selection-banner');
+      const codeSpan = document.getElementById('selected-item-code');
+      codeSpan.textContent = itemCode;
+      banner.classList.remove('hidden');
+    }
+
+    function clearSelection() {
+      document.querySelectorAll('#stock-tbody tr').forEach(r => {
+        r.classList.remove('bg-surface-container-low', 'shadow-xs');
+      });
+      document.getElementById('selection-banner').classList.add('hidden');
+    }
+  </script>
+</div></main></div></body></html>

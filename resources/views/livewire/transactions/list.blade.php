@@ -1,0 +1,99 @@
+@use('App\Support\Format')
+
+@php
+    // Tablet: Items and Created by go. Phone card: reference + status, then customer, date, total quantity (or reason).
+    $columns = [
+        'reference' => ['label' => __('transactions.list.reference'), 'card' => 'title'],
+        'date' => ['label' => __('transactions.list.date')],
+        'customer' => ['label' => __('transactions.list.customer'), 'card' => 'lead'],
+        ...($ui->requiresDestination() ? ['route' => ['label' => __('transactions.list.route')]] : []),
+        'items' => ['label' => __('transactions.list.items'), 'align' => 'end', 'priority' => 2, 'card' => 'hide'],
+        ...($ui->hasListColumn('total') ? ['total' => ['label' => __('transactions.list.total'), 'align' => 'end']] : []),
+        ...($ui->hasListColumn('reason') ? ['reason' => ['label' => __('transactions.list.reason')]] : []),
+        'status' => ['label' => __('transactions.list.status'), 'card' => 'badge'],
+        'created_by' => ['label' => __('transactions.list.created_by'), 'priority' => 2, 'card' => 'hide'],
+    ];
+    $filtered = $search !== '' || $customer !== '' || $status !== '' || $dateFrom !== '' || $dateTo !== '' || $direction !== '';
+@endphp
+
+<div class="flex flex-col gap-section">
+    <x-page-header :type="$ui" :title="$ui->label('title')" :subtitle="$ui->label('subtitle')">
+        @if (($ui->dispatchReceive() && Gate::allows('report.view')) || Gate::allows($ui->createPermission()))
+            <x-slot:actions>
+                @if ($ui->dispatchReceive())
+                    @can('report.view')
+                        <a href="{{ route('reports.show', 'transfer-shortages') }}" wire:navigate class="flex h-control items-center gap-2 rounded-lg border border-control bg-card px-4 text-body font-semibold text-fg hover:bg-card-hover">
+                            <x-icon name="report" class="text-muted" />
+                            {{ __('transfers.shortages.link') }}
+                        </a>
+                    @endcan
+                @endif
+                @can($ui->createPermission())
+                <a
+                    href="{{ $ui->route('create') }}"
+                    wire:navigate
+                    class="flex h-control items-center gap-2 rounded-lg px-4 text-body font-semibold text-on-brand shadow-card hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:ring-offset-2 focus:ring-offset-surface {{ $ui->colours()['strong'] }}"
+                >
+                    <x-icon name="add" />
+                    {{ $ui->label('new') }}
+                </a>
+                @endcan
+            </x-slot:actions>
+        @endif
+    </x-page-header>
+
+    <x-filters-bar :customers="$customers" :statuses="$statuses" :directions="$directions" :all-statuses="$pendingFirst ? __('transactions.filters.pending_first') : null" dates :date-error="$dateError" :search-placeholder="__('transactions.filters.search_placeholder')" />
+
+    <x-data-table
+        :columns="$columns"
+        :paginator="$rows"
+        :loading="! $rowsLoaded"
+        :empty-title="$dateError ? __('feedback.date_order') : ($filtered ? __('transactions.list.no_matches_title') : $ui->label('empty_title'))"
+        :empty-body="$dateError ? __('feedback.date_order_hint') : ($filtered ? __('transactions.list.no_matches_body') : $ui->label('empty_body'))"
+    >
+        {{-- Every empty state offers the next step. --}}
+        <x-slot:empty-action>
+            @if ($filtered)
+                <x-empty-action action="resetFilters" icon="filter_alt_off" :label="__('transactions.filters.reset')" />
+            @elseif (Gate::allows($ui->createPermission()))
+                <x-empty-action :href="$ui->route('create')" icon="add" :label="$ui->label('new')" primary />
+            @endif
+        </x-slot:empty-action>
+
+        @foreach ($rows as $row)
+            <x-data-table.row wire:key="row-{{ $row['reference'] }}" :href="$ui->route('show', $row['reference'])" :label="__('transactions.list.open_document', ['reference' => $row['reference']])">
+                <x-data-table.cell col="reference" class="whitespace-nowrap"><span dir="ltr" class="tabular font-semibold text-fg">{{ $row['reference'] }}</span></x-data-table.cell>
+                <x-data-table.cell col="date" class="whitespace-nowrap text-fg">{{ Format::date($row['date']) }}</x-data-table.cell>
+                <x-data-table.cell col="customer" class="font-semibold text-fg"><bdi>{{ $row['customer'] }}</bdi></x-data-table.cell>
+                @if ($ui->requiresDestination())
+                    <x-data-table.cell col="route" class="whitespace-nowrap text-fg">
+                        <bdi @class(['font-semibold' => ! ($row['incoming'] ?? false)])>{{ $row['from'] }}</bdi>
+                        <x-icon name="arrow_forward" class="inline size-4 text-muted rtl:-scale-x-100" />
+                        <bdi @class(['font-semibold' => $row['incoming'] ?? false])>{{ $row['to_warehouse'] }}</bdi>
+                    </x-data-table.cell>
+                @endif
+                <x-data-table.cell col="items" align="end" class="whitespace-nowrap text-fg tabular">{{ trans_choice('transactions.summary.items', $row['items'], ['count' => Format::qty($row['items'])]) }}</x-data-table.cell>
+                @if ($ui->hasListColumn('total'))
+                    <x-data-table.cell col="total" align="end" class="whitespace-nowrap font-semibold text-fg tabular">
+                        {{ trans_choice('transactions.summary.units', (int) $row['total'], ['count' => Format::qty($row['total'])]) }}
+                    </x-data-table.cell>
+                @endif
+                @if ($ui->hasListColumn('reason'))
+                    <x-data-table.cell col="reason" class="text-fg">
+                        @if ($row['reason'])
+                            {{ __('transactions.reasons.'.$row['reason']) }}
+                        @else
+                            <span aria-hidden="true">&mdash;</span>
+                        @endif
+                    </x-data-table.cell>
+                @endif
+                <x-data-table.cell col="status"><x-status-badge :code="$row['status']" /></x-data-table.cell>
+                <x-data-table.cell col="created_by" class="whitespace-nowrap">
+                    <span class="inline-flex items-center gap-2 text-fg">
+                        <bdi>{{ $row['created_by'] }}</bdi>
+                    </span>
+                </x-data-table.cell>
+            </x-data-table.row>
+        @endforeach
+    </x-data-table>
+</div>

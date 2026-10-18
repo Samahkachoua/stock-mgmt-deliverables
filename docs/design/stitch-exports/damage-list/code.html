@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"secondary-fixed-dim":"#ffb599","inverse-primary":"#adc8f5","tertiary-fixed":"#dae2fd","on-tertiary-fixed-variant":"#3f465c","primary-container":"#1e3a5f","on-primary-fixed":"#001c3b","on-primary-fixed-variant":"#2d486d","on-primary-container":"#8aa4cf","surface-container-lowest":"#ffffff","on-tertiary-container":"#9ba3bb","on-error":"#ffffff","secondary-fixed":"#ffdbce","secondary-container":"#fd651e","background":"#f8f9ff","surface":"#f8f9ff","primary-fixed-dim":"#adc8f5","surface-container-low":"#eff4ff","on-tertiary-fixed":"#131b2e","on-secondary-fixed-variant":"#7f2b00","on-surface-variant":"#43474e","surface-variant":"#d3e4fe","on-error-container":"#93000a","on-secondary":"#ffffff","inverse-on-surface":"#eaf1ff","primary-fixed":"#d5e3ff","secondary":"#a73a00","on-surface":"#0b1c30","error-container":"#ffdad6","on-secondary-container":"#571a00","surface-dim":"#cbdbf5","tertiary-fixed-dim":"#bec6e0","outline-variant":"#c4c6cf","tertiary":"#1c2337","on-tertiary":"#ffffff","on-background":"#0b1c30","surface-container-highest":"#d3e4fe","surface-container":"#e5eeff","surface-bright":"#f8f9ff","inverse-surface":"#213145","error":"#ba1a1a","surface-tint":"#455f87","on-secondary-fixed":"#370e00","surface-container-high":"#dce9ff","tertiary-container":"#31394e","on-primary":"#ffffff","outline":"#74777f","primary":"#022448"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-sm":"0.5rem","space-2xl":"2rem","space-xl":"1.5rem","margin-desktop":"2rem","space-xs":"0.25rem","gutter":"1rem","gutter-desktop":"1.5rem","space-md":"0.75rem","space-lg":"1rem","margin":"1rem"},"fontFamily":{"body-sm":["Inter"],"label-mono":["Inter"],"body-lg":["Inter"],"label-lg":["Inter"],"display-lg":["Inter"],"headline-sm":["Inter"],"headline-md":["Inter"],"label-md":["Inter"],"headline-lg":["Inter"],"body-md":["Inter"]},"fontSize":{"body-sm":["13px",{"lineHeight":"18px","letterSpacing":"0","fontWeight":"400"}],"label-mono":["13px",{"lineHeight":"18px","letterSpacing":"0.05em","fontWeight":"600"}],"body-lg":["16px",{"lineHeight":"24px","letterSpacing":"0","fontWeight":"400"}],"label-lg":["14px",{"lineHeight":"20px","letterSpacing":"0.01em","fontWeight":"600"}],"display-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"0","fontWeight":"600"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"20px","letterSpacing":"0","fontWeight":"400"}]}}}}</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col"><div class="h-16 flex items-center px-6 gap-3 border-b border-outline-variant/20"><div class="w-9 h-9 rounded bg-primary-container flex items-center justify-center text-on-primary shadow-sm"><span class="material-symbols-outlined text-[20px]">warehouse</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary tracking-tight">CedarLogistics</span><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">WMS Core</span></div></div><div class="flex-1 overflow-y-auto px-3 py-4 flex flex-col justify-between"><nav class="flex flex-col gap-1" data-active-classes="bg-[#DC2626]/10 text-[#DC2626] font-headline-sm rounded-lg"><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="receive" href="#"><span class="material-symbols-outlined text-[20px] text-[#16A34A]">move_to_inbox</span><span class="font-label-lg text-label-lg">Receive</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="issue" href="#"><span class="material-symbols-outlined text-[20px] text-[#EA580C]">outbox</span><span class="font-label-lg text-label-lg">Issue</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="transfer" href="#"><span class="material-symbols-outlined text-[20px] text-[#2563EB]">swap_horiz</span><span class="font-label-lg text-label-lg">Transfer</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="adjustments" href="#"><span class="material-symbols-outlined text-[20px] text-[#7C3AED]">tune</span><span class="font-label-lg text-label-lg">Adjustment</span></a><a aria-current="page" class="flex items-center gap-3 px-3 py-2.5 transition-colors bg-[#DC2626]/10 text-[#DC2626] font-headline-sm rounded-lg" data-path="damage" href="#"><span class="material-symbols-outlined text-[20px] text-[#DC2626]">report</span><span class="font-label-lg text-label-lg font-semibold">Damage</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="opening-balance" href="#"><span class="material-symbols-outlined text-[20px] text-[#475569]">account_balance_wallet</span><span class="font-label-lg text-label-lg">Opening Balance</span></a><div class="border-t border-outline-variant/30 my-3"></div><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="stock" href="#"><span class="material-symbols-outlined text-[20px] text-outline">inventory_2</span><span class="font-label-lg text-label-lg">Stock</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="items" href="#"><span class="material-symbols-outlined text-[20px] text-outline">category</span><span class="font-label-lg text-label-lg">Items</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px] text-outline">settings</span><span class="font-label-lg text-label-lg">Settings</span></a></nav></div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest border-b border-outline-variant/30 z-40 flex items-center justify-between px-8"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-outline text-[20px]">apartment</span><label class="sr-only" for="warehouse-selector">Select Warehouse</label><select class="h-10 px-3 bg-surface border border-outline-variant/40 rounded text-on-surface font-label-lg text-label-lg focus:outline-none focus:border-primary-container cursor-pointer" id="warehouse-selector"><option selected="" value="beirut-main">Beirut Main</option><option value="tripoli-depot">Tripoli Depot</option><option value="saida-warehouse">Saida Warehouse</option><option value="zahle-central">Zahle Central</option></select></div><div class="flex items-center gap-4"><button aria-label="Toggle Theme" class="w-10 h-10 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">light_mode</span></button><div class="inline-flex items-center bg-surface-container-low p-1 rounded"><button class="px-2 py-1 rounded bg-surface-container-lowest shadow-sm text-on-surface font-label-md text-label-md" type="button">EN</button><button class="px-2 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-md text-label-md" type="button">عربي</button><button class="px-2 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-md text-label-md" type="button">FR</button></div><div class="h-6 w-px bg-outline-variant/30"></div><div class="flex items-center gap-3 pl-1"><div class="flex flex-col text-right"><span class="font-label-lg text-label-lg text-on-surface">Rami K.</span><span class="font-label-md text-label-md text-on-surface-variant">Beirut Main</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 w-full pt-16 bg-surface px-8"><div class="flex flex-col w-full">
+<div class="py-6 flex flex-col gap-6 max-w-[1600px] w-full mx-auto">
+<!-- Header Area -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div class="flex items-center gap-3.5">
+<div class="w-12 h-12 rounded-xl bg-error/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[28px] text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div class="flex flex-col">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Damages</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Inventory damage logging and write-off records</p>
+</div>
+</div>
+<div class="flex items-center">
+<button class="h-11 px-5 rounded-xl bg-error text-on-error font-label-lg text-label-lg shadow-sm hover:opacity-95 active:scale-[0.98] transition-all flex items-center gap-2" type="button">
+<span class="material-symbols-outlined text-[20px]">add</span>
+<span>New Damage</span>
+</button>
+</div>
+</div>
+<!-- Filter Bar Card -->
+<div class="bg-surface-container-lowest rounded-xl p-3 shadow-sm flex flex-wrap lg:flex-nowrap items-center gap-3">
+<!-- Search Input -->
+<div class="relative flex-1 min-w-[240px]">
+<div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="w-full h-11 pl-10 pr-3.5 bg-surface rounded-xl font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-container-low transition-colors" id="search-input" placeholder="Search by reference or customer" type="text"/>
+</div>
+<!-- Customer Selector -->
+<div class="w-full sm:w-auto min-w-[180px]">
+<div class="relative">
+<select class="w-full h-11 pl-3.5 pr-8 bg-surface rounded-xl font-body-md text-body-md text-on-surface appearance-none focus:outline-none focus:bg-surface-container-low cursor-pointer transition-colors">
+<option value="">All Customers</option>
+<option value="acme">Acme Foods</option>
+<option value="cedar">Cedar Trading</option>
+<option value="levant">Levant Distributors</option>
+<option value="medsupply">MedSupply Logistics</option>
+</select>
+<div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Date Range Filter -->
+<div class="w-full sm:w-auto min-w-[160px]">
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">calendar_today</span>
+</div>
+<select class="w-full h-11 pl-10 pr-8 bg-surface rounded-xl font-body-md text-body-md text-on-surface appearance-none focus:outline-none focus:bg-surface-container-low cursor-pointer transition-colors">
+<option value="30">Past 30 Days</option>
+<option value="7">Past 7 Days</option>
+<option value="90">Past 90 Days</option>
+<option value="year">This Fiscal Year</option>
+</select>
+<div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Status Dropdown -->
+<div class="w-full sm:w-auto min-w-[160px]">
+<div class="relative">
+<select class="w-full h-11 pl-3.5 pr-8 bg-surface rounded-xl font-body-md text-body-md text-on-surface appearance-none focus:outline-none focus:bg-surface-container-low cursor-pointer transition-colors">
+<option value="">All Statuses</option>
+<option value="pending">Pending approval</option>
+<option value="completed">Completed</option>
+<option value="rejected">Rejected</option>
+<option value="cancelled">Cancelled</option>
+</select>
+<div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Filter Apply / Actions Button -->
+<button aria-label="Filter" class="h-11 w-11 shrink-0 rounded-xl bg-surface hover:bg-surface-container-low text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors" title="More filters" type="button">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+</button>
+</div>
+<!-- Data Table Container -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/70 h-10 select-none">
+<th class="py-2.5 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider" scope="col">Reference</th>
+<th class="py-2.5 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider" scope="col">Date</th>
+<th class="py-2.5 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider" scope="col">Customer</th>
+<th class="py-2.5 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right" scope="col">Items</th>
+<th class="py-2.5 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right" scope="col">Total Quantity</th>
+<th class="py-2.5 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider" scope="col">Status</th>
+<th class="py-2.5 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider" scope="col">Created By</th>
+<th class="py-2.5 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right sr-only" scope="col">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<!-- Row 1 -->
+<tr class="group h-[52px] hover:bg-surface-container-low/40 cursor-pointer transition-colors" onclick="selectRow(this)">
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="font-label-mono text-label-mono text-primary font-semibold group-hover:underline">DMG-2026-000123</span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface">30 Sep 2026</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface">Acme Foods</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant text-right">2 items</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface text-right font-semibold">14 units</td>
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-secondary-container/10 text-secondary font-medium">
+                  Pending approval
+                </span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant">Rami K.</td>
+<td class="px-6 py-3 whitespace-nowrap text-right">
+<span class="material-symbols-outlined text-[18px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="group h-[52px] hover:bg-surface-container-low/40 cursor-pointer transition-colors" onclick="selectRow(this)">
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="font-label-mono text-label-mono text-primary font-semibold group-hover:underline">DMG-2026-000122</span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface">29 Sep 2026</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface">Cedar Trading</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant text-right">1 item</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface text-right font-semibold">3 units</td>
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-on-surface font-medium">
+                  Completed
+                </span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant">Nour H.</td>
+<td class="px-6 py-3 whitespace-nowrap text-right">
+<span class="material-symbols-outlined text-[18px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="group h-[52px] hover:bg-surface-container-low/40 cursor-pointer transition-colors" onclick="selectRow(this)">
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="font-label-mono text-label-mono text-primary font-semibold group-hover:underline">DMG-2026-000121</span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface">29 Sep 2026</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface">Levant Distributors</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant text-right">3 items</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface text-right font-semibold">25 units</td>
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-error-container/40 text-error font-medium">
+                  Rejected
+                </span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant">Ziad M.</td>
+<td class="px-6 py-3 whitespace-nowrap text-right">
+<span class="material-symbols-outlined text-[18px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="group h-[52px] hover:bg-surface-container-low/40 cursor-pointer transition-colors" onclick="selectRow(this)">
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="font-label-mono text-label-mono text-primary font-semibold group-hover:underline">DMG-2026-000120</span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface">28 Sep 2026</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface">Acme Foods</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant text-right">1 item</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface text-right font-semibold">2 units</td>
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-on-surface font-medium">
+                  Completed
+                </span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant">Rami K.</td>
+<td class="px-6 py-3 whitespace-nowrap text-right">
+<span class="material-symbols-outlined text-[18px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="group h-[52px] hover:bg-surface-container-low/40 cursor-pointer transition-colors" onclick="selectRow(this)">
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="font-label-mono text-label-mono text-primary font-semibold group-hover:underline">DMG-2026-000119</span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface">27 Sep 2026</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface">MedSupply Logistics</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant text-right">2 items</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface text-right font-semibold">8 units</td>
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-on-surface font-medium">
+                  Completed
+                </span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant">Nour H.</td>
+<td class="px-6 py-3 whitespace-nowrap text-right">
+<span class="material-symbols-outlined text-[18px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</td>
+</tr>
+<!-- Row 6 -->
+<tr class="group h-[52px] hover:bg-surface-container-low/40 cursor-pointer transition-colors" onclick="selectRow(this)">
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="font-label-mono text-label-mono text-primary font-semibold group-hover:underline">DMG-2026-000118</span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface">26 Sep 2026</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface">Cedar Trading</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant text-right">1 item</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface text-right font-semibold">12 units</td>
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container-high text-on-surface-variant font-medium">
+                  Cancelled
+                </span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant">Rami K.</td>
+<td class="px-6 py-3 whitespace-nowrap text-right">
+<span class="material-symbols-outlined text-[18px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</td>
+</tr>
+<!-- Row 7 -->
+<tr class="group h-[52px] hover:bg-surface-container-low/40 cursor-pointer transition-colors" onclick="selectRow(this)">
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="font-label-mono text-label-mono text-primary font-semibold group-hover:underline">DMG-2026-000117</span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface">25 Sep 2026</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface">Acme Foods</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant text-right">4 items</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface text-right font-semibold">30 units</td>
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-on-surface font-medium">
+                  Completed
+                </span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant">Ziad M.</td>
+<td class="px-6 py-3 whitespace-nowrap text-right">
+<span class="material-symbols-outlined text-[18px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</td>
+</tr>
+<!-- Row 8 -->
+<tr class="group h-[52px] hover:bg-surface-container-low/40 cursor-pointer transition-colors" onclick="selectRow(this)">
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="font-label-mono text-label-mono text-primary font-semibold group-hover:underline">DMG-2026-000116</span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface">24 Sep 2026</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface">Levant Distributors</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant text-right">1 item</td>
+<td class="px-6 py-3 whitespace-nowrap font-label-lg text-label-lg text-on-surface text-right font-semibold">5 units</td>
+<td class="px-6 py-3 whitespace-nowrap">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-on-surface font-medium">
+                  Completed
+                </span>
+</td>
+<td class="px-6 py-3 whitespace-nowrap font-body-md text-body-md text-on-surface-variant">Nour H.</td>
+<td class="px-6 py-3 whitespace-nowrap text-right">
+<span class="material-symbols-outlined text-[18px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Component -->
+<div class="h-16 px-6 bg-surface-container-lowest flex items-center justify-between">
+<div class="font-body-md text-body-md text-on-surface-variant">
+          Showing <span class="font-semibold text-on-surface">1</span> to <span class="font-semibold text-on-surface">8</span> of <span class="font-semibold text-on-surface">24</span> results
+        </div>
+<div class="flex items-center gap-1.5">
+<button class="h-9 px-3.5 rounded-xl bg-surface text-outline font-label-md text-label-md flex items-center gap-1 cursor-not-allowed opacity-50" disabled="" type="button">
+<span class="material-symbols-outlined text-[16px]">chevron_left</span>
+<span>Previous</span>
+</button>
+<button class="h-9 w-9 rounded-xl bg-error text-on-error font-label-md text-label-md font-semibold flex items-center justify-center transition-transform active:scale-95 shadow-sm" type="button">
+            1
+          </button>
+<button class="h-9 w-9 rounded-xl bg-surface hover:bg-surface-container text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center transition-colors" type="button">
+            2
+          </button>
+<button class="h-9 w-9 rounded-xl bg-surface hover:bg-surface-container text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center transition-colors" type="button">
+            3
+          </button>
+<button class="h-9 px-3.5 rounded-xl bg-surface hover:bg-surface-container text-on-surface font-label-md text-label-md flex items-center gap-1 transition-colors active:scale-95" type="button">
+<span>Next</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  function selectRow(row) {
+    document.querySelectorAll('tbody tr').forEach(r => {
+      r.classList.remove('bg-surface-container-low');
+    });
+    row.classList.add('bg-surface-container-low');
+  }
+</script></main></div></body></html>

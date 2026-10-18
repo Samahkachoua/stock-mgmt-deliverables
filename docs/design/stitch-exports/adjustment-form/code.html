@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"secondary-fixed-dim":"#ffb599","inverse-primary":"#adc8f5","tertiary-fixed":"#dae2fd","on-tertiary-fixed-variant":"#3f465c","primary-container":"#1e3a5f","on-primary-fixed":"#001c3b","on-primary-fixed-variant":"#2d486d","on-primary-container":"#8aa4cf","surface-container-lowest":"#ffffff","on-tertiary-container":"#9ba3bb","on-error":"#ffffff","secondary-fixed":"#ffdbce","secondary-container":"#fd651e","background":"#f8f9ff","surface":"#f8f9ff","primary-fixed-dim":"#adc8f5","surface-container-low":"#eff4ff","on-tertiary-fixed":"#131b2e","on-secondary-fixed-variant":"#7f2b00","on-surface-variant":"#43474e","surface-variant":"#d3e4fe","on-error-container":"#93000a","on-secondary":"#ffffff","inverse-on-surface":"#eaf1ff","primary-fixed":"#d5e3ff","secondary":"#a73a00","on-surface":"#0b1c30","error-container":"#ffdad6","on-secondary-container":"#571a00","surface-dim":"#cbdbf5","tertiary-fixed-dim":"#bec6e0","outline-variant":"#c4c6cf","tertiary":"#1c2337","on-tertiary":"#ffffff","on-background":"#0b1c30","surface-container-highest":"#d3e4fe","surface-container":"#e5eeff","surface-bright":"#f8f9ff","inverse-surface":"#213145","error":"#ba1a1a","surface-tint":"#455f87","on-secondary-fixed":"#370e00","surface-container-high":"#dce9ff","tertiary-container":"#31394e","on-primary":"#ffffff","outline":"#74777f","primary":"#022448"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-sm":"0.5rem","space-2xl":"2rem","space-xl":"1.5rem","margin-desktop":"2rem","space-xs":"0.25rem","gutter":"1rem","gutter-desktop":"1.5rem","space-md":"0.75rem","space-lg":"1rem","margin":"1rem"},"fontFamily":{"body-sm":["Inter"],"label-mono":["Inter"],"body-lg":["Inter"],"label-lg":["Inter"],"display-lg":["Inter"],"headline-sm":["Inter"],"headline-md":["Inter"],"label-md":["Inter"],"headline-lg":["Inter"],"body-md":["Inter"]},"fontSize":{"body-sm":["13px",{"lineHeight":"18px","letterSpacing":"0","fontWeight":"400"}],"label-mono":["13px",{"lineHeight":"18px","letterSpacing":"0.05em","fontWeight":"600"}],"body-lg":["16px",{"lineHeight":"24px","letterSpacing":"0","fontWeight":"400"}],"label-lg":["14px",{"lineHeight":"20px","letterSpacing":"0.01em","fontWeight":"600"}],"display-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"0","fontWeight":"600"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"20px","letterSpacing":"0","fontWeight":"400"}]}}}}</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col"><div class="h-16 flex items-center px-6 gap-3 border-b border-outline-variant/20"><div class="w-9 h-9 rounded bg-primary-container flex items-center justify-center text-on-primary shadow-sm"><span class="material-symbols-outlined text-[20px]">warehouse</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary tracking-tight">CedarLogistics</span><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">WMS Core</span></div></div><div class="flex-1 overflow-y-auto px-3 py-4 flex flex-col justify-between"><nav class="flex flex-col gap-1" data-active-classes="bg-[#7C3AED]/10 text-[#7C3AED] font-headline-sm rounded-lg"><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="receive" href="#"><span class="material-symbols-outlined text-[20px] text-[#16A34A]">move_to_inbox</span><span class="font-label-lg text-label-lg">Receive</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="issue" href="#"><span class="material-symbols-outlined text-[20px] text-[#EA580C]">outbox</span><span class="font-label-lg text-label-lg">Issue</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="transfer" href="#"><span class="material-symbols-outlined text-[20px] text-[#2563EB]">swap_horiz</span><span class="font-label-lg text-label-lg">Transfer</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#7C3AED]/10 text-[#7C3AED] font-headline-sm transition-colors" data-path="adjustments" href="#"><span class="material-symbols-outlined text-[20px] text-[#7C3AED]">tune</span><span class="font-label-lg text-label-lg font-semibold">Adjustment</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="damage" href="#"><span class="material-symbols-outlined text-[20px] text-[#DC2626]">report</span><span class="font-label-lg text-label-lg">Damage</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="opening-balance" href="#"><span class="material-symbols-outlined text-[20px] text-[#475569]">account_balance_wallet</span><span class="font-label-lg text-label-lg">Opening Balance</span></a><div class="border-t border-outline-variant/30 my-3"></div><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="stock" href="#"><span class="material-symbols-outlined text-[20px] text-outline">inventory_2</span><span class="font-label-lg text-label-lg">Stock</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="items" href="#"><span class="material-symbols-outlined text-[20px] text-outline">category</span><span class="font-label-lg text-label-lg">Items</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px] text-outline">settings</span><span class="font-label-lg text-label-lg">Settings</span></a></nav></div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest border-b border-outline-variant/30 z-40 flex items-center justify-between px-8"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-outline text-[20px]">apartment</span><label class="sr-only" for="warehouse-selector">Select Warehouse</label><select class="h-10 px-3 bg-surface border border-outline-variant/40 rounded text-on-surface font-label-lg text-label-lg focus:outline-none focus:border-primary-container cursor-pointer" id="warehouse-selector"><option selected="" value="beirut-main">Beirut Main</option><option value="tripoli-depot">Tripoli Depot</option><option value="saida-warehouse">Saida Warehouse</option><option value="zahle-central">Zahle Central</option></select></div><div class="flex items-center gap-4"><button aria-label="Toggle Theme" class="w-10 h-10 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">light_mode</span></button><div class="inline-flex items-center bg-surface-container-low p-1 rounded"><button class="px-2 py-1 rounded bg-surface-container-lowest shadow-sm text-on-surface font-label-md text-label-md" type="button">EN</button><button class="px-2 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-md text-label-md" type="button">عربي</button><button class="px-2 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-md text-label-md" type="button">FR</button></div><div class="h-6 w-px bg-outline-variant/30"></div><div class="flex items-center gap-3 pl-1"><div class="flex flex-col text-right"><span class="font-label-lg text-label-lg text-on-surface">Rami K.</span><span class="font-label-md text-label-md text-on-surface-variant">Beirut Main</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 w-full pt-16 bg-surface px-8"><div class="flex flex-col w-full pb-28">
+<div class="flex items-center gap-2 mb-4">
+<a class="inline-flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors group" href="#">
+<span class="material-symbols-outlined text-[16px] transition-transform group-hover:-translate-x-0.5">arrow_back</span>
+<span>Adjustments</span>
+</a>
+</div>
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+<div class="flex items-start gap-3.5">
+<div class="w-12 h-12 rounded-xl bg-tertiary-container/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[24px] text-primary-container">tune</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-3">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">New Adjustment</h1>
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-surface-container-high font-label-mono text-label-mono text-on-surface-variant tracking-wide">
+            DOC # ADJ-2026-0894
+          </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+          Create an inventory stock count adjustment and variance entry
+        </p>
+</div>
+</div>
+<div class="flex items-center gap-2 self-start md:self-auto px-3 py-1.5 rounded-xl bg-surface-container-lowest shadow-sm">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">warehouse</span>
+<span class="font-body-sm text-body-sm text-on-surface font-medium">Warehouse:</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Beirut Main (Default Aisle)</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 mb-6">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface flex items-center gap-1">
+          Customer <span class="text-error">*</span>
+</label>
+<div class="relative">
+<select class="w-full h-11 px-3 bg-surface-container-low rounded-lg text-on-surface font-body-md text-body-md appearance-none focus:outline-none focus:bg-surface-container cursor-pointer transition-colors pr-9">
+<option selected="" value="acme">Acme Foods Ltd.</option>
+<option value="cedar">Cedar Provisions SARL</option>
+<option value="med">Mediterranean Imports</option>
+<option value="levant">Levant Distribution Group</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-on-surface-variant text-[20px]">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface flex items-center gap-1">
+          Reason <span class="text-error">*</span>
+</label>
+<div class="relative">
+<select class="w-full h-11 px-3 bg-surface-container-low rounded-lg text-on-surface font-body-md text-body-md appearance-none focus:outline-none focus:bg-surface-container cursor-pointer transition-colors pr-9">
+<option selected="" value="stock-count">Stock count difference</option>
+<option value="loss-theft">Loss / theft</option>
+<option value="entry-correction">Entry correction</option>
+<option value="other">Other</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-on-surface-variant text-[20px]">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface flex items-center gap-1">
+          Adjustment Date <span class="text-error">*</span>
+</label>
+<div class="relative">
+<input class="w-full h-11 px-3 bg-surface-container-low rounded-lg text-on-surface font-body-md text-body-md focus:outline-none focus:bg-surface-container transition-colors pr-10" type="text" value="30 Sep 2026"/>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-on-surface-variant text-[20px]">calendar_today</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface flex items-center justify-between">
+<span>Reference Note</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-normal">Optional</span>
+</label>
+<input class="w-full h-11 px-3 bg-surface-container-low rounded-lg text-on-surface font-body-md text-body-md focus:outline-none focus:bg-surface-container transition-colors placeholder:text-outline" placeholder="e.g. Q3 bi-weekly cycle count" type="text" value="Q3 bi-weekly cycle count adjustment"/>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden mb-6">
+<div class="px-6 py-4 flex items-center justify-between bg-surface-container-low/40">
+<div class="flex items-center gap-2">
+<h2 class="font-headline-sm text-headline-sm text-on-surface tracking-tight">Counted Lines</h2>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-md text-label-md">2 filled</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">All units adjusted directly to customer ledger</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left" id="lines-table">
+<thead>
+<tr class="bg-surface-container-low/70">
+<th class="w-12 px-4 py-3 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-center">#</th>
+<th class="min-w-[280px] px-4 py-3 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Item</th>
+<th class="w-36 px-4 py-3 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Unit</th>
+<th class="w-32 px-4 py-3 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">In System</th>
+<th class="w-36 px-4 py-3 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">Counted</th>
+<th class="w-36 px-4 py-3 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-center">Difference</th>
+<th class="w-14 px-4 py-3 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-center"><span class="sr-only">Actions</span></th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<tr class="hover:bg-surface-container-low/30 transition-colors group">
+<td class="px-4 py-3 text-center font-label-mono text-label-mono text-on-surface-variant">1</td>
+<td class="px-4 py-3">
+<div class="relative">
+<div class="w-full h-11 px-3 bg-surface-container-low rounded-lg flex items-center justify-between cursor-pointer">
+<div class="flex items-center gap-2 truncate">
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-md">CB-400</span>
+<span class="font-body-md text-body-md text-on-surface font-medium truncate">Canned Beans 400g</span>
+</div>
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">arrow_drop_down</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-3">
+<div class="relative">
+<select class="w-full h-11 px-3 bg-surface-container-low rounded-lg text-on-surface font-body-md text-body-md appearance-none focus:outline-none cursor-pointer pr-8">
+<option selected="" value="box">Box</option>
+<option value="bottle">Bottle</option>
+<option value="piece">Piece</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-3 pointer-events-none text-on-surface-variant text-[18px]">expand_more</span>
+</div>
+</td>
+<td class="px-4 py-3 text-right">
+<span class="font-label-mono text-body-md text-on-surface-variant font-medium">48</span>
+</td>
+<td class="px-4 py-3 text-right">
+<input class="w-full h-11 px-3 text-right font-label-mono text-body-md bg-surface-container-low rounded-lg text-on-surface focus:outline-none focus:bg-surface-container transition-colors" type="number" value="50"/>
+</td>
+<td class="px-4 py-3 text-center">
+<span class="inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-600 font-label-md text-label-md font-semibold min-w-[54px]">
+                +2
+              </span>
+</td>
+<td class="px-4 py-3 text-center">
+<button aria-label="Delete line 1" class="w-9 h-9 rounded-lg inline-flex items-center justify-center text-outline hover:text-error hover:bg-error-container/40 transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low/30 transition-colors group">
+<td class="px-4 py-3 text-center font-label-mono text-label-mono text-on-surface-variant">2</td>
+<td class="px-4 py-3">
+<div class="relative">
+<div class="w-full h-11 px-3 bg-surface-container-low rounded-lg flex items-center justify-between cursor-pointer">
+<div class="flex items-center gap-2 truncate">
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-md">OO-1L</span>
+<span class="font-body-md text-body-md text-on-surface font-medium truncate">Olive Oil 1L</span>
+</div>
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">arrow_drop_down</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-3">
+<div class="relative">
+<select class="w-full h-11 px-3 bg-surface-container-low rounded-lg text-on-surface font-body-md text-body-md appearance-none focus:outline-none cursor-pointer pr-8">
+<option value="box">Box</option>
+<option selected="" value="bottle">Bottle</option>
+<option value="piece">Piece</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-3 pointer-events-none text-on-surface-variant text-[18px]">expand_more</span>
+</div>
+</td>
+<td class="px-4 py-3 text-right">
+<span class="font-label-mono text-body-md text-on-surface-variant font-medium">25</span>
+</td>
+<td class="px-4 py-3 text-right">
+<input class="w-full h-11 px-3 text-right font-label-mono text-body-md bg-surface-container-low rounded-lg text-on-surface focus:outline-none focus:bg-surface-container transition-colors" type="number" value="22"/>
+</td>
+<td class="px-4 py-3 text-center">
+<span class="inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-rose-50 text-rose-600 font-label-md text-label-md font-semibold min-w-[54px]">
+                −3
+              </span>
+</td>
+<td class="px-4 py-3 text-center">
+<button aria-label="Delete line 2" class="w-9 h-9 rounded-lg inline-flex items-center justify-center text-outline hover:text-error hover:bg-error-container/40 transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low/20 transition-colors">
+<td class="px-4 py-3 text-center font-label-mono text-label-mono text-outline">3</td>
+<td class="px-4 py-3">
+<div class="relative">
+<input class="w-full h-11 px-3 bg-surface-container-low rounded-lg text-on-surface font-body-md text-body-md focus:outline-none focus:bg-surface-container transition-colors placeholder:text-outline" placeholder="Search item by name or code" type="text"/>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-outline text-[18px]">search</span>
+</div>
+</td>
+<td class="px-4 py-3">
+<div class="w-full h-11 px-3 bg-surface-container-low/50 rounded-lg flex items-center text-outline font-body-md text-body-md">
+                —
+              </div>
+</td>
+<td class="px-4 py-3 text-right font-label-mono text-body-md text-outline">
+              —
+            </td>
+<td class="px-4 py-3 text-right">
+<div class="w-full h-11 px-3 bg-surface-container-low/50 rounded-lg flex items-center justify-end text-outline font-label-mono text-body-md">
+                —
+              </div>
+</td>
+<td class="px-4 py-3 text-center text-outline font-body-md text-body-md">
+              —
+            </td>
+<td class="px-4 py-3 text-center text-outline">
+<span class="inline-block w-9 h-9"></span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-6 py-3.5 bg-surface-container-low/20 flex items-center justify-between">
+<button class="inline-flex items-center gap-2 h-9 px-3 rounded-lg text-on-surface hover:bg-surface-container-low font-label-md text-label-md transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px] text-primary-container">add</span>
+<span>Add line manually</span>
+</button>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Press Enter on blank row to auto-insert another</span>
+</div>
+</div>
+<div class="rounded-xl p-4 bg-[#7C3AED]/10 flex items-center justify-between gap-4 mb-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-[#7C3AED]/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px] text-[#7C3AED]">info</span>
+</div>
+<div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+<span class="font-headline-sm text-headline-sm text-[#7C3AED]">Variance Threshold:</span>
+<span class="font-body-md text-body-md text-on-surface">This adjustment needs manager approval before stock changes.</span>
+</div>
+</div>
+<span class="shrink-0 px-2 py-1 rounded bg-[#7C3AED]/15 text-[#7C3AED] font-label-md text-label-md font-semibold hidden md:inline-block">
+      Variance limit: ±2 units
+    </span>
+</div>
+<footer class="fixed bottom-0 left-64 right-0 h-20 bg-surface-container-lowest/95 backdrop-blur shadow-md px-8 flex items-center justify-between z-30">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary-container"></span>
+<span class="font-headline-sm text-headline-sm text-on-surface">2 items</span>
+</div>
+<span class="text-outline">·</span>
+<div class="flex items-center gap-1.5 font-body-md text-body-md text-on-surface-variant">
+<span>Total counted:</span>
+<span class="font-label-mono font-semibold text-on-surface">72 units</span>
+</div>
+<span class="text-outline">·</span>
+<div class="flex items-center gap-1.5 font-body-md text-body-md">
+<span class="text-on-surface-variant">Net variance:</span>
+<span class="px-2 py-0.5 rounded bg-rose-50 text-rose-600 font-label-mono font-semibold text-label-md">−1 unit</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="h-11 px-5 rounded-xl font-label-lg text-label-lg text-on-surface hover:bg-surface-container-low transition-colors" type="button">
+        Cancel
+      </button>
+<button class="h-11 px-6 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-label-lg text-label-lg font-semibold inline-flex items-center gap-2 shadow-sm transition-colors cursor-pointer" type="button">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+<span>Send for approval</span>
+</button>
+</div>
+</footer>
+</div></main></div></body></html>

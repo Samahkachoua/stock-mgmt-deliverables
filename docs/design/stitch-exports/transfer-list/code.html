@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"secondary-fixed-dim":"#ffb599","inverse-primary":"#adc8f5","tertiary-fixed":"#dae2fd","on-tertiary-fixed-variant":"#3f465c","primary-container":"#1e3a5f","on-primary-fixed":"#001c3b","on-primary-fixed-variant":"#2d486d","on-primary-container":"#8aa4cf","surface-container-lowest":"#ffffff","on-tertiary-container":"#9ba3bb","on-error":"#ffffff","secondary-fixed":"#ffdbce","secondary-container":"#fd651e","background":"#f8f9ff","surface":"#f8f9ff","primary-fixed-dim":"#adc8f5","surface-container-low":"#eff4ff","on-tertiary-fixed":"#131b2e","on-secondary-fixed-variant":"#7f2b00","on-surface-variant":"#43474e","surface-variant":"#d3e4fe","on-error-container":"#93000a","on-secondary":"#ffffff","inverse-on-surface":"#eaf1ff","primary-fixed":"#d5e3ff","secondary":"#a73a00","on-surface":"#0b1c30","error-container":"#ffdad6","on-secondary-container":"#571a00","surface-dim":"#cbdbf5","tertiary-fixed-dim":"#bec6e0","outline-variant":"#c4c6cf","tertiary":"#1c2337","on-tertiary":"#ffffff","on-background":"#0b1c30","surface-container-highest":"#d3e4fe","surface-container":"#e5eeff","surface-bright":"#f8f9ff","inverse-surface":"#213145","error":"#ba1a1a","surface-tint":"#455f87","on-secondary-fixed":"#370e00","surface-container-high":"#dce9ff","tertiary-container":"#31394e","on-primary":"#ffffff","outline":"#74777f","primary":"#022448"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-sm":"0.5rem","space-2xl":"2rem","space-xl":"1.5rem","margin-desktop":"2rem","space-xs":"0.25rem","gutter":"1rem","gutter-desktop":"1.5rem","space-md":"0.75rem","space-lg":"1rem","margin":"1rem"},"fontFamily":{"body-sm":["Inter"],"label-mono":["Inter"],"body-lg":["Inter"],"label-lg":["Inter"],"display-lg":["Inter"],"headline-sm":["Inter"],"headline-md":["Inter"],"label-md":["Inter"],"headline-lg":["Inter"],"body-md":["Inter"]},"fontSize":{"body-sm":["13px",{"lineHeight":"18px","letterSpacing":"0","fontWeight":"400"}],"label-mono":["13px",{"lineHeight":"18px","letterSpacing":"0.05em","fontWeight":"600"}],"body-lg":["16px",{"lineHeight":"24px","letterSpacing":"0","fontWeight":"400"}],"label-lg":["14px",{"lineHeight":"20px","letterSpacing":"0.01em","fontWeight":"600"}],"display-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"0","fontWeight":"600"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"20px","letterSpacing":"0","fontWeight":"400"}]}}}}</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col"><div class="h-16 flex items-center px-6 gap-3 border-b border-outline-variant/20"><div class="w-9 h-9 rounded bg-primary-container flex items-center justify-center text-on-primary shadow-sm"><span class="material-symbols-outlined text-[20px]">warehouse</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary tracking-tight">CedarLogistics</span><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">WMS Core</span></div></div><div class="flex-1 overflow-y-auto px-3 py-4 flex flex-col justify-between"><nav class="flex flex-col gap-1" data-active-classes="bg-[#2563EB]/10 text-[#2563EB] font-headline-sm rounded-lg"><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="receive" href="#"><span class="material-symbols-outlined text-[20px] text-[#16A34A]">move_to_inbox</span><span class="font-label-lg text-label-lg">Receive</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="issue" href="#"><span class="material-symbols-outlined text-[20px] text-[#EA580C]">outbox</span><span class="font-label-lg text-label-lg">Issue</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#2563EB]/10 text-[#2563EB] font-headline-sm transition-colors" data-path="transfer" href="#"><span class="material-symbols-outlined text-[20px] text-[#2563EB]">swap_horiz</span><span class="font-label-lg text-label-lg font-semibold">Transfer</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="adjustment" href="#"><span class="material-symbols-outlined text-[20px] text-[#7C3AED]">tune</span><span class="font-label-lg text-label-lg">Adjustment</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="damage" href="#"><span class="material-symbols-outlined text-[20px] text-[#DC2626]">report</span><span class="font-label-lg text-label-lg">Damage</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="opening-balance" href="#"><span class="material-symbols-outlined text-[20px] text-[#475569]">account_balance_wallet</span><span class="font-label-lg text-label-lg">Opening Balance</span></a><div class="border-t border-outline-variant/30 my-3"></div><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="stock" href="#"><span class="material-symbols-outlined text-[20px] text-outline">inventory_2</span><span class="font-label-lg text-label-lg">Stock</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="items" href="#"><span class="material-symbols-outlined text-[20px] text-outline">category</span><span class="font-label-lg text-label-lg">Items</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px] text-outline">settings</span><span class="font-label-lg text-label-lg">Settings</span></a></nav></div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest border-b border-outline-variant/30 z-40 flex items-center justify-between px-8"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-outline text-[20px]">apartment</span><label class="sr-only" for="warehouse-selector">Select Warehouse</label><select class="h-10 px-3 bg-surface border border-outline-variant/40 rounded text-on-surface font-label-lg text-label-lg focus:outline-none focus:border-primary-container cursor-pointer" id="warehouse-selector"><option selected="" value="beirut-main">Beirut Main</option><option value="tripoli-depot">Tripoli Depot</option><option value="saida-warehouse">Saida Warehouse</option><option value="zahle-central">Zahle Central</option></select></div><div class="flex items-center gap-4"><button aria-label="Toggle Theme" class="w-10 h-10 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">light_mode</span></button><div class="inline-flex items-center bg-surface-container-low p-1 rounded"><button class="px-2 py-1 rounded bg-surface-container-lowest shadow-sm text-on-surface font-label-md text-label-md" type="button">EN</button><button class="px-2 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-md text-label-md" type="button">عربي</button><button class="px-2 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-md text-label-md" type="button">FR</button></div><div class="h-6 w-px bg-outline-variant/30"></div><div class="flex items-center gap-3 pl-1"><div class="flex flex-col text-right"><span class="font-label-lg text-label-lg text-on-surface">Rami K.</span><span class="font-label-md text-label-md text-on-surface-variant">Beirut Main</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 w-full pt-16 bg-surface px-8"><div class="flex flex-col w-full pb-12">
+<!-- Top Navigation & Action Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+<div class="flex items-start gap-3.5">
+<div class="w-11 h-11 rounded-xl bg-surface-container flex items-center justify-center text-primary-container shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-[24px]">swap_horiz</span>
+</div>
+<div class="flex flex-col">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Transfers</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Inter-warehouse stock movements and transfers</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="h-11 px-5 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-label-lg text-label-lg shadow-sm transition-colors flex items-center gap-2 cursor-pointer" type="button">
+<span class="material-symbols-outlined text-[20px]">add</span>
+<span>New Transfer</span>
+</button>
+</div>
+</div>
+<!-- Operational Filter Toolbar -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-3 mb-6">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+<!-- Search Input -->
+<div class="md:col-span-4 relative">
+<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-[20px] pointer-events-none">search</span>
+<input class="w-full h-11 pl-10 pr-3.5 bg-surface text-on-surface placeholder:text-outline font-body-md text-body-md rounded-lg focus:outline-none focus:bg-surface-container transition-colors" placeholder="Search by reference or customer..." type="text"/>
+</div>
+<!-- Customer Selector -->
+<div class="md:col-span-2 relative">
+<select class="w-full h-11 px-3.5 bg-surface text-on-surface font-label-lg text-label-lg rounded-lg focus:outline-none focus:bg-surface-container appearance-none cursor-pointer">
+<option selected="">All Customers</option>
+<option>Acme Foods</option>
+<option>Cedar Trading</option>
+<option>Levant Distributors</option>
+<option>MedSupply Logistics</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">expand_more</span>
+</div>
+<!-- Date Range Filter -->
+<div class="md:col-span-3 relative">
+<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">calendar_today</span>
+<select class="w-full h-11 pl-10 pr-8 bg-surface text-on-surface font-label-lg text-label-lg rounded-lg focus:outline-none focus:bg-surface-container appearance-none cursor-pointer">
+<option>Today</option>
+<option>Past 7 Days</option>
+<option selected="">Past 30 Days</option>
+<option>This Quarter</option>
+<option>Custom Range...</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">expand_more</span>
+</div>
+<!-- Status Filter -->
+<div class="md:col-span-2 relative">
+<select class="w-full h-11 px-3.5 bg-surface text-on-surface font-label-lg text-label-lg rounded-lg focus:outline-none focus:bg-surface-container appearance-none cursor-pointer">
+<option selected="">All Statuses</option>
+<option>In transit</option>
+<option>Completed</option>
+<option>Cancelled</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">expand_more</span>
+</div>
+<!-- Filter Toggle Action -->
+<div class="md:col-span-1 flex justify-end">
+<button aria-label="Advanced Filters" class="w-full h-11 flex items-center justify-center rounded-lg bg-surface text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer" title="Filter Presets" type="button">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Transfers Ledger Table -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="w-full overflow-x-auto">
+<table class="w-full text-left border-collapse min-w-[960px]">
+<thead>
+<tr class="bg-surface text-on-surface-variant font-label-md text-label-md uppercase tracking-wider h-10 select-none">
+<th class="py-2.5 pl-6 pr-3 font-semibold">Reference</th>
+<th class="py-2.5 px-3 font-semibold">Date</th>
+<th class="py-2.5 px-3 font-semibold">Customer</th>
+<th class="py-2.5 px-3 font-semibold">From → To</th>
+<th class="py-2.5 px-3 font-semibold">Items</th>
+<th class="py-2.5 px-3 font-semibold">Total Quantity</th>
+<th class="py-2.5 px-3 font-semibold">Status</th>
+<th class="py-2.5 px-3 font-semibold">Created By</th>
+<th class="py-2.5 pr-6 pl-2 text-right"><span class="sr-only">Actions</span></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface text-body-md font-body-md text-on-surface">
+<!-- Row 1 -->
+<tr class="h-[52px] hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="console.log('Open TRF-2026-000123')">
+<td class="pl-6 pr-3 py-3 font-label-mono text-label-mono text-primary font-semibold">
+              TRF-2026-000123
+            </td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              30 Sep 2026
+            </td>
+<td class="px-3 py-3 font-label-lg text-label-lg text-on-surface">
+              Acme Foods
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 font-label-md text-label-md text-on-surface bg-surface-container-low px-2 py-1 rounded">
+<span>Beirut Main</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">arrow_forward</span>
+<span class="text-primary font-semibold">Tripoli</span>
+</span>
+</td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              2 items
+            </td>
+<td class="px-3 py-3 font-label-mono text-label-mono text-on-surface">
+              56 units
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-semibold bg-surface-container-high text-primary-container">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+                In transit
+              </span>
+</td>
+<td class="px-3 py-3 whitespace-nowrap">
+<div class="inline-flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary text-on-primary font-label-md text-label-md flex items-center justify-center font-bold text-[10px]">
+                  RK
+                </div>
+<span class="text-on-surface font-body-md text-body-md">Rami K.</span>
+</div>
+</td>
+<td class="pr-6 pl-2 py-3 text-right">
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="h-[52px] hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="console.log('Open TRF-2026-000122')">
+<td class="pl-6 pr-3 py-3 font-label-mono text-label-mono text-primary font-semibold">
+              TRF-2026-000122
+            </td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              29 Sep 2026
+            </td>
+<td class="px-3 py-3 font-label-lg text-label-lg text-on-surface">
+              Cedar Trading
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 font-label-md text-label-md text-on-surface bg-surface-container-low px-2 py-1 rounded">
+<span>Beirut Main</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">arrow_forward</span>
+<span class="text-primary font-semibold">Saida</span>
+</span>
+</td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              3 items
+            </td>
+<td class="px-3 py-3 font-label-mono text-label-mono text-on-surface">
+              240 units
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-semibold bg-surface-container text-tertiary">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                Completed
+              </span>
+</td>
+<td class="px-3 py-3 whitespace-nowrap">
+<div class="inline-flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary font-label-md text-label-md flex items-center justify-center font-bold text-[10px]">
+                  NH
+                </div>
+<span class="text-on-surface font-body-md text-body-md">Nour H.</span>
+</div>
+</td>
+<td class="pr-6 pl-2 py-3 text-right">
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="h-[52px] hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="console.log('Open TRF-2026-000121')">
+<td class="pl-6 pr-3 py-3 font-label-mono text-label-mono text-primary font-semibold">
+              TRF-2026-000121
+            </td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              29 Sep 2026
+            </td>
+<td class="px-3 py-3 font-label-lg text-label-lg text-on-surface">
+              Acme Foods
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 font-label-md text-label-md text-on-surface bg-surface-container-low px-2 py-1 rounded">
+<span>Beirut Main</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">arrow_forward</span>
+<span class="text-primary font-semibold">Zahle</span>
+</span>
+</td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              1 item
+            </td>
+<td class="px-3 py-3 font-label-mono text-label-mono text-on-surface">
+              45 units
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-semibold bg-surface-container text-tertiary">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                Completed
+              </span>
+</td>
+<td class="px-3 py-3 whitespace-nowrap">
+<div class="inline-flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary text-on-primary font-label-md text-label-md flex items-center justify-center font-bold text-[10px]">
+                  RK
+                </div>
+<span class="text-on-surface font-body-md text-body-md">Rami K.</span>
+</div>
+</td>
+<td class="pr-6 pl-2 py-3 text-right">
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="h-[52px] hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="console.log('Open TRF-2026-000120')">
+<td class="pl-6 pr-3 py-3 font-label-mono text-label-mono text-primary font-semibold">
+              TRF-2026-000120
+            </td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              28 Sep 2026
+            </td>
+<td class="px-3 py-3 font-label-lg text-label-lg text-on-surface">
+              Levant Distributors
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 font-label-md text-label-md text-on-surface bg-surface-container-low px-2 py-1 rounded">
+<span>Beirut Main</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">arrow_forward</span>
+<span class="text-primary font-semibold">Tripoli</span>
+</span>
+</td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              4 items
+            </td>
+<td class="px-3 py-3 font-label-mono text-label-mono text-on-surface">
+              180 units
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-semibold bg-surface-container-high text-primary-container">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+                In transit
+              </span>
+</td>
+<td class="px-3 py-3 whitespace-nowrap">
+<div class="inline-flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-variant text-on-surface font-label-md text-label-md flex items-center justify-center font-bold text-[10px]">
+                  ZM
+                </div>
+<span class="text-on-surface font-body-md text-body-md">Ziad M.</span>
+</div>
+</td>
+<td class="pr-6 pl-2 py-3 text-right">
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="h-[52px] hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="console.log('Open TRF-2026-000119')">
+<td class="pl-6 pr-3 py-3 font-label-mono text-label-mono text-primary font-semibold">
+              TRF-2026-000119
+            </td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              28 Sep 2026
+            </td>
+<td class="px-3 py-3 font-label-lg text-label-lg text-on-surface">
+              Cedar Trading
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 font-label-md text-label-md text-on-surface bg-surface-container-low px-2 py-1 rounded">
+<span>Beirut Main</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">arrow_forward</span>
+<span class="text-primary font-semibold">Saida</span>
+</span>
+</td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              2 items
+            </td>
+<td class="px-3 py-3 font-label-mono text-label-mono text-on-surface">
+              60 units
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-semibold bg-surface-container-low text-on-surface-variant">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+                Cancelled
+              </span>
+</td>
+<td class="px-3 py-3 whitespace-nowrap">
+<div class="inline-flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary text-on-primary font-label-md text-label-md flex items-center justify-center font-bold text-[10px]">
+                  RK
+                </div>
+<span class="text-on-surface font-body-md text-body-md">Rami K.</span>
+</div>
+</td>
+<td class="pr-6 pl-2 py-3 text-right">
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+<!-- Row 6 -->
+<tr class="h-[52px] hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="console.log('Open TRF-2026-000118')">
+<td class="pl-6 pr-3 py-3 font-label-mono text-label-mono text-primary font-semibold">
+              TRF-2026-000118
+            </td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              27 Sep 2026
+            </td>
+<td class="px-3 py-3 font-label-lg text-label-lg text-on-surface">
+              Acme Foods
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 font-label-md text-label-md text-on-surface bg-surface-container-low px-2 py-1 rounded">
+<span>Beirut Main</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">arrow_forward</span>
+<span class="text-primary font-semibold">Tripoli</span>
+</span>
+</td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              3 items
+            </td>
+<td class="px-3 py-3 font-label-mono text-label-mono text-on-surface">
+              310 units
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-semibold bg-surface-container text-tertiary">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                Completed
+              </span>
+</td>
+<td class="px-3 py-3 whitespace-nowrap">
+<div class="inline-flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary font-label-md text-label-md flex items-center justify-center font-bold text-[10px]">
+                  NH
+                </div>
+<span class="text-on-surface font-body-md text-body-md">Nour H.</span>
+</div>
+</td>
+<td class="pr-6 pl-2 py-3 text-right">
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+<!-- Row 7 -->
+<tr class="h-[52px] hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="console.log('Open TRF-2026-000117')">
+<td class="pl-6 pr-3 py-3 font-label-mono text-label-mono text-primary font-semibold">
+              TRF-2026-000117
+            </td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              26 Sep 2026
+            </td>
+<td class="px-3 py-3 font-label-lg text-label-lg text-on-surface">
+              MedSupply Logistics
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 font-label-md text-label-md text-on-surface bg-surface-container-low px-2 py-1 rounded">
+<span>Beirut Main</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">arrow_forward</span>
+<span class="text-primary font-semibold">Zahle</span>
+</span>
+</td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              2 items
+            </td>
+<td class="px-3 py-3 font-label-mono text-label-mono text-on-surface">
+              95 units
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-semibold bg-surface-container text-tertiary">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                Completed
+              </span>
+</td>
+<td class="px-3 py-3 whitespace-nowrap">
+<div class="inline-flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-variant text-on-surface font-label-md text-label-md flex items-center justify-center font-bold text-[10px]">
+                  ZM
+                </div>
+<span class="text-on-surface font-body-md text-body-md">Ziad M.</span>
+</div>
+</td>
+<td class="pr-6 pl-2 py-3 text-right">
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+<!-- Row 8 -->
+<tr class="h-[52px] hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="console.log('Open TRF-2026-000116')">
+<td class="pl-6 pr-3 py-3 font-label-mono text-label-mono text-primary font-semibold">
+              TRF-2026-000116
+            </td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              25 Sep 2026
+            </td>
+<td class="px-3 py-3 font-label-lg text-label-lg text-on-surface">
+              Cedar Trading
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 font-label-md text-label-md text-on-surface bg-surface-container-low px-2 py-1 rounded">
+<span>Beirut Main</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">arrow_forward</span>
+<span class="text-primary font-semibold">Saida</span>
+</span>
+</td>
+<td class="px-3 py-3 text-on-surface-variant whitespace-nowrap">
+              1 item
+            </td>
+<td class="px-3 py-3 font-label-mono text-label-mono text-on-surface">
+              120 units
+            </td>
+<td class="px-3 py-3 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-semibold bg-surface-container text-tertiary">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                Completed
+              </span>
+</td>
+<td class="px-3 py-3 whitespace-nowrap">
+<div class="inline-flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary text-on-primary font-label-md text-label-md flex items-center justify-center font-bold text-[10px]">
+                  RK
+                </div>
+<span class="text-on-surface font-body-md text-body-md">Rami K.</span>
+</div>
+</td>
+<td class="pr-6 pl-2 py-3 text-right">
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Utilitarian Pagination Footer -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 bg-surface-container-lowest">
+<div class="text-body-sm font-body-sm text-on-surface-variant">
+        Showing <span class="font-semibold text-on-surface">1</span> to <span class="font-semibold text-on-surface">8</span> of <span class="font-semibold text-on-surface">42</span> results
+      </div>
+<div class="inline-flex items-center gap-1">
+<button class="h-9 px-3 rounded-lg bg-surface text-outline disabled:opacity-40 disabled:cursor-not-allowed font-label-md text-label-md flex items-center gap-1" disabled="" type="button">
+<span class="material-symbols-outlined text-[16px]">chevron_left</span>
+<span>Previous</span>
+</button>
+<div class="flex items-center gap-1 mx-1">
+<button class="w-9 h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center" type="button">
+            1
+          </button>
+<button class="w-9 h-9 rounded-lg bg-surface hover:bg-surface-container text-on-surface font-label-md text-label-md flex items-center justify-center transition-colors" type="button">
+            2
+          </button>
+<button class="w-9 h-9 rounded-lg bg-surface hover:bg-surface-container text-on-surface font-label-md text-label-md flex items-center justify-center transition-colors" type="button">
+            3
+          </button>
+<span class="px-1 text-on-surface-variant font-label-md text-label-md">...</span>
+<button class="w-9 h-9 rounded-lg bg-surface hover:bg-surface-container text-on-surface font-label-md text-label-md flex items-center justify-center transition-colors" type="button">
+            6
+          </button>
+</div>
+<button class="h-9 px-3 rounded-lg bg-surface hover:bg-surface-container text-on-surface font-label-md text-label-md flex items-center gap-1 transition-colors cursor-pointer" type="button">
+<span>Next</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

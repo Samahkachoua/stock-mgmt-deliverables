@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"secondary-fixed-dim":"#ffb599","inverse-primary":"#adc8f5","tertiary-fixed":"#dae2fd","on-tertiary-fixed-variant":"#3f465c","primary-container":"#1e3a5f","on-primary-fixed":"#001c3b","on-primary-fixed-variant":"#2d486d","on-primary-container":"#8aa4cf","surface-container-lowest":"#ffffff","on-tertiary-container":"#9ba3bb","on-error":"#ffffff","secondary-fixed":"#ffdbce","secondary-container":"#fd651e","background":"#f8f9ff","surface":"#f8f9ff","primary-fixed-dim":"#adc8f5","surface-container-low":"#eff4ff","on-tertiary-fixed":"#131b2e","on-secondary-fixed-variant":"#7f2b00","on-surface-variant":"#43474e","surface-variant":"#d3e4fe","on-error-container":"#93000a","on-secondary":"#ffffff","inverse-on-surface":"#eaf1ff","primary-fixed":"#d5e3ff","secondary":"#a73a00","on-surface":"#0b1c30","error-container":"#ffdad6","on-secondary-container":"#571a00","surface-dim":"#cbdbf5","tertiary-fixed-dim":"#bec6e0","outline-variant":"#c4c6cf","tertiary":"#1c2337","on-tertiary":"#ffffff","on-background":"#0b1c30","surface-container-highest":"#d3e4fe","surface-container":"#e5eeff","surface-bright":"#f8f9ff","inverse-surface":"#213145","error":"#ba1a1a","surface-tint":"#455f87","on-secondary-fixed":"#370e00","surface-container-high":"#dce9ff","tertiary-container":"#31394e","on-primary":"#ffffff","outline":"#74777f","primary":"#022448"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-sm":"0.5rem","space-2xl":"2rem","space-xl":"1.5rem","margin-desktop":"2rem","space-xs":"0.25rem","gutter":"1rem","gutter-desktop":"1.5rem","space-md":"0.75rem","space-lg":"1rem","margin":"1rem"},"fontFamily":{"body-sm":["Inter"],"label-mono":["Inter"],"body-lg":["Inter"],"label-lg":["Inter"],"display-lg":["Inter"],"headline-sm":["Inter"],"headline-md":["Inter"],"label-md":["Inter"],"headline-lg":["Inter"],"body-md":["Inter"]},"fontSize":{"body-sm":["13px",{"lineHeight":"18px","letterSpacing":"0","fontWeight":"400"}],"label-mono":["13px",{"lineHeight":"18px","letterSpacing":"0.05em","fontWeight":"600"}],"body-lg":["16px",{"lineHeight":"24px","letterSpacing":"0","fontWeight":"400"}],"label-lg":["14px",{"lineHeight":"20px","letterSpacing":"0.01em","fontWeight":"600"}],"display-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"0","fontWeight":"600"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"20px","letterSpacing":"0","fontWeight":"400"}]}}}}</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col"><div class="h-16 flex items-center px-6 gap-3 border-b border-outline-variant/20"><div class="w-9 h-9 rounded bg-primary-container flex items-center justify-center text-on-primary shadow-sm"><span class="material-symbols-outlined text-[20px]">warehouse</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary tracking-tight">CedarLogistics</span><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">WMS Core</span></div></div><div class="flex-1 overflow-y-auto px-3 py-4 flex flex-col justify-between"><nav class="flex flex-col gap-1" data-active-classes="bg-[#DC2626]/10 text-[#DC2626] font-headline-sm rounded-lg"><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="receive" href="#"><span class="material-symbols-outlined text-[20px] text-[#16A34A]">move_to_inbox</span><span class="font-label-lg text-label-lg">Receive</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="issue" href="#"><span class="material-symbols-outlined text-[20px] text-[#EA580C]">outbox</span><span class="font-label-lg text-label-lg">Issue</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="transfer" href="#"><span class="material-symbols-outlined text-[20px] text-[#2563EB]">swap_horiz</span><span class="font-label-lg text-label-lg">Transfer</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="adjustments" href="#"><span class="material-symbols-outlined text-[20px] text-[#7C3AED]">tune</span><span class="font-label-lg text-label-lg">Adjustment</span></a><a aria-current="page" class="flex items-center gap-3 px-3 py-2.5 transition-colors bg-[#DC2626]/10 text-[#DC2626] font-headline-sm rounded-lg" data-path="damage" href="#"><span class="material-symbols-outlined text-[20px] text-[#DC2626]">report</span><span class="font-label-lg text-label-lg font-semibold">Damage</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="opening-balance" href="#"><span class="material-symbols-outlined text-[20px] text-[#475569]">account_balance_wallet</span><span class="font-label-lg text-label-lg">Opening Balance</span></a><div class="border-t border-outline-variant/30 my-3"></div><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="stock" href="#"><span class="material-symbols-outlined text-[20px] text-outline">inventory_2</span><span class="font-label-lg text-label-lg">Stock</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="items" href="#"><span class="material-symbols-outlined text-[20px] text-outline">category</span><span class="font-label-lg text-label-lg">Items</span></a><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px] text-outline">settings</span><span class="font-label-lg text-label-lg">Settings</span></a></nav></div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest border-b border-outline-variant/30 z-40 flex items-center justify-between px-8"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-outline text-[20px]">apartment</span><label class="sr-only" for="warehouse-selector">Select Warehouse</label><select class="h-10 px-3 bg-surface border border-outline-variant/40 rounded text-on-surface font-label-lg text-label-lg focus:outline-none focus:border-primary-container cursor-pointer" id="warehouse-selector"><option selected="" value="beirut-main">Beirut Main</option><option value="tripoli-depot">Tripoli Depot</option><option value="saida-warehouse">Saida Warehouse</option><option value="zahle-central">Zahle Central</option></select></div><div class="flex items-center gap-4"><button aria-label="Toggle Theme" class="w-10 h-10 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">light_mode</span></button><div class="inline-flex items-center bg-surface-container-low p-1 rounded"><button class="px-2 py-1 rounded bg-surface-container-lowest shadow-sm text-on-surface font-label-md text-label-md" type="button">EN</button><button class="px-2 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-md text-label-md" type="button">عربي</button><button class="px-2 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-md text-label-md" type="button">FR</button></div><div class="h-6 w-px bg-outline-variant/30"></div><div class="flex items-center gap-3 pl-1"><div class="flex flex-col text-right"><span class="font-label-lg text-label-lg text-on-surface">Rami K.</span><span class="font-label-md text-label-md text-on-surface-variant">Beirut Main</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 w-full pt-16 bg-surface px-8"><div class="flex flex-col w-full pb-32">
+<div class="flex flex-col gap-6 py-6">
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-3">
+<a class="inline-flex items-center gap-1.5 font-label-lg text-label-lg text-secondary hover:text-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+          Damages
+        </a>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="px-2.5 py-0.5 rounded-full bg-surface-container-high font-label-mono text-label-mono text-on-surface">
+          DOC # DMG-2026-0894
+        </span>
+<span class="px-2.5 py-0.5 rounded-full bg-surface-container font-label-md text-label-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">location_on</span>
+          Warehouse: Beirut Main
+        </span>
+</div>
+<div class="flex items-baseline justify-between mt-1">
+<h1 class="font-display-lg text-display-lg text-on-surface tracking-tight">New Damage</h1>
+<span class="font-label-mono text-label-mono text-outline">STEP 1 OF 1</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+        Record damaged or spoiled stock for customer write-off
+      </p>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col gap-5">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface flex items-center justify-between">
+<span>Customer <span class="text-error font-bold">*</span></span>
+<span class="text-[11px] font-normal text-outline">Write-off target</span>
+</label>
+<div class="relative">
+<select class="w-full h-11 px-3 appearance-none bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:bg-surface-container-lowest focus:shadow-[0_0_0_2px_rgba(2,36,72,0.15)] transition-all cursor-pointer">
+<option selected="" value="acme">Acme Foods</option>
+<option value="cedar-grocers">Cedar Grocers Sal</option>
+<option value="phoenicia">Phoenicia Hypermarkets</option>
+<option value="byblos-catering">Byblos Fast Catering</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-on-surface-variant text-[20px]">expand_more</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline flex items-center gap-1.5 pt-0.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block"></span>
+            Account active • Credit cleared
+          </p>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface">
+            Damage Reason <span class="text-error font-bold">*</span>
+</label>
+<div class="relative">
+<select class="w-full h-11 px-3 appearance-none bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:bg-surface-container-lowest focus:shadow-[0_0_0_2px_rgba(2,36,72,0.15)] transition-all cursor-pointer">
+<option value="handling">Handling Damage</option>
+<option value="transport">Transport transit rupture</option>
+<option value="expired">Expired shelf life</option>
+<option selected="" value="incident">Warehouse incident</option>
+<option value="other">Other cause</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-on-surface-variant text-[20px]">expand_more</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline">Internal facility log code: WMS-INC-04</p>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface">
+            Date of Incident <span class="text-error font-bold">*</span>
+</label>
+<div class="relative flex items-center">
+<input class="w-full h-11 pl-3 pr-10 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:bg-surface-container-lowest focus:shadow-[0_0_0_2px_rgba(2,36,72,0.15)] transition-all" type="text" value="30 Sep 2026"/>
+<span class="material-symbols-outlined absolute right-3 pointer-events-none text-on-surface-variant text-[20px]">calendar_today</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline">Defaults to current shift date</p>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface">
+            Reference Note <span class="text-outline font-normal">(Optional)</span>
+</label>
+<input class="w-full h-11 px-3 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:bg-surface-container-lowest focus:shadow-[0_0_0_2px_rgba(2,36,72,0.15)] transition-all" placeholder="Brief detail or supervisor tag" type="text" value="Forklift handling puncture in aisle 4"/>
+<p class="font-body-sm text-body-sm text-outline">Visible in audit and scrap logs</p>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="px-6 py-4 flex items-center justify-between bg-surface-container-lowest">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary text-[22px]">inventory</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Damaged Items (2 Active Lines)</h2>
+</div>
+<span class="font-label-mono text-label-mono text-on-surface-variant uppercase tracking-wider">L-0914 • WRITE-OFF</span>
+</div>
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low">
+<th class="py-3 px-4 w-12 text-center font-label-md text-label-md text-on-surface-variant">#</th>
+<th class="py-3 px-4 min-w-[280px] font-label-md text-label-md text-on-surface-variant uppercase">Item Description</th>
+<th class="py-3 px-4 w-52 font-label-md text-label-md text-on-surface-variant uppercase">Unit</th>
+<th class="py-3 px-4 w-64 font-label-md text-label-md text-on-surface-variant uppercase">Quantity to Scrap</th>
+<th class="py-3 px-4 w-16 text-center font-label-md text-label-md text-on-surface-variant uppercase">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<tr class="hover:bg-surface-container-low/40 transition-colors">
+<td class="py-4 px-4 text-center font-label-mono text-label-mono text-outline">1</td>
+<td class="py-4 px-4 align-top">
+<div class="flex flex-col gap-1.5">
+<div class="relative w-full">
+<div class="h-11 px-3 bg-surface-container-low rounded-lg flex items-center justify-between cursor-pointer">
+<span class="font-headline-sm text-headline-sm text-on-surface">Canned Beans 400g</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high font-label-mono text-label-mono text-primary font-semibold">CB-400</span>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">grid_view</span> Zone A • Rack 03 • Shelf 2
+                  </span>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="relative">
+<select class="w-full h-11 px-3 appearance-none bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:bg-surface-container-lowest transition-all cursor-pointer">
+<option selected="">Box (12 pcs)</option>
+<option>Individual Piece</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-on-surface-variant text-[20px]">expand_more</span>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-3">
+<input class="w-24 h-11 px-3 bg-surface-container-low rounded-lg font-headline-sm text-headline-sm text-on-surface text-right focus:outline-none focus:bg-surface-container-lowest focus:shadow-[0_0_0_2px_rgba(2,36,72,0.15)] transition-all" type="number" value="2"/>
+<span class="font-label-mono text-label-mono text-on-surface-variant font-medium">= 24 Piece</span>
+</div>
+<span class="font-body-sm text-body-sm text-outline">Available: 5 Box (64 Piece)</span>
+</div>
+</td>
+<td class="py-4 px-4 align-top text-center">
+<button aria-label="Delete line item 1" class="w-11 h-11 inline-flex items-center justify-center rounded-lg text-outline hover:text-error hover:bg-error-container/40 transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</td>
+</tr>
+<tr class="bg-amber-500/5 hover:bg-amber-500/10 transition-colors">
+<td class="py-4 px-4 text-center font-label-mono text-label-mono text-outline">2</td>
+<td class="py-4 px-4 align-top">
+<div class="flex flex-col gap-1.5">
+<div class="relative w-full">
+<div class="h-11 px-3 bg-surface-container-low rounded-lg flex items-center justify-between cursor-pointer">
+<span class="font-headline-sm text-headline-sm text-on-surface">Olive Oil 1L</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high font-label-mono text-label-mono text-primary font-semibold">OO-1L</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">grid_view</span> Zone C • Pallet bay 11
+                    </span>
+<span class="px-1.5 py-0.5 bg-amber-100 text-amber-900 rounded font-label-md text-label-md font-semibold text-[11px]">Above write-off tier</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="relative">
+<select class="w-full h-11 px-3 appearance-none bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:bg-surface-container-lowest transition-all cursor-pointer">
+<option selected="">Bottle</option>
+<option>Carton (6 Bottles)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-on-surface-variant text-[20px]">expand_more</span>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-3">
+<input class="w-24 h-11 px-3 bg-surface-container-low rounded-lg font-headline-sm text-headline-sm text-on-surface text-right focus:outline-none focus:bg-surface-container-lowest focus:shadow-[0_0_0_2px_rgba(2,36,72,0.15)] transition-all font-semibold" type="number" value="12"/>
+<span class="font-label-mono text-label-mono text-amber-800 font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">priority_high</span> Limit exceeded
+                    </span>
+</div>
+<span class="font-body-sm text-body-sm text-outline">Available: 120 Bottle</span>
+</div>
+</td>
+<td class="py-4 px-4 align-top text-center">
+<button aria-label="Delete line item 2" class="w-11 h-11 inline-flex items-center justify-center rounded-lg text-outline hover:text-error hover:bg-error-container/40 transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</td>
+</tr>
+<tr class="bg-surface-container-lowest hover:bg-surface-container-low/20 transition-colors">
+<td class="py-4 px-4 text-center font-label-mono text-label-mono text-outline">3</td>
+<td class="py-4 px-4 align-top">
+<div class="relative flex items-center w-full">
+<span class="material-symbols-outlined absolute left-3 pointer-events-none text-outline text-[20px]">search</span>
+<input class="w-full h-11 pl-10 pr-4 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:shadow-[0_0_0_2px_rgba(2,36,72,0.15)] transition-all" placeholder="Search item by name or code..." type="text"/>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="relative">
+<select class="w-full h-11 px-3 appearance-none bg-surface-container-low/50 text-outline rounded-lg font-body-md text-body-md cursor-not-allowed" disabled="">
+<option>—</option>
+</select>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<input class="w-24 h-11 px-3 bg-surface-container-low/50 text-outline rounded-lg font-headline-sm text-headline-sm text-right cursor-not-allowed" disabled="" placeholder="0" type="number"/>
+</td>
+<td class="py-4 px-4 align-top text-center">
+<button aria-label="Clear empty line" class="w-11 h-11 inline-flex items-center justify-center rounded-lg text-outline hover:text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-6 py-3.5 bg-surface-container-low flex items-center justify-between text-on-surface-variant font-label-md text-label-md">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px]">keyboard</span>
+          Press <kbd class="px-1.5 py-0.5 bg-surface-container-lowest rounded shadow-xs font-label-mono text-on-surface">Tab</kbd> to jump between cells, <kbd class="px-1.5 py-0.5 bg-surface-container-lowest rounded shadow-xs font-label-mono text-on-surface">Esc</kbd> to clear item input
+        </span>
+<button class="inline-flex items-center gap-1.5 text-primary font-semibold hover:underline" type="button">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+          Add blank row
+        </button>
+</div>
+</div>
+<div class="bg-amber-500/10 rounded-xl p-4 flex items-start sm:items-center gap-3">
+<div class="w-9 h-9 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-amber-700 text-[22px]">gavel</span>
+</div>
+<div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-amber-950">This needs manager approval before stock changes.</span>
+<span class="font-body-sm text-body-sm text-amber-900/80">Approval threshold exceeded: Line #2 includes &gt; 10 units of Olive Oil (or &gt; $100 cumulative scrap value).</span>
+</div>
+<span class="px-2.5 py-1 rounded bg-amber-500/20 font-label-mono text-label-mono text-amber-950 whitespace-nowrap self-start sm:self-auto font-semibold">
+          POLICY WMS-APP-02
+        </span>
+</div>
+</div>
+</div>
+<div class="fixed bottom-0 left-64 right-0 bg-surface-container-lowest shadow-xl z-30 px-8 py-3.5 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[20px]">fact_check</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">2 items · 14 units damaged</span>
+<span class="font-body-sm text-body-sm text-outline">Estimated ledger reduction: $138.40</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="h-11 px-6 rounded-xl font-label-lg text-label-lg text-on-surface hover:bg-surface-container-low transition-colors" type="button">
+        Cancel
+      </button>
+<button class="h-11 px-6 min-w-[170px] rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-headline-sm text-headline-sm inline-flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer" type="button">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+        Send for approval
+      </button>
+</div>
+</div>
+</div></main></div></body></html>

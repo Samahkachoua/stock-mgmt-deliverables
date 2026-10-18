@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface":"#f8f9ff","primary-container":"#1e3a5f","tertiary-fixed":"#dae2fd","inverse-on-surface":"#eaf1ff","outline":"#74777f","primary-fixed":"#d5e3ff","surface-tint":"#455f87","on-primary-container":"#8aa4cf","surface-container":"#e5eeff","secondary-container":"#fd651e","secondary-fixed":"#ffdbce","primary":"#022448","on-primary":"#ffffff","on-tertiary-container":"#9ba3bb","surface-bright":"#f8f9ff","on-primary-fixed-variant":"#2d486d","tertiary":"#1c2337","outline-variant":"#c4c6cf","surface-container-highest":"#d3e4fe","on-error":"#ffffff","on-secondary-fixed-variant":"#7f2b00","on-tertiary-fixed-variant":"#3f465c","on-background":"#0b1c30","primary-fixed-dim":"#adc8f5","surface-container-low":"#eff4ff","on-secondary-fixed":"#370e00","error":"#ba1a1a","surface-container-high":"#dce9ff","on-surface-variant":"#43474e","surface-container-lowest":"#ffffff","secondary":"#a73a00","background":"#f8f9ff","secondary-fixed-dim":"#ffb599","on-secondary":"#ffffff","on-primary-fixed":"#001c3b","on-tertiary-fixed":"#131b2e","error-container":"#ffdad6","on-secondary-container":"#571a00","inverse-primary":"#adc8f5","on-surface":"#0b1c30","tertiary-fixed-dim":"#bec6e0","on-tertiary":"#ffffff","on-error-container":"#93000a","surface-variant":"#d3e4fe","inverse-surface":"#213145","surface-dim":"#cbdbf5","tertiary-container":"#31394e"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"space-2xl":"2rem","margin-desktop":"2rem","space-md":"0.75rem","space-sm":"0.5rem","gutter":"1rem","margin":"1rem","gutter-desktop":"1.5rem","space-xs":"0.25rem","space-xl":"1.5rem","space-lg":"1rem"},fontFamily:{"label-md":["Inter"],"body-md":["Inter"],"headline-lg":["Inter"],"body-sm":["Inter"],"display-lg":["Inter"],"label-mono":["Inter"],"label-lg":["Inter"],"headline-sm":["Inter"],"body-lg":["Inter"],"headline-md":["Inter"]},fontSize:{"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"20px","letterSpacing":"0","fontWeight":"400"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-sm":["13px",{"lineHeight":"18px","letterSpacing":"0","fontWeight":"400"}],"display-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"700"}],"label-mono":["13px",{"lineHeight":"18px","letterSpacing":"0.05em","fontWeight":"600"}],"label-lg":["14px",{"lineHeight":"20px","letterSpacing":"0.01em","fontWeight":"600"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"0","fontWeight":"600"}],"body-lg":["16px",{"lineHeight":"24px","letterSpacing":"0","fontWeight":"400"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}]}}}}</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between select-none"><div class="flex flex-col flex-1 min-h-0"><div class="h-14 px-gutter flex items-center gap-space-sm bg-primary-container shrink-0"><div class="w-8 h-8 rounded-lg bg-surface-container-lowest/10 flex items-center justify-center"><span class="material-symbols-outlined text-surface-container-lowest text-[20px]">warehouse</span></div><div class="flex flex-col"><span class="font-headline-sm text-surface-container-lowest tracking-tight">CedarLogistics</span><span class="font-label-md text-on-primary-container uppercase tracking-wider text-[10px]">WMS CORE</span></div></div><div class="flex-1 overflow-y-auto py-space-sm px-space-sm"><div class="px-space-sm py-space-xs font-label-md text-outline uppercase tracking-wider text-[11px]">Transactions</div><nav class="space-y-1" data-active-classes="bg-surface-container-high text-on-surface font-label-lg rounded-xl shadow-[0_1px_3px_0_rgba(15,23,42,0.04)]"><a aria-current="page" class="flex items-center gap-space-sm px-space-md py-space-sm transition-colors bg-surface-container-high text-on-surface font-label-lg rounded-xl shadow-[0_1px_3px_0_rgba(15,23,42,0.04)]" data-path="receives---transaction-list" href="#"><span class="material-symbols-outlined text-[20px] text-[#16A34A]">move_to_inbox</span><span>Receive</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="issue" href="#"><span class="material-symbols-outlined text-[20px] text-[#EA580C]">outbox</span><span>Issue</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="transfer" href="#"><span class="material-symbols-outlined text-[20px] text-[#2563EB]">swap_horiz</span><span>Transfer</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="adjustment" href="#"><span class="material-symbols-outlined text-[20px] text-[#7C3AED]">tune</span><span>Adjustment</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="damage" href="#"><span class="material-symbols-outlined text-[20px] text-[#DC2626]">report</span><span>Damage</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="opening-balance" href="#"><span class="material-symbols-outlined text-[20px] text-[#475569]">account_balance_wallet</span><span>Opening Balance</span></a></nav><div class="my-space-sm mx-space-sm h-px bg-surface-container-high"></div><div class="px-space-sm py-space-xs font-label-md text-outline uppercase tracking-wider text-[11px]">Master Data</div><nav class="space-y-1" data-active-classes="bg-surface-container-high text-on-surface font-label-lg rounded-xl shadow-[0_1px_3px_0_rgba(15,23,42,0.04)]"><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="stock" href="#"><span class="material-symbols-outlined text-[20px] text-on-surface-variant">inventory_2</span><span>Stock</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="items" href="#"><span class="material-symbols-outlined text-[20px] text-on-surface-variant">category</span><span>Items</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px] text-on-surface-variant">settings</span><span>Settings</span></a></nav></div></div><div class="p-space-sm shrink-0 bg-surface-container-low"><div class="flex items-center justify-between px-space-sm py-space-xs"><span class="font-label-mono text-outline text-[11px]">STATION-04A</span><span class="inline-flex items-center gap-1 font-label-md text-[#16A34A] text-[11px]"><span class="w-2 h-2 rounded-full bg-[#16A34A]"></span>ONLINE</span></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-gutter-desktop"><div class="flex items-center gap-space-sm"><div class="flex items-center gap-space-xs px-space-md h-11 bg-surface-container-low rounded-xl cursor-pointer hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-primary text-[20px]">store</span><span class="font-label-lg text-on-surface">Beirut Main</span><span class="material-symbols-outlined text-outline text-[18px]">expand_more</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center bg-surface-container-low p-space-xs rounded-xl"><button class="px-space-sm py-space-xs rounded-lg font-label-md bg-surface-container-lowest text-on-surface shadow-[0_1px_2px_rgba(15,23,42,0.04)]" type="button">EN</button><button class="px-space-sm py-space-xs rounded-lg font-label-md text-on-surface-variant hover:text-on-surface transition-colors" type="button">عربي</button><button class="px-space-sm py-space-xs rounded-lg font-label-md text-on-surface-variant hover:text-on-surface transition-colors" type="button">FR</button></div><button class="w-11 h-11 flex items-center justify-center rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors" type="button"><span class="material-symbols-outlined text-on-surface text-[20px]">light_mode</span></button><div class="h-6 w-px bg-surface-container-high"></div><div class="flex items-center gap-space-sm pl-space-xs"><div class="flex flex-col text-right"><span class="font-label-lg text-on-surface leading-tight">Rami K.</span><span class="font-body-sm text-outline leading-tight">Beirut Main</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-14 px-gutter-desktop py-space-xl bg-surface"><div class="flex flex-col w-full">
+<div class="flex flex-col gap-space-lg pb-space-lg">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<div class="w-11 h-11 rounded-lg bg-[#16A34A]/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[#16A34A] text-[24px]">move_to_inbox</span>
+</div>
+<div class="flex flex-col">
+<h1 class="font-headline-lg text-on-surface tracking-tight leading-none">Receives</h1>
+<p class="font-body-md text-on-surface-variant mt-1">Inbound inventory intake and supplier shipments</p>
+</div>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="h-11 px-space-md bg-[#16A34A] hover:bg-[#15803D] text-on-primary rounded-lg font-label-lg flex items-center gap-2 shadow-sm transition-colors cursor-pointer" type="button">
+<span class="material-symbols-outlined text-[20px]">add</span>
+<span>New Receive</span>
+</button>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_1px_3px_0_rgba(15,23,42,0.04)] p-space-md">
+<div class="flex flex-wrap lg:flex-nowrap items-center gap-space-sm">
+<div class="relative flex-1 min-w-[240px]">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px] pointer-events-none">search</span>
+<input class="w-full h-11 pl-10 pr-3 bg-surface-container-lowest rounded-lg font-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Search by reference or customer..." style="box-shadow: inset 0 0 0 1px #E2E8F0;" type="text"/>
+</div>
+<div class="relative min-w-[170px] w-full sm:w-auto">
+<select class="w-full h-11 pl-3 pr-9 appearance-none bg-surface-container-lowest rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer" style="box-shadow: inset 0 0 0 1px #E2E8F0;">
+<option>All Customers</option>
+<option>Acme Foods</option>
+<option>Cedar Trading</option>
+<option>Levant Distributors</option>
+<option>MedSupply Logistics</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">expand_more</span>
+</div>
+<div class="relative min-w-[170px] w-full sm:w-auto">
+<div class="w-full h-11 px-3 bg-surface-container-lowest rounded-lg font-body-md text-on-surface flex items-center justify-between cursor-pointer" style="box-shadow: inset 0 0 0 1px #E2E8F0;">
+<div class="flex items-center gap-2 overflow-hidden">
+<span class="material-symbols-outlined text-outline text-[18px] shrink-0">calendar_today</span>
+<span class="truncate">Past 30 Days</span>
+</div>
+<span class="material-symbols-outlined text-outline text-[18px] shrink-0">expand_more</span>
+</div>
+</div>
+<div class="relative min-w-[150px] w-full sm:w-auto">
+<select class="w-full h-11 pl-3 pr-9 appearance-none bg-surface-container-lowest rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer" style="box-shadow: inset 0 0 0 1px #E2E8F0;">
+<option>All Statuses</option>
+<option>Completed</option>
+<option>In transit</option>
+<option>Pending approval</option>
+<option>Cancelled</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">expand_more</span>
+</div>
+<button class="h-11 w-11 flex items-center justify-center bg-surface-container-lowest hover:bg-surface-container-low rounded-lg text-on-surface transition-colors cursor-pointer shrink-0" style="box-shadow: inset 0 0 0 1px #E2E8F0;" title="More Filters" type="button">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">tune</span>
+</button>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_1px_3px_0_rgba(15,23,42,0.04)] overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="h-10 bg-surface-container-low/70">
+<th class="py-2.5 px-4 font-label-md text-on-surface-variant uppercase tracking-wider text-[11px]" scope="col">Reference</th>
+<th class="py-2.5 px-4 font-label-md text-on-surface-variant uppercase tracking-wider text-[11px]" scope="col">Date</th>
+<th class="py-2.5 px-4 font-label-md text-on-surface-variant uppercase tracking-wider text-[11px]" scope="col">Customer</th>
+<th class="py-2.5 px-4 font-label-md text-on-surface-variant uppercase tracking-wider text-[11px]" scope="col">Items</th>
+<th class="py-2.5 px-4 font-label-md text-on-surface-variant uppercase tracking-wider text-[11px] text-right" scope="col">Total Quantity</th>
+<th class="py-2.5 px-4 font-label-md text-on-surface-variant uppercase tracking-wider text-[11px]" scope="col">Status</th>
+<th class="py-2.5 px-4 font-label-md text-on-surface-variant uppercase tracking-wider text-[11px]" scope="col">Created By</th>
+<th class="py-2.5 px-4 w-10" scope="col"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-high/40">
+<tr class="h-[52px] hover:bg-surface-container-low/50 transition-colors group cursor-pointer">
+<td class="px-4 py-2 font-label-mono text-primary font-semibold text-[13px]">REC-2026-000123</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant whitespace-nowrap">30 Sep 2026</td>
+<td class="px-4 py-2 font-body-md text-on-surface font-medium whitespace-nowrap">Acme Foods</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant">2 items</td>
+<td class="px-4 py-2 font-label-mono text-on-surface font-semibold text-right">150 units</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-label-md bg-[#ECFDF5] text-[#047857]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
+                  Completed
+                </span>
+</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary font-label-md text-[10px] flex items-center justify-center font-bold">RK</div>
+<span class="font-body-sm text-on-surface">Rami K.</span>
+</div>
+</td>
+<td class="px-4 py-2 text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+<tr class="h-[52px] hover:bg-surface-container-low/50 transition-colors group cursor-pointer">
+<td class="px-4 py-2 font-label-mono text-primary font-semibold text-[13px]">REC-2026-000122</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant whitespace-nowrap">29 Sep 2026</td>
+<td class="px-4 py-2 font-body-md text-on-surface font-medium whitespace-nowrap">Cedar Trading</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant">4 items</td>
+<td class="px-4 py-2 font-label-mono text-on-surface font-semibold text-right">420 units</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-label-md bg-[#ECFDF5] text-[#047857]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
+                  Completed
+                </span>
+</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-tint text-on-primary font-label-md text-[10px] flex items-center justify-center font-bold">NH</div>
+<span class="font-body-sm text-on-surface">Nour H.</span>
+</div>
+</td>
+<td class="px-4 py-2 text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+<tr class="h-[52px] hover:bg-surface-container-low/50 transition-colors group cursor-pointer">
+<td class="px-4 py-2 font-label-mono text-primary font-semibold text-[13px]">REC-2026-000121</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant whitespace-nowrap">29 Sep 2026</td>
+<td class="px-4 py-2 font-body-md text-on-surface font-medium whitespace-nowrap">Acme Foods</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant">1 item</td>
+<td class="px-4 py-2 font-label-mono text-on-surface font-semibold text-right">50 units</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-label-md bg-[#ECFDF5] text-[#047857]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
+                  Completed
+                </span>
+</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary font-label-md text-[10px] flex items-center justify-center font-bold">RK</div>
+<span class="font-body-sm text-on-surface">Rami K.</span>
+</div>
+</td>
+<td class="px-4 py-2 text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+<tr class="h-[52px] hover:bg-surface-container-low/50 transition-colors group cursor-pointer">
+<td class="px-4 py-2 font-label-mono text-primary font-semibold text-[13px]">REC-2026-000120</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant whitespace-nowrap">28 Sep 2026</td>
+<td class="px-4 py-2 font-body-md text-on-surface font-medium whitespace-nowrap">Levant Distributors</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant">3 items</td>
+<td class="px-4 py-2 font-label-mono text-on-surface font-semibold text-right">310 units</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-label-md bg-[#EFF6FF] text-[#1D4ED8]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#3B82F6]"></span>
+                  In transit
+                </span>
+</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-tertiary-container text-on-primary font-label-md text-[10px] flex items-center justify-center font-bold">ZM</div>
+<span class="font-body-sm text-on-surface">Ziad M.</span>
+</div>
+</td>
+<td class="px-4 py-2 text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+<tr class="h-[52px] hover:bg-surface-container-low/50 transition-colors group cursor-pointer">
+<td class="px-4 py-2 font-label-mono text-primary font-semibold text-[13px]">REC-2026-000119</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant whitespace-nowrap">28 Sep 2026</td>
+<td class="px-4 py-2 font-body-md text-on-surface font-medium whitespace-nowrap">Cedar Trading</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant">2 items</td>
+<td class="px-4 py-2 font-label-mono text-on-surface font-semibold text-right">80 units</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-label-md bg-surface-container-high text-on-surface-variant">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+                  Cancelled
+                </span>
+</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary font-label-md text-[10px] flex items-center justify-center font-bold">RK</div>
+<span class="font-body-sm text-on-surface">Rami K.</span>
+</div>
+</td>
+<td class="px-4 py-2 text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+<tr class="h-[52px] hover:bg-surface-container-low/50 transition-colors group cursor-pointer">
+<td class="px-4 py-2 font-label-mono text-primary font-semibold text-[13px]">REC-2026-000118</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant whitespace-nowrap">27 Sep 2026</td>
+<td class="px-4 py-2 font-body-md text-on-surface font-medium whitespace-nowrap">Acme Foods</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant">5 items</td>
+<td class="px-4 py-2 font-label-mono text-on-surface font-semibold text-right">600 units</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-label-md bg-[#ECFDF5] text-[#047857]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
+                  Completed
+                </span>
+</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-tint text-on-primary font-label-md text-[10px] flex items-center justify-center font-bold">NH</div>
+<span class="font-body-sm text-on-surface">Nour H.</span>
+</div>
+</td>
+<td class="px-4 py-2 text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+<tr class="h-[52px] hover:bg-surface-container-low/50 transition-colors group cursor-pointer">
+<td class="px-4 py-2 font-label-mono text-primary font-semibold text-[13px]">REC-2026-000117</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant whitespace-nowrap">26 Sep 2026</td>
+<td class="px-4 py-2 font-body-md text-on-surface font-medium whitespace-nowrap">MedSupply Logistics</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant">2 items</td>
+<td class="px-4 py-2 font-label-mono text-on-surface font-semibold text-right">120 units</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-label-md bg-[#FFFBEB] text-[#B45309]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#F59E0B]"></span>
+                  Pending approval
+                </span>
+</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-tertiary-container text-on-primary font-label-md text-[10px] flex items-center justify-center font-bold">ZM</div>
+<span class="font-body-sm text-on-surface">Ziad M.</span>
+</div>
+</td>
+<td class="px-4 py-2 text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+<tr class="h-[52px] hover:bg-surface-container-low/50 transition-colors group cursor-pointer">
+<td class="px-4 py-2 font-label-mono text-primary font-semibold text-[13px]">REC-2026-000116</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant whitespace-nowrap">25 Sep 2026</td>
+<td class="px-4 py-2 font-body-md text-on-surface font-medium whitespace-nowrap">Cedar Trading</td>
+<td class="px-4 py-2 font-body-sm text-on-surface-variant">3 items</td>
+<td class="px-4 py-2 font-label-mono text-on-surface font-semibold text-right">200 units</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-label-md bg-[#ECFDF5] text-[#047857]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
+                  Completed
+                </span>
+</td>
+<td class="px-4 py-2 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary font-label-md text-[10px] flex items-center justify-center font-bold">RK</div>
+<span class="font-body-sm text-on-surface">Rami K.</span>
+</div>
+</td>
+<td class="px-4 py-2 text-right">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="flex flex-col sm:flex-row items-center justify-between gap-space-sm px-4 py-3 bg-surface-container-lowest border-t border-[#E2E8F0]">
+<div class="font-body-sm text-on-surface-variant">
+          Showing <span class="font-semibold text-on-surface">1</span> to <span class="font-semibold text-on-surface">8</span> of <span class="font-semibold text-on-surface">84</span> results
+        </div>
+<div class="flex items-center gap-1">
+<button class="h-9 px-3 rounded-lg font-label-md text-outline disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-low transition-colors flex items-center gap-1" disabled="" type="button">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+<span>Previous</span>
+</button>
+<button class="w-9 h-9 rounded-lg font-label-md bg-[#16A34A] text-on-primary flex items-center justify-center font-semibold shadow-xs" type="button">
+            1
+          </button>
+<button class="w-9 h-9 rounded-lg font-label-md text-on-surface hover:bg-surface-container-low transition-colors flex items-center justify-center" type="button">
+            2
+          </button>
+<button class="w-9 h-9 rounded-lg font-label-md text-on-surface hover:bg-surface-container-low transition-colors flex items-center justify-center" type="button">
+            3
+          </button>
+<span class="w-8 h-9 flex items-center justify-center font-body-sm text-outline">...</span>
+<button class="w-9 h-9 rounded-lg font-label-md text-on-surface hover:bg-surface-container-low transition-colors flex items-center justify-center" type="button">
+            11
+          </button>
+<button class="h-9 px-3 rounded-lg font-label-md text-on-surface hover:bg-surface-container-low transition-colors flex items-center gap-1 cursor-pointer" type="button">
+<span>Next</span>
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

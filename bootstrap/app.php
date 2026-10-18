@@ -1,0 +1,37 @@
+<?php
+
+use App\Http\Middleware\EnsureCurrentWarehouse;
+use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\SetLocale;
+use App\Support\ErrorReference;
+use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Foundation\Configuration\Middleware;
+
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
+        web: __DIR__.'/../routes/web.php',
+        commands: __DIR__.'/../routes/console.php',
+        health: '/up',
+    )
+    ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(append: [SetLocale::class]);
+        $middleware->append(SecurityHeaders::class);
+
+        // Behind a load balancer (hosting platform), trust its forwarded IP and HTTPS
+        // headers: TRUSTED_PROXIES=* or a comma-separated list. Unset = trust none.
+        if (filled(env('TRUSTED_PROXIES'))) {
+            $middleware->trustProxies(at: env('TRUSTED_PROXIES') === '*' ? '*' : explode(',', (string) env('TRUSTED_PROXIES')));
+        }
+
+        $middleware->alias([
+            'warehouse' => EnsureCurrentWarehouse::class,
+        ]);
+
+        $middleware->redirectGuestsTo(fn () => route('login'));
+        $middleware->redirectUsersTo(fn () => route('home'));
+    })
+    ->withExceptions(function (Exceptions $exceptions): void {
+        // Unexpected errors are logged under an ERR- reference, which is all the user sees.
+        ErrorReference::register($exceptions);
+    })->create();

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface":"#f8f9ff","primary-container":"#1e3a5f","tertiary-fixed":"#dae2fd","inverse-on-surface":"#eaf1ff","outline":"#74777f","primary-fixed":"#d5e3ff","surface-tint":"#455f87","on-primary-container":"#8aa4cf","surface-container":"#e5eeff","secondary-container":"#fd651e","secondary-fixed":"#ffdbce","primary":"#022448","on-primary":"#ffffff","on-tertiary-container":"#9ba3bb","surface-bright":"#f8f9ff","on-primary-fixed-variant":"#2d486d","tertiary":"#1c2337","outline-variant":"#c4c6cf","surface-container-highest":"#d3e4fe","on-error":"#ffffff","on-secondary-fixed-variant":"#7f2b00","on-tertiary-fixed-variant":"#3f465c","on-background":"#0b1c30","primary-fixed-dim":"#adc8f5","surface-container-low":"#eff4ff","on-secondary-fixed":"#370e00","error":"#ba1a1a","surface-container-high":"#dce9ff","on-surface-variant":"#43474e","surface-container-lowest":"#ffffff","secondary":"#a73a00","background":"#f8f9ff","secondary-fixed-dim":"#ffb599","on-secondary":"#ffffff","on-primary-fixed":"#001c3b","on-tertiary-fixed":"#131b2e","error-container":"#ffdad6","on-secondary-container":"#571a00","inverse-primary":"#adc8f5","on-surface":"#0b1c30","tertiary-fixed-dim":"#bec6e0","on-tertiary":"#ffffff","on-error-container":"#93000a","surface-variant":"#d3e4fe","inverse-surface":"#213145","surface-dim":"#cbdbf5","tertiary-container":"#31394e"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"space-2xl":"2rem","margin-desktop":"2rem","space-md":"0.75rem","space-sm":"0.5rem","gutter":"1rem","margin":"1rem","gutter-desktop":"1.5rem","space-xs":"0.25rem","space-xl":"1.5rem","space-lg":"1rem"},fontFamily:{"label-md":["Inter"],"body-md":["Inter"],"headline-lg":["Inter"],"body-sm":["Inter"],"display-lg":["Inter"],"label-mono":["Inter"],"label-lg":["Inter"],"headline-sm":["Inter"],"body-lg":["Inter"],"headline-md":["Inter"]},fontSize:{"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"20px","letterSpacing":"0","fontWeight":"400"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-sm":["13px",{"lineHeight":"18px","letterSpacing":"0","fontWeight":"400"}],"display-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"700"}],"label-mono":["13px",{"lineHeight":"18px","letterSpacing":"0.05em","fontWeight":"600"}],"label-lg":["14px",{"lineHeight":"20px","letterSpacing":"0.01em","fontWeight":"600"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"0","fontWeight":"600"}],"body-lg":["16px",{"lineHeight":"24px","letterSpacing":"0","fontWeight":"400"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}]}}}}</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between select-none"><div class="flex flex-col flex-1 min-h-0"><div class="h-14 px-gutter flex items-center gap-space-sm bg-primary-container shrink-0"><div class="w-8 h-8 rounded-lg bg-surface-container-lowest/10 flex items-center justify-center"><span class="material-symbols-outlined text-surface-container-lowest text-[20px]">warehouse</span></div><div class="flex flex-col"><span class="font-headline-sm text-surface-container-lowest tracking-tight">CedarLogistics</span><span class="font-label-md text-on-primary-container uppercase tracking-wider text-[10px]">WMS CORE</span></div></div><div class="flex-1 overflow-y-auto py-space-sm px-space-sm"><div class="px-space-sm py-space-xs font-label-md text-outline uppercase tracking-wider text-[11px]">Transactions</div><nav class="space-y-1" data-active-classes="bg-surface-container-high text-on-surface font-label-lg rounded-xl shadow-[0_1px_3px_0_rgba(15,23,42,0.04)]"><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="receives---transaction-list" href="#"><span class="material-symbols-outlined text-[20px] text-[#16A34A]">move_to_inbox</span><span>Receive</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="issue" href="#"><span class="material-symbols-outlined text-[20px] text-[#EA580C]">outbox</span><span>Issue</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="transfer" href="#"><span class="material-symbols-outlined text-[20px] text-[#2563EB]">swap_horiz</span><span>Transfer</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="adjustment" href="#"><span class="material-symbols-outlined text-[20px] text-[#7C3AED]">tune</span><span>Adjustment</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="damage" href="#"><span class="material-symbols-outlined text-[20px] text-[#DC2626]">report</span><span>Damage</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="opening-balance" href="#"><span class="material-symbols-outlined text-[20px] text-[#475569]">account_balance_wallet</span><span>Opening Balance</span></a></nav><div class="my-space-sm mx-space-sm h-px bg-surface-container-high"></div><div class="px-space-sm py-space-xs font-label-md text-outline uppercase tracking-wider text-[11px]">Master Data</div><nav class="space-y-1" data-active-classes="bg-surface-container-high text-on-surface font-label-lg rounded-xl shadow-[0_1px_3px_0_rgba(15,23,42,0.04)]"><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="stock" href="#"><span class="material-symbols-outlined text-[20px] text-on-surface-variant">inventory_2</span><span>Stock</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="items" href="#"><span class="material-symbols-outlined text-[20px] text-on-surface-variant">category</span><span>Items</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl font-label-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px] text-on-surface-variant">settings</span><span>Settings</span></a></nav></div></div><div class="p-space-sm shrink-0 bg-surface-container-low"><div class="flex items-center justify-between px-space-sm py-space-xs"><span class="font-label-mono text-outline text-[11px]">STATION-04A</span><span class="inline-flex items-center gap-1 font-label-md text-[#16A34A] text-[11px]"><span class="w-2 h-2 rounded-full bg-[#16A34A]"></span>ONLINE</span></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-gutter-desktop"><div class="flex items-center gap-space-sm"><div class="flex items-center gap-space-xs px-space-md h-11 bg-surface-container-low rounded-xl cursor-pointer hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-primary text-[20px]">store</span><span class="font-label-lg text-on-surface">Beirut Main</span><span class="material-symbols-outlined text-outline text-[18px]">expand_more</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center bg-surface-container-low p-space-xs rounded-xl"><button class="px-space-sm py-space-xs rounded-lg font-label-md bg-surface-container-lowest text-on-surface shadow-[0_1px_2px_rgba(15,23,42,0.04)]" type="button">EN</button><button class="px-space-sm py-space-xs rounded-lg font-label-md text-on-surface-variant hover:text-on-surface transition-colors" type="button">عربي</button><button class="px-space-sm py-space-xs rounded-lg font-label-md text-on-surface-variant hover:text-on-surface transition-colors" type="button">FR</button></div><button class="w-11 h-11 flex items-center justify-center rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors" type="button"><span class="material-symbols-outlined text-on-surface text-[20px]">light_mode</span></button><div class="h-6 w-px bg-surface-container-high"></div><div class="flex items-center gap-space-sm pl-space-xs"><div class="flex flex-col text-right"><span class="font-label-lg text-on-surface leading-tight">Rami K.</span><span class="font-body-sm text-outline leading-tight">Beirut Main</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-14 px-gutter-desktop py-space-xl bg-surface"><div class="flex flex-col w-full pb-24">
+<!-- Top Navigation & Breadcrumb -->
+<div class="flex flex-col gap-space-xs mb-space-lg">
+<a class="inline-flex items-center gap-1 font-label-md text-primary hover:text-primary-container transition-colors w-fit" href="#">
+<span class="material-symbols-outlined text-[16px]">arrow_back</span>
+<span>Receives</span>
+</a>
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md pt-space-xs">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[#16A34A] text-[28px]">move_to_inbox</span>
+</div>
+<div class="flex flex-col">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">New Receive</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Create an inbound stock receive transaction for warehouse intake</p>
+</div>
+</div>
+<div class="flex items-center gap-space-sm self-start md:self-auto">
+<div class="inline-flex items-center gap-space-xs px-space-md py-1.5 rounded-lg bg-surface-container-high font-label-mono text-label-mono text-primary font-semibold">
+<span class="text-on-surface-variant font-label-md text-label-md font-normal">DOC #</span>
+<span>REC-2026-0894</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Header Card: Transaction Metadata -->
+<div class="w-full bg-surface-container-lowest rounded-xl shadow-sm p-space-xl mb-space-xl">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-xl">
+<!-- Customer Selection -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface flex items-center gap-1">
+<span>Customer</span>
+<span class="text-error">*</span>
+</label>
+<div class="relative">
+<div class="h-11 w-full bg-surface-container-lowest rounded-lg px-3 flex items-center justify-between cursor-pointer shadow-sm bg-surface-container-low/50 hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[18px]">corporate_fare</span>
+<span class="font-body-md text-body-md text-on-surface font-medium">Acme Foods</span>
+</div>
+<span class="material-symbols-outlined text-outline text-[20px]">expand_more</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 pt-0.5">
+<span class="material-symbols-outlined text-[#16A34A] text-[15px]">check_circle</span>
+<span class="font-body-sm text-body-sm text-[#16A34A] font-medium">Account active • Credit cleared</span>
+</div>
+</div>
+<!-- Posting Date -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface">Posting Date</label>
+<div class="relative">
+<div class="h-11 w-full bg-surface-container-lowest rounded-lg px-3 flex items-center justify-between cursor-pointer shadow-sm bg-surface-container-low/50">
+<span class="font-body-md text-body-md text-on-surface">30 Sep 2026</span>
+<span class="material-symbols-outlined text-outline text-[20px]">calendar_today</span>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Posting period: Sep 2026</span>
+</div>
+<!-- Reference Note -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface">
+          Reference Note <span class="font-body-sm text-body-sm text-outline font-normal">(Optional)</span>
+</label>
+<div class="relative">
+<input class="h-11 w-full bg-surface-container-lowest rounded-lg px-3 font-body-md text-body-md text-on-surface shadow-sm focus:outline-none focus:bg-surface-container-low/60 transition-colors" placeholder="e.g. Inbound PO #9021 shipment from supplier" type="text" value="Inbound PO #9021 shipment from supplier"/>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Included on receiving slip & manifest</span>
+</div>
+</div>
+</div>
+<!-- Lines Table Card -->
+<div class="w-full bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden mb-space-xl">
+<!-- Table Header Toolbar -->
+<div class="px-space-xl py-space-md bg-surface-container-lowest flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Receive Items</h2>
+<span class="inline-flex items-center h-6 px-2.5 rounded-full bg-surface-container-high font-label-md text-label-md text-primary">
+          2 Active Lines
+        </span>
+</div>
+<div class="flex items-center gap-1.5 font-label-md text-label-md text-on-surface-variant bg-surface-container-low px-3 py-1.5 rounded-lg">
+<span class="material-symbols-outlined text-[16px] text-primary">location_on</span>
+<span>Warehouse: <strong class="text-on-surface font-semibold">Beirut Main (Default Aisle)</strong></span>
+</div>
+</div>
+<!-- Tabular Lines Area -->
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="h-10 bg-surface-container-low/60 font-label-md text-label-md text-outline uppercase tracking-wider">
+<th class="w-12 pl-space-xl pr-2 font-semibold">#</th>
+<th class="min-w-[260px] px-3 font-semibold">Item</th>
+<th class="w-36 px-3 font-semibold">Unit</th>
+<th class="min-w-[200px] px-3 font-semibold">Quantity</th>
+<th class="w-48 px-3 font-semibold">Batch No.</th>
+<th class="w-48 px-3 font-semibold">Expiry Date</th>
+<th class="w-16 pr-space-xl pl-2 text-right font-semibold">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<!-- Line 1: Without batch / expiry -->
+<tr class="h-16 hover:bg-surface-container-low/30 transition-colors">
+<td class="pl-space-xl pr-2 font-label-mono text-label-mono text-outline">1</td>
+<td class="px-3 py-2">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-body-md text-on-surface font-medium">Canned Beans 400g</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface-container-high font-label-mono text-label-md text-primary">
+                  CB-400
+                </span>
+</div>
+</td>
+<td class="px-3 py-2">
+<div class="h-11 w-full bg-surface-container-low/60 rounded-lg px-3 flex items-center justify-between cursor-pointer">
+<span class="font-body-md text-body-md text-on-surface">Box</span>
+<span class="material-symbols-outlined text-outline text-[18px]">arrow_drop_down</span>
+</div>
+</td>
+<td class="px-3 py-2">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-2">
+<input class="h-11 w-24 bg-surface-container-lowest rounded-lg px-3 font-body-md text-body-md text-on-surface shadow-sm text-left focus:outline-none focus:bg-surface-container-low/40" type="number" value="5"/>
+<span class="inline-flex items-center h-7 px-2.5 rounded bg-surface-container font-label-md text-label-md text-primary whitespace-nowrap">
+                    = 60 Piece
+                  </span>
+</div>
+<span class="font-body-sm text-body-sm text-outline">In stock now: 64 Piece</span>
+</div>
+</td>
+<td class="px-3 py-2">
+<span class="font-body-md text-body-md text-outline select-none pl-2">—</span>
+</td>
+<td class="px-3 py-2">
+<span class="font-body-md text-body-md text-outline select-none pl-2">—</span>
+</td>
+<td class="pr-space-xl pl-2 text-right">
+<button class="w-9 h-9 rounded-lg inline-flex items-center justify-center text-outline hover:text-error hover:bg-error-container/40 transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</td>
+</tr>
+<!-- Line 2: With batch / expiry -->
+<tr class="h-16 hover:bg-surface-container-low/30 transition-colors">
+<td class="pl-space-xl pr-2 font-label-mono text-label-mono text-outline">2</td>
+<td class="px-3 py-2">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-body-md text-on-surface font-medium">Olive Oil 1L</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface-container-high font-label-mono text-label-md text-primary">
+                  OO-1L
+                </span>
+</div>
+</td>
+<td class="px-3 py-2">
+<div class="h-11 w-full bg-surface-container-low/60 rounded-lg px-3 flex items-center justify-between cursor-pointer">
+<span class="font-body-md text-body-md text-on-surface">Bottle</span>
+<span class="material-symbols-outlined text-outline text-[18px]">arrow_drop_down</span>
+</div>
+</td>
+<td class="px-3 py-2">
+<div class="flex flex-col gap-0.5">
+<input class="h-11 w-24 bg-surface-container-lowest rounded-lg px-3 font-body-md text-body-md text-on-surface shadow-sm text-left focus:outline-none focus:bg-surface-container-low/40" type="number" value="40"/>
+<span class="font-body-sm text-body-sm text-outline">In stock now: 120 Bottle</span>
+</div>
+</td>
+<td class="px-3 py-2">
+<input class="h-11 w-full bg-surface-container-lowest rounded-lg px-3 font-label-mono text-label-mono text-on-surface shadow-sm focus:outline-none focus:bg-surface-container-low/40" type="text" value="BATCH-2026-A12"/>
+</td>
+<td class="px-3 py-2">
+<div class="relative">
+<div class="h-11 w-full bg-surface-container-lowest rounded-lg px-3 flex items-center justify-between cursor-pointer shadow-sm">
+<span class="font-body-md text-body-md text-on-surface">15 Oct 2027</span>
+<span class="material-symbols-outlined text-outline text-[18px]">calendar_today</span>
+</div>
+</div>
+</td>
+<td class="pr-space-xl pl-2 text-right">
+<button class="w-9 h-9 rounded-lg inline-flex items-center justify-center text-outline hover:text-error hover:bg-error-container/40 transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</td>
+</tr>
+<!-- Line 3: Active empty search input row with opened dropdown menu -->
+<tr class="align-top bg-surface-container-low/20">
+<td class="pl-space-xl pr-2 pt-4 font-label-mono text-label-mono text-outline">3</td>
+<td class="px-3 pt-2 pb-6 relative">
+<div class="relative z-30">
+<div class="h-11 w-full bg-surface-container-lowest rounded-lg px-3 flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-primary text-[18px]">search</span>
+<input autofocus="" class="w-full bg-transparent font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none" placeholder="Search item by name or code" type="text" value=""/>
+<span class="material-symbols-outlined text-outline text-[18px]">close</span>
+</div>
+<!-- Dropdown Tray Popover -->
+<div class="absolute left-0 top-12 w-full mt-1 bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden z-40 py-1">
+<div class="px-3 py-1.5 font-label-md text-label-md text-outline uppercase tracking-wider bg-surface-container-low/40">
+                    Available Items (Acme Foods)
+                  </div>
+<div class="flex items-center justify-between px-3 py-2.5 hover:bg-surface-container-low cursor-pointer transition-colors group">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md text-on-surface font-medium group-hover:text-primary">Rice 5kg</span>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-container-high font-label-mono text-label-md text-primary">RC-5K</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">In stock: 45 Bag</span>
+</div>
+<div class="flex items-center justify-between px-3 py-2.5 hover:bg-surface-container-low cursor-pointer transition-colors group">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md text-on-surface font-medium group-hover:text-primary">Tomato Paste 200g</span>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-container-high font-label-mono text-label-md text-primary">TP-200</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">In stock: 180 Tin</span>
+</div>
+<div class="flex items-center justify-between px-3 py-2.5 hover:bg-surface-container-low cursor-pointer transition-colors group">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md text-on-surface font-medium group-hover:text-primary">Lentils 1kg</span>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-container-high font-label-mono text-label-md text-primary">LN-1K</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">In stock: 90 Bag</span>
+</div>
+</div>
+</div>
+</td>
+<td class="px-3 pt-5 font-body-md text-body-md text-outline select-none">—</td>
+<td class="px-3 pt-5 font-body-md text-body-md text-outline select-none">—</td>
+<td class="px-3 pt-5 font-body-md text-body-md text-outline select-none">—</td>
+<td class="px-3 pt-5 font-body-md text-body-md text-outline select-none">—</td>
+<td class="pr-space-xl pl-2 pt-3 text-right">
+<button class="w-9 h-9 rounded-lg inline-flex items-center justify-center text-outline hover:text-error hover:bg-error-container/40 transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Alert / Information Bar inside Card -->
+<div class="px-space-xl py-space-md bg-surface-container-low flex items-center gap-space-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-[20px] shrink-0">info</span>
+<p class="font-body-sm text-body-sm">
+<strong class="font-semibold text-on-surface">Live Warehouse Intake:</strong> Items will be posted directly to Beirut Main warehouse balances with batch tracking upon saving.
+      </p>
+</div>
+</div>
+<!-- Sticky Operational Footer Bar -->
+<div class="fixed bottom-0 left-64 right-0 bg-surface-container-lowest shadow-[0_-2px_10px_rgba(0,0,0,0.05)] px-8 py-3.5 z-40 flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="w-2.5 h-2.5 rounded-full bg-[#16A34A] animate-pulse"></span>
+<span class="font-label-lg text-label-lg text-on-surface">
+        2 items · <span class="font-semibold text-primary">100 units</span> ready for intake
+      </span>
+</div>
+<div class="flex items-center gap-space-md">
+<button class="h-11 px-space-md rounded-lg font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors" type="button">
+        Cancel
+      </button>
+<button class="h-11 min-w-[140px] px-6 rounded-lg bg-[#16A34A] hover:bg-[#15803d] text-white font-label-lg text-label-lg font-semibold inline-flex items-center justify-center gap-2 shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">check</span>
+<span>Save Receive</span>
+</button>
+</div>
+</div>
+</div></main></div></body></html>
