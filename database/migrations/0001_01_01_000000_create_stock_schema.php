@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -16,6 +17,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Already loaded (e.g. schema.sql run by hand in the Supabase SQL editor,
+        // which leaves the migrations table empty): nothing to do.
+        if (Schema::hasTable('app_user')) {
+            return;
+        }
+
         DB::unprepared(file_get_contents(database_path('sql/schema.sql')));
     }
 
