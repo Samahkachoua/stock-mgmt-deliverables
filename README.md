@@ -38,7 +38,7 @@ Demo accounts (password `password`): `admin@`, `manager@`, `operator@`
 Run it (three terminals):
 
 ```bash
-php artisan serve --port=8080      # the app: http://127.0.0.1:8080
+php artisan serve --port=8080      # website http://127.0.0.1:8080, WMS /app (sign in at /login)
 npm run dev                        # styles and scripts, with live reload
 php artisan queue:work --tries=1   # reads uploaded Excel imports
 ```

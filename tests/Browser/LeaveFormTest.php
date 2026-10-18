@@ -43,7 +43,7 @@ class LeaveFormTest extends DuskTestCase
     private function editForm(Browser $browser): Browser
     {
         return $browser->loginAs(self::$userId)
-            ->visit('/items/'.self::$itemId.'/edit')
+            ->visit('/app/items/'.self::$itemId.'/edit')
             ->waitFor('#field-nameEn', 10);
     }
 
@@ -57,7 +57,7 @@ class LeaveFormTest extends DuskTestCase
         $this->browse(function (Browser $browser) {
             $this->editForm($browser)
                 ->clickLink(__('settings.cancel'))
-                ->waitForLocation('/items', 10)
+                ->waitForLocation('/app/items', 10)
                 ->assertMissing($this->dialog());
         });
     }
@@ -71,17 +71,17 @@ class LeaveFormTest extends DuskTestCase
             $browser->clickLink(__('settings.cancel'))
                 ->waitFor($this->dialog(), 10)
                 ->assertSee(__('confirm.discard.item.title', ['name' => 'Canned Beans']))
-                ->assertPathIs('/items/'.self::$itemId.'/edit')
+                ->assertPathIs('/app/items/'.self::$itemId.'/edit')
                 ->press(__('confirm.keep'))
                 ->waitUntilMissing($this->dialog(), 10)
                 ->assertInputValue('#field-nameEn', 'Canned Beans 410g')
-                ->assertPathIs('/items/'.self::$itemId.'/edit');
+                ->assertPathIs('/app/items/'.self::$itemId.'/edit');
 
             // The back link: asks too; "Discard changes" goes on, nothing saved.
             $browser->clickLink(__('items.title'))
                 ->waitFor($this->dialog(), 10)
                 ->press(__('confirm.discard.item.button'))
-                ->waitForLocation('/items', 10)
+                ->waitForLocation('/app/items', 10)
                 ->assertMissing($this->dialog());
 
             $this->assertSame('Canned Beans', Product::find(self::$itemId)->name_en);
@@ -95,7 +95,7 @@ class LeaveFormTest extends DuskTestCase
 
             $browser->click('#sidebar a[href$="/stock"]')
                 ->waitFor($this->dialog(), 10)
-                ->assertPathIs('/items/'.self::$itemId.'/edit');
+                ->assertPathIs('/app/items/'.self::$itemId.'/edit');
 
             // Closing / reloading the tab: the browser's own question is requested.
             $prevented = $browser->script("const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented;")[0];
@@ -109,7 +109,7 @@ class LeaveFormTest extends DuskTestCase
             $this->editForm($browser)
                 ->type('#field-nameEn', 'Canned Beans 420g')
                 ->press(__('items.save'))
-                ->waitForLocation('/items', 10)
+                ->waitForLocation('/app/items', 10)
                 ->assertMissing($this->dialog())
                 ->waitForText(__('items.updated', ['name' => 'Canned Beans 420g']), 10);
 
