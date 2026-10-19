@@ -23,9 +23,6 @@ use App\Livewire\Transactions\TransactionForm;
 use App\Livewire\Transactions\TransactionList;
 use Illuminate\Support\Facades\Route;
 
-// The public website: a coming-soon page for now. The WMS lives under /app.
-Route::view('/', 'welcome')->name('welcome');
-
 // No self-registration: accounts are created by an administrator.
 Route::middleware('guest')->group(function () {
     Route::get('/login', Login::class)->name('login');
@@ -35,7 +32,7 @@ Route::post('/locale/{locale}', LocaleController::class)->name('locale.update');
 
 Route::post('/logout', LogoutController::class)->middleware('auth')->name('logout');
 
-Route::prefix('app')->middleware(['auth', 'warehouse'])->group(function () {
+Route::middleware(['auth', 'warehouse'])->group(function () {
     // Home: large links to what the user can do; no dashboard widgets by design.
     Route::get('/', HomeController::class)->name('home');
 
@@ -58,7 +55,7 @@ Route::prefix('app')->middleware(['auth', 'warehouse'])->group(function () {
     }
 
     // Transfer lines that arrived short, for managers: now a report with exports.
-    Route::redirect('/transfer/shortages', '/app/reports/transfer-shortages')->name('transfer.shortages');
+    Route::redirect('/transfer/shortages', '/reports/transfer-shortages')->name('transfer.shortages');
 
     // Stock (stock.view) and one item's stock in one warehouse.
     Route::get('/stock', StockPage::class)->name('stock')->middleware('can:stock.view');

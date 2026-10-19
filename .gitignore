@@ -24,6 +24,7 @@ Homestead.yaml
 Thumbs.db
 enhancement.txt
 notes.txt
+truncate.sql
 
 # Laravel Dusk (browser tests)
 /tests/Browser/screenshots

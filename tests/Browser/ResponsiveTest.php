@@ -76,37 +76,37 @@ class ResponsiveTest extends DuskTestCase
      */
     private function pages(): array
     {
-        $pages = ['home' => '/app'];
+        $pages = ['home' => '/'];
 
         foreach (['receive', 'issue', 'transfer', 'adjustment', 'damage', 'opening-balance'] as $slug) {
-            $pages[$slug.' list'] = '/app/'.$slug;
-            $pages[$slug.' form'] = '/app/'.$slug.'/new';
+            $pages[$slug.' list'] = '/'.$slug;
+            $pages[$slug.' form'] = '/'.$slug.'/new';
         }
 
         return $pages + [
-            'receive details' => '/app/receive/'.self::$reference,
-            'stock' => '/app/stock',
-            'item stock' => '/app/stock/'.self::$itemId.'/'.self::$warehouseId,
-            'items' => '/app/items',
-            'item form' => '/app/items/new',
-            'item edit' => '/app/items/'.self::$itemId.'/edit',
-            'settings' => '/app/settings',
-            'warehouses' => '/app/settings/warehouses',
-            'customers' => '/app/settings/customers',
-            'units' => '/app/settings/units',
-            'users' => '/app/settings/users',
-            'roles' => '/app/settings/roles',
-            'approval limits' => '/app/settings/approval-limits',
-            'reports' => '/app/reports',
-            'stock card' => '/app/reports/stock-card',
-            'expiry report' => '/app/reports/expiry',
-            'damage report' => '/app/reports/damage',
-            'adjustments report' => '/app/reports/adjustments',
-            'transfers in transit' => '/app/reports/transfers-in-transit',
-            'transfer shortages' => '/app/reports/transfer-shortages',
-            'audit log' => '/app/reports/audit-log',
-            'imports' => '/app/imports',
-            'import upload' => '/app/imports/new/items',
+            'receive details' => '/receive/'.self::$reference,
+            'stock' => '/stock',
+            'item stock' => '/stock/'.self::$itemId.'/'.self::$warehouseId,
+            'items' => '/items',
+            'item form' => '/items/new',
+            'item edit' => '/items/'.self::$itemId.'/edit',
+            'settings' => '/settings',
+            'warehouses' => '/settings/warehouses',
+            'customers' => '/settings/customers',
+            'units' => '/settings/units',
+            'users' => '/settings/users',
+            'roles' => '/settings/roles',
+            'approval limits' => '/settings/approval-limits',
+            'reports' => '/reports',
+            'stock card' => '/reports/stock-card',
+            'expiry report' => '/reports/expiry',
+            'damage report' => '/reports/damage',
+            'adjustments report' => '/reports/adjustments',
+            'transfers in transit' => '/reports/transfers-in-transit',
+            'transfer shortages' => '/reports/transfer-shortages',
+            'audit log' => '/reports/audit-log',
+            'imports' => '/imports',
+            'import upload' => '/imports/new/items',
         ];
     }
 
@@ -195,7 +195,7 @@ class ResponsiveTest extends DuskTestCase
     public function test_sidebar_mode(string $size): void
     {
         $this->browse(function (Browser $browser) use ($size) {
-            $this->open($browser->loginAs(self::$userId), $size, '/app/receive');
+            $this->open($browser->loginAs(self::$userId), $size, '/receive');
 
             $sidebar = fn () => $browser->script(<<<'JS'
                 const aside = document.querySelector('[data-sidebar]');
@@ -227,7 +227,7 @@ class ResponsiveTest extends DuskTestCase
                 $this->assertTrue($open['labels']);
 
                 // It closes on navigation.
-                $browser->click('[data-sidebar] a[href$="/issue"]')->waitForLocation('/app/issue')->pause(350);
+                $browser->click('[data-sidebar] a[href$="/issue"]')->waitForLocation('/issue')->pause(350);
                 $this->assertFalse($sidebar()['onScreen']);
 
                 // Theme and language are in the user menu.
@@ -241,7 +241,7 @@ class ResponsiveTest extends DuskTestCase
     public function test_filters_bar(string $size): void
     {
         $this->browse(function (Browser $browser) use ($size) {
-            foreach (['/transfer', '/app/reports/damage'] as $path) {
+            foreach (['/transfer', '/reports/damage'] as $path) {
                 $this->open($browser->loginAs(self::$userId), $size, $path);
 
                 if ($size === 'phone') {
@@ -277,7 +277,7 @@ class ResponsiveTest extends DuskTestCase
     public function test_filter_count_on_the_phone_button(): void
     {
         $this->browse(function (Browser $browser) {
-            $this->open($browser->loginAs(self::$userId), 'phone', '/app/receive');
+            $this->open($browser->loginAs(self::$userId), 'phone', '/receive');
             $browser->click('[data-filters-button]')->waitFor('[data-filters-grid]')
                 ->select('#filter-status', 'POSTED')
                 ->click('[data-filters-apply]')
@@ -299,7 +299,7 @@ class ResponsiveTest extends DuskTestCase
     public function test_lists_are_cards_on_a_phone_and_tables_elsewhere(string $size): void
     {
         $this->browse(function (Browser $browser) use ($size) {
-            foreach (['/app/receive', '/app/reports/damage', '/app/items'] as $path) {
+            foreach (['/receive', '/reports/damage', '/items'] as $path) {
                 $this->open($browser->loginAs(self::$userId), $size, $path);
 
                 if ($browser->element('table[data-list]') === null) {
@@ -330,7 +330,7 @@ class ResponsiveTest extends DuskTestCase
             }
 
             // Pagination: "Previous / Next" with "Page 1 of 2" on a phone, page numbers elsewhere.
-            $this->open($browser, $size, '/app/receive');
+            $this->open($browser, $size, '/receive');
             $size === 'phone' ? $browser->assertVisible('[data-page-of]') : $browser->assertMissing('[data-page-of]');
         });
     }
@@ -338,7 +338,7 @@ class ResponsiveTest extends DuskTestCase
     public function test_a_card_opens_its_document_on_a_phone(): void
     {
         $this->browse(function (Browser $browser) {
-            $this->open($browser->loginAs(self::$userId), 'phone', '/app/receive');
+            $this->open($browser->loginAs(self::$userId), 'phone', '/receive');
             $reference = trim($browser->text('table[data-list] tbody tr:first-child [data-card="title"]'));
 
             // Anywhere on the card: its link covers all of it.
@@ -350,7 +350,7 @@ class ResponsiveTest extends DuskTestCase
             JS)[0];
             $this->assertTrue($covered);
 
-            $browser->click('table[data-list] tbody tr:first-child a')->waitForLocation('/app/receive/'.$reference);
+            $browser->click('table[data-list] tbody tr:first-child a')->waitForLocation('/receive/'.$reference);
             $this->assertSame([], $this->sideways($browser)['culprits']);
         });
     }
@@ -358,7 +358,7 @@ class ResponsiveTest extends DuskTestCase
     public function test_dates_in_the_wrong_order_are_reported_at_once(): void
     {
         $this->browse(function (Browser $browser) {
-            $this->open($browser->loginAs(self::$userId), 'desktop', '/app/issue');
+            $this->open($browser->loginAs(self::$userId), 'desktop', '/issue');
 
             // Typed the way a user does: the pickers fire `change`.
             $set = fn (string $id, string $day) => $browser->script("const input = document.getElementById('$id'); input.value = '$day'; input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true }));");
@@ -382,7 +382,7 @@ class ResponsiveTest extends DuskTestCase
         $customer = Customer::where('code', 'ACME')->value('id');
 
         $this->browse(function (Browser $browser) use ($customer, $size) {
-            $this->open($browser->loginAs(self::$userId), $size, '/app/receive/new');
+            $this->open($browser->loginAs(self::$userId), $size, '/receive/new');
 
             $browser->select('#field-customer', (string) $customer)
                 ->waitUntilEnabled('[data-line] input[role="combobox"]');
@@ -425,7 +425,7 @@ class ResponsiveTest extends DuskTestCase
         $customer = Customer::where('code', 'ACME')->value('id');
 
         $this->browse(function (Browser $browser) use ($customer) {
-            $this->open($browser->loginAs(self::$userId), 'phone', '/app/receive/new');
+            $this->open($browser->loginAs(self::$userId), 'phone', '/receive/new');
 
             $browser->select('#field-customer', (string) $customer)
                 ->waitUntilEnabled('[data-line] input[role="combobox"]');
@@ -487,7 +487,7 @@ class ResponsiveTest extends DuskTestCase
     {
         $this->browse(function (Browser $browser) {
             foreach (['phone', 'desktop'] as $size) {
-                $this->open($browser->loginAs(self::$userId), $size, '/app/receive/'.self::$reference);
+                $this->open($browser->loginAs(self::$userId), $size, '/receive/'.self::$reference);
                 $browser->press(__('stock.cancel.button'))->waitFor('[data-confirm-dialog]');
 
                 $sheet = $browser->script("const box = document.querySelector('[data-confirm-dialog]').getBoundingClientRect(); return { width: Math.round(box.width), atBottom: Math.abs(box.bottom - window.innerHeight) < 2 };")[0];

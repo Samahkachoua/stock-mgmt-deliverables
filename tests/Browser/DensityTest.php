@@ -114,7 +114,7 @@ class DensityTest extends DuskTestCase
     private function linesGrid(Browser $browser): array
     {
         $customer = Customer::where('code', 'ACME')->value('id');
-        $browser->visit('/app/issue/new')->waitFor('main', 10)
+        $browser->visit('/issue/new')->waitFor('main', 10)
             ->select('#field-customer', (string) $customer)
             ->waitUntilEnabled('[data-line] input[role="combobox"]');
 
@@ -159,16 +159,16 @@ class DensityTest extends DuskTestCase
             foreach (self::SCREENS as $name => [$width, $height]) {
                 $this->screen($browser, $width, $height);
                 $results[$name] = [
-                    'issues' => $this->list($browser, '/app/issue'),
-                    'stock' => $this->list($browser, '/app/stock'),
+                    'issues' => $this->list($browser, '/issue'),
+                    'stock' => $this->list($browser, '/stock'),
                     'lines' => $this->linesGrid($browser),
                 ];
 
                 if (getenv('DUSK_SCREENSHOTS')) {
                     $browser->screenshot("density/$name-lines");
-                    $this->list($browser, '/app/issue');
+                    $this->list($browser, '/issue');
                     $browser->screenshot("density/$name-issues");
-                    $this->list($browser, '/app/stock');
+                    $this->list($browser, '/stock');
                     $browser->screenshot("density/$name-stock");
                 }
             }
@@ -194,7 +194,7 @@ class DensityTest extends DuskTestCase
 
             foreach ([false => 36, true => 44] as $touch => $height) {
                 $this->screen($browser, 1280, 800, (bool) $touch)
-                    ->visit('/app/issue/new')->waitFor('main', 10)
+                    ->visit('/issue/new')->waitFor('main', 10)
                     ->select('#field-customer', (string) $customer)
                     ->waitUntilEnabled('[data-line] input[role="combobox"]');
 
@@ -204,7 +204,7 @@ class DensityTest extends DuskTestCase
                 JS)[0];
                 $this->assertSame([$height, $height, $height, $height], $sizes, $touch ? 'touch' : 'mouse');
 
-                $browser->visit('/app/issue')->waitFor('main', 10)->pause(350)->waitUntilMissing('tr[aria-hidden="true"]', 10);
+                $browser->visit('/issue')->waitFor('main', 10)->pause(350)->waitUntilMissing('tr[aria-hidden="true"]', 10);
                 $row = $browser->script("return Math.round(document.querySelector('table[data-list] tbody tr').getBoundingClientRect().height)")[0];
                 $this->assertGreaterThanOrEqual($touch ? 44 : 40, $row, ($touch ? 'touch' : 'mouse').' row');
             }
@@ -221,7 +221,7 @@ class DensityTest extends DuskTestCase
             foreach (['en' => 12, 'ar' => 13] as $language => $minimum) {
                 User::whereKey(self::$userId)->update(['preferred_lang' => $language]);
 
-                foreach (['/app/issue', '/app/stock', '/app/issue/new', '/app/items', '/app/settings/users'] as $path) {
+                foreach (['/issue', '/stock', '/issue/new', '/items', '/settings/users'] as $path) {
                     $browser->visit($path)->waitFor('main', 10)->pause(350)->waitUntilMissing('tr[aria-hidden="true"]', 10);
                     $smallest["$language $path"] = $browser->script(<<<'JS'
                         let smallest = 99;

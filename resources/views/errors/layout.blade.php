@@ -49,7 +49,7 @@
             <p><bdi>{{ __('app.errors.reference', ['reference' => $reference]) }}</bdi></p>
         @endisset
         <div class="actions">
-            <a class="primary" href="{{ route('home') }}">{{ __('app.errors.home') }}</a>
+            <a class="primary" href="{{ url('/') }}">{{ __('app.errors.home') }}</a>
             @if ($code !== 503)
                 <button type="button" class="secondary" onclick="history.back()">{{ __('app.errors.back') }}</button>
             @endif

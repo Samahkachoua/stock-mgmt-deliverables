@@ -1,4 +1,4 @@
-# Render Blueprint: one Docker web service (website at /, WMS at /app).
+# Render Blueprint: one Docker web service running the WMS.
 # Values marked sync: false are entered in the Render dashboard, never committed.
 services:
   - type: web
