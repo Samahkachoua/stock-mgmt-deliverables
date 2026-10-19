@@ -820,7 +820,7 @@ SELECT r.id, p.id
 -- SUPABASE LOCKDOWN
 -- Supabase publishes every table in the "public" schema through its Data API
 -- (PostgREST) to anyone holding the project's anon key. This app does NOT use
--- that API: Laravel talks to Postgres directly as the table owner, and table
+-- that API:  talks to Postgres directly as the table owner, and table
 -- owners bypass row-level security. Enabling RLS with no policies therefore
 -- blocks the Data API completely while leaving Laravel unaffected.
 -- Primary control: turn the Data API off in the Supabase dashboard as well.
