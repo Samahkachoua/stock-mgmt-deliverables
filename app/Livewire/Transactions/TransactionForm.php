@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Transactions;
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Livewire\Concerns\ConfirmsActions;
 use App\Models\Customer;
 use App\Models\User;
@@ -11,10 +10,12 @@ use App\Services\Stock\ApprovalThresholds;
 use App\Services\Stock\Availability;
 use App\Services\Stock\Document;
 use App\Services\Stock\DocumentLine;
+use App\Services\Stock\Exceptions\DuplicateLine;
 use App\Services\Stock\Exceptions\StockException;
 use App\Services\Stock\ItemCatalog;
 use App\Services\Stock\PostingService;
 use App\Services\Stock\UnitConverter;
+use App\Support\CompanyTime;
 use App\Support\Format;
 use App\Support\Notify;
 use App\Support\Transactions\TransactionTypes;
@@ -64,6 +65,19 @@ class TransactionForm extends Component
     /** Bumped to redraw the customer dropdown when a change is put on hold. */
     public int $customerVersion = 0;
 
+    /**
+     * The warehouse the document is for (a Transfer's "From"): one of the
+     * user's, starting on their default. Changed only through chooseWarehouse().
+     */
+    #[Locked]
+    public string $warehouseId = '';
+
+    /** Warehouse the user picked while lines exist; waits for confirmation. */
+    public ?string $pendingWarehouse = null;
+
+    /** Bumped to redraw the warehouse dropdown when a change is put on hold. */
+    public int $warehouseVersion = 0;
+
     public string $date = '';
 
     public string $reference = '';
@@ -102,13 +116,21 @@ class TransactionForm extends Component
     /** @var array<string, string>|null per-request cache: customer id => name */
     private ?array $customers = null;
 
+    /** @var array<string, string>|null per-request cache: the user's warehouses, id => name */
+    private ?array $warehouses = null;
+
+    /** Per-request cache of the chosen warehouse. */
+    private ?Warehouse $warehouse = null;
+
     public function mount(string $type): void
     {
         $ui = TransactionTypes::get($type);
         Gate::authorize($ui->createPermission());
 
         $this->type = $ui->code;
-        $this->date = CarbonImmutable::today()->toDateString();
+        $user = Auth::user();
+        $this->warehouseId = $user instanceof User ? (string) $user->defaultWarehouseId() : '';
+        $this->date = CompanyTime::today()->toDateString();
         $this->requestId = (string) Str::uuid();
         $this->addBlankLine();
     }
@@ -146,6 +168,58 @@ class TransactionForm extends Component
         $this->customerVersion++;
     }
 
+    // Warehouse
+
+    /**
+     * Another warehouse: what is in stock, expiry dates and serials differ
+     * there, so lines already entered are cleared (after asking).
+     */
+    public function chooseWarehouse(string $id): void
+    {
+        if ($id === $this->warehouseId || ! array_key_exists($id, $this->warehouseOptions())) {
+            $this->warehouseVersion++;
+
+            return;
+        }
+
+        if ($this->filledLines() !== []) {
+            $this->pendingWarehouse = $id;
+            $this->warehouseVersion++;
+
+            return;
+        }
+
+        $this->applyWarehouse($id);
+    }
+
+    public function confirmWarehouseChange(): void
+    {
+        if ($this->pendingWarehouse !== null) {
+            $this->applyWarehouse($this->pendingWarehouse);
+        }
+    }
+
+    public function keepWarehouse(): void
+    {
+        $this->pendingWarehouse = null;
+        $this->warehouseVersion++;
+    }
+
+    private function applyWarehouse(string $id): void
+    {
+        $this->warehouseId = $id;
+        $this->pendingWarehouse = null;
+        $this->warehouseVersion++;
+        $this->showAll = false;
+        $this->lines = [];
+        $this->addBlankLine();
+
+        // A transfer can't go to the warehouse it leaves from.
+        if ($this->toWarehouse === $id) {
+            $this->toWarehouse = '';
+        }
+    }
+
     // Lines
 
     /**
@@ -156,28 +230,48 @@ class TransactionForm extends Component
         $this->resetErrorBag();
     }
 
-    public function updatedLines(mixed $value, string $path): void
+    /**
+     * Another date offers other expiry dates (stock that came in later was not
+     * here yet): a row whose date is no longer offered gets the nearest one.
+     */
+    public function updatedDate(): void
     {
-        [$key, $field] = array_pad(explode('.', $path, 2), 2, null);
+        if (! $this->ui()->hasLineColumn('expiry_pick')) {
+            return;
+        }
+
+        foreach ($this->lines as $key => $line) {
+            $item = $this->item($line['item']);
+
+            if ($item === null || ! $item['expiry']) {
+                continue;
+            }
+
+            $options = $this->pickableExpiries($item);
+
+            if (! collect($options)->contains('expiry', $line['expiry'])) {
+                $this->lines[$key]['expiry'] = $options[0]['expiry'] ?? '';
+            }
+        }
+    }
+
+    public function updatedLines(mixed $value, ?string $path = null): void
+    {
+        // Null when the whole list is replaced at once.
+        [$key, $field] = array_pad(explode('.', (string) $path, 2), 2, null);
 
         // A change makes earlier refusals from saving out of date.
         $this->resetErrorBag();
 
         if ($field === 'item' && isset($this->lines[$key])) {
             $item = $this->item($this->lines[$key]['item']);
-            $this->lines[$key]['unit'] = $item['base'] ?? '';
-            $this->lines[$key]['expiry'] = '';
             $this->lines[$key]['serials'] = '';
             $this->lines[$key]['picked'] = [];
-
-            // Stock going out of an expiry item: suggest the nearest expiry date; the user may pick another.
-            if ($item !== null && $item['expiry'] && $this->ui()->hasLineColumn('expiry_pick')) {
-                $this->lines[$key]['expiry'] = $this->pickableExpiries($item)[0]['expiry'] ?? '';
-            }
+            [$this->lines[$key]['unit'], $this->lines[$key]['expiry']] = $item === null ? ['', ''] : $this->suggestedUnitAndExpiry($key, $item);
 
             // Counting serial items: suggest that every piece is there; the user unticks what is missing.
             if ($item !== null && $item['serial'] && $this->ui()->countsStock()) {
-                $warehouse = $this->currentWarehouse();
+                $warehouse = $this->chosenWarehouse();
                 $this->lines[$key]['picked'] = $warehouse === null ? [] : app(Availability::class)->serials($warehouse->id, $item['id']);
                 $this->lines[$key]['qty'] = (string) count($this->lines[$key]['picked']);
             }
@@ -189,7 +283,115 @@ class TransactionForm extends Component
             $this->lines[$key]['qty'] = $count > 0 || $this->ui()->countsStock() ? (string) $count : '';
         }
 
+        if (in_array($field, ['item', 'unit', 'expiry'], true) && isset($this->lines[$key])) {
+            $this->rejectDuplicate($key);
+        }
+
         $this->appendBlankIfNeeded();
+    }
+
+    /**
+     * CLAUDE.md rule 12: a row that repeats another row's item + unit (+ expiry
+     * date) is cleared, a toast says where that item already is, and the focus
+     * goes to that row's quantity.
+     */
+    private function rejectDuplicate(string $key): void
+    {
+        $line = $this->lines[$key];
+        $item = $this->item($line['item']);
+
+        if ($item === null || ! $this->hasFullKey($item, $line)) {
+            return;
+        }
+
+        $other = $this->rowWithKey($key, $item, $line['unit'], $line['expiry']);
+
+        if ($other === null) {
+            return;
+        }
+
+        [$message, $params] = $this->ui()->duplicateMessage($item['name'], $line['unit'], $line['expiry'], $item['expiry'], $this->rowNumber($other));
+        $this->lines[$key] = ['item' => null, 'unit' => '', 'qty' => '', 'expiry' => '', 'serials' => '', 'picked' => []];
+
+        Notify::warning(__($message, $params), on: $this);
+        $this->dispatch('focus-field', id: 'line-'.$other.'-qty');
+    }
+
+    /**
+     * What a row of this item starts on: the base unit (then the larger units)
+     * and, for stock going out of an expiry item, the nearest expiry date —
+     * the first of these that no other row of the item has already (rule 12),
+     * so a second row of an item is another unit or date, not a repeat. When
+     * every one is taken, the base unit and nearest date (rejectDuplicate()
+     * then clears the row).
+     *
+     * @param  array<string, mixed>  $item
+     * @return array{0: string, 1: string}
+     */
+    private function suggestedUnitAndExpiry(string $key, array $item): array
+    {
+        $units = $item['serial'] ? [$item['base']] : array_keys($item['units']);
+        $expiries = $item['expiry'] && $this->ui()->hasLineColumn('expiry_pick')
+            ? array_column($this->pickableExpiries($item), 'expiry')
+            : [''];
+        $expiries = $expiries === [] ? [''] : $expiries;
+
+        foreach ($expiries as $expiry) {
+            foreach ($units as $unit) {
+                // A receipt's expiry date is typed later: only the unit can be compared yet.
+                if ($expiry === '' && $item['expiry']) {
+                    return [(string) $units[0], ''];
+                }
+
+                if ($this->rowWithKey($key, $item, (string) $unit, $expiry) === null) {
+                    return [(string) $unit, $expiry];
+                }
+            }
+        }
+
+        return [(string) $units[0], $expiries[0]];
+    }
+
+    /**
+     * Another row (not $key) with this item, unit and expiry date as its key, or null.
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function rowWithKey(string $key, array $item, string $unit, string $expiry): ?string
+    {
+        $ui = $this->ui();
+        $wanted = $ui->lineKey($item['id'], $unit, $expiry, $item['expiry']);
+
+        foreach ($this->lines as $otherKey => $other) {
+            if ($otherKey === $key || $other['item'] !== $item['id']) {
+                continue;
+            }
+
+            if ($this->hasFullKey($item, $other) && $ui->lineKey($item['id'], $other['unit'], $other['expiry'], $item['expiry']) === $wanted) {
+                return (string) $otherKey;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether a row's key is complete: a unit, and for an expiry item an expiry date.
+     *
+     * @param  array<string, mixed>  $item
+     * @param  array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}  $line
+     */
+    private function hasFullKey(array $item, array $line): bool
+    {
+        return $line['unit'] !== '' && (! $item['expiry'] || $line['expiry'] !== '');
+    }
+
+    /**
+     * A row's number as the grid shows it (1, 2, ...).
+     */
+    private function rowNumber(string $key): int
+    {
+        return (int) array_search($key, array_map('strval', array_keys($this->lines)), true) + 1;
     }
 
     public function deleteLine(string $key): void
@@ -218,14 +420,15 @@ class TransactionForm extends Component
 
         $ui = $this->ui();
 
-        // Damage / Adjustment posted at once can't be cancelled afterwards: ask first.
-        // Sending for approval changes nothing yet, so it never asks.
-        if (! $ui->cancellable() && ! $check['approval']) {
+        // Damage / Adjustment posted at once can't be cancelled afterwards, and an
+        // Opening Balance is checked before it posts: ask first. Sending for
+        // approval changes nothing yet, so it never asks.
+        if ($ui->confirmsSave() && ! $check['approval']) {
             $this->askToConfirm(
                 'save',
                 '',
                 __('transactions.form.confirm_final.title', ['action' => $ui->label('save'), 'customer' => $this->customerOptions()[$this->customerId] ?? '']),
-                __('transactions.form.confirm_final.body', ['warehouse' => $this->currentWarehouse()->name ?? '', 'summary' => $check['summary']]),
+                __($ui->cancellable() ? 'transactions.form.confirm_final.body_cancellable' : 'transactions.form.confirm_final.body', ['warehouse' => $this->chosenWarehouse()->name ?? '', 'summary' => $check['summary']]),
                 $ui->label('save'),
             );
 
@@ -265,6 +468,12 @@ class TransactionForm extends Component
 
         try {
             $transaction = app(PostingService::class)->post($this->document(), $user);
+        } catch (DuplicateLine $e) {
+            $this->addError('lines.'.$e->otherRow.'.item', __('transactions.form.errors.duplicate_row', ['row' => Format::qty($this->rowNumber((string) $e->row))]));
+            $this->addError('lines.'.$e->row.'.item', __('transactions.form.errors.duplicate_row', ['row' => Format::qty($this->rowNumber($e->otherRow))]));
+            Notify::error(__($e->key, ['row' => Format::qty($this->rowNumber($e->otherRow))] + $e->params), on: $this);
+
+            return;
         } catch (StockException $e) {
             if ($e->row !== null && isset($this->lines[$e->row])) {
                 $this->addError('lines.'.$e->row.'.'.($e->field ?? 'qty'), $e->getMessage());
@@ -323,7 +532,7 @@ class TransactionForm extends Component
 
         return new Document(
             type: $this->type,
-            warehouseId: (string) $this->currentWarehouse()?->id,
+            warehouseId: (string) $this->chosenWarehouse()?->id,
             customerId: $this->customerId,
             date: CarbonImmutable::parse($this->date),
             note: $this->reference,
@@ -353,7 +562,9 @@ class TransactionForm extends Component
             'check' => $this->check(),
             'customers' => $this->customerOptions(),
             'warehouses' => $ui->requiresDestination() ? $this->destinations() : collect(),
-            'currentWarehouse' => $this->currentWarehouse(),
+            'warehouseOptions' => $this->warehouseOptions(),
+            'chosenWarehouse' => $this->chosenWarehouse(),
+            'stockDate' => $this->stockDate(),
         ])->title($ui->label('new'));
     }
 
@@ -389,6 +600,12 @@ class TransactionForm extends Component
 
             $row = $this->checkLine($ui, $line, $used);
             $row['number'] = $number;
+
+            // Rule 12: the same item + unit (+ expiry date) on two rows: both in red.
+            if ($row['item'] !== null && $this->hasFullKey($row['item'], $line)
+                && ($other = $this->rowWithKey((string) $key, $row['item'], $line['unit'], $line['expiry'])) !== null) {
+                $row['errors']['item'] = __('transactions.form.errors.duplicate_row', ['row' => Format::qty($this->rowNumber($other))]);
+            }
 
             // The row being typed in (the last one) only shows "missing" errors after Save.
             $row['shown'] = $this->showAll || $key !== $lastKey
@@ -525,21 +742,13 @@ class TransactionForm extends Component
             }
 
             // Allowed (stock does arrive expired), but never by accident: the row says so.
-            $row['expiry_past'] = ! isset($errors['expiry']) && $line['expiry'] < CarbonImmutable::today()->toDateString();
+            $row['expiry_past'] = ! isset($errors['expiry']) && $line['expiry'] < CompanyTime::today()->toDateString();
         }
 
         // In stock for this item (or the chosen expiry date when counting or picking one), in base units.
         $perExpiry = $counted || ($needsExpiry && $pick);
         $stockKey = ($item['id'] ?? '').($perExpiry ? '|'.$line['expiry'] : '');
 
-        // A count is per item (and expiry date): counting it twice would adjust it twice.
-        if ($counted && $item !== null) {
-            if (isset($used['count|'.$stockKey])) {
-                $errors['item'] = __('transactions.form.errors.counted_twice');
-            }
-
-            $used['count|'.$stockKey] = 1.0;
-        }
         $inStock = $item === null ? 0.0 : ($perExpiry && $line['expiry'] !== ''
             ? (float) (collect($item['expiries'])->firstWhere('expiry', $line['expiry'])['qty'] ?? 0)
             : $item['available']);
@@ -555,11 +764,15 @@ class TransactionForm extends Component
             $errors['qty'] = __('transactions.form.errors.number');
         } elseif ($counted ? (float) $qty < 0 : (float) $qty <= 0) {
             $errors['qty'] = $counted ? __('transactions.form.errors.not_negative') : __('transactions.form.errors.more_than_zero');
+        } elseif (PostingService::tooLarge($qty)) {
+            $errors['qty'] = __('transactions.form.errors.too_large', ['max' => Format::qty(PostingService::MAX_QTY)]);
         } elseif ($converter !== null && $factor !== null) {
             $base = $converter->toBase($qty, $line['unit']);
 
             if ($ui->limitedByStock() && $base > $remaining + 1e-9) {
-                $errors['qty'] = __('transactions.form.errors.not_enough', ['qty' => $converter->breakdown($remaining, [$line['unit']])]);
+                $errors['qty'] = $this->stockDate() === null
+                    ? __('transactions.form.errors.not_enough', ['qty' => $converter->breakdown($remaining, [$line['unit']])])
+                    : __('transactions.form.errors.not_enough_on_date', ['qty' => $converter->breakdown($remaining, [$line['unit']]), 'date' => Format::date($this->stockDate())]);
             }
 
             $used[$stockKey] = ($used[$stockKey] ?? 0) + $base;
@@ -591,11 +804,15 @@ class TransactionForm extends Component
         $errors = [];
         $missing = [];
 
+        if ($this->chosenWarehouse() === null) {
+            $errors['warehouse'] = __('transactions.form.errors.warehouse_required');
+        }
+
         if ($this->date === '') {
             $missing['date'] = __('transactions.form.errors.date_required');
         } elseif (! strtotime($this->date)) {
             $errors['date'] = __('transactions.form.errors.date_invalid');
-        } elseif (CarbonImmutable::parse($this->date)->isAfter(CarbonImmutable::today())) {
+        } elseif (CarbonImmutable::parse($this->date)->toDateString() > CompanyTime::today()->toDateString()) {
             $errors['date'] = __('transactions.form.errors.date_future');
         }
 
@@ -640,9 +857,28 @@ class TransactionForm extends Component
         return $this->items[$productId] ??= ItemCatalog::item(
             $this->customerId,
             $productId,
-            $this->currentWarehouse()?->id,
+            $this->chosenWarehouse()?->id,
             excludeExpired: $ui->limitedByStock() && ! $ui->usesExpired(),
+            date: $this->stockDate(),
         );
+    }
+
+    /**
+     * The document's date when stock goes out (Issue, Transfer, Damage) on a
+     * day before today: only what was here on that day can go out (the
+     * "Available" hint, expiry dates and serials offered). Null when dated today.
+     */
+    private function stockDate(): ?CarbonImmutable
+    {
+        $warehouse = $this->chosenWarehouse();
+
+        if (! $this->ui()->limitedByStock() || $warehouse === null || $this->date === '' || ! strtotime($this->date)) {
+            return null;
+        }
+
+        $date = CarbonImmutable::parse($this->date)->startOfDay();
+
+        return app(Availability::class)->isBackdated($warehouse->id, $date) ? $date : null;
     }
 
     /**
@@ -696,12 +932,14 @@ class TransactionForm extends Component
             return [$errors, []];
         }
 
-        $warehouse = $this->currentWarehouse();
-        $options = $warehouse === null ? [] : app(Availability::class)->serials($warehouse->id, $item['id']);
+        $warehouse = $this->chosenWarehouse();
+        $options = $warehouse === null ? [] : app(Availability::class)->serials($warehouse->id, $item['id'], $this->stockDate());
 
         foreach ($line['picked'] as $serial) {
             if (! in_array($serial, $options, true)) {
-                $errors[] = __('stock.errors.serial_not_in_stock', ['serial' => $serial]);
+                $errors[] = $this->stockDate() !== null && in_array($serial, app(Availability::class)->serials($warehouse->id, $item['id']), true)
+                    ? __('stock.errors.serial_not_on_date', ['serial' => $serial, 'date' => Format::date($this->stockDate())])
+                    : __('stock.errors.serial_not_in_stock', ['serial' => $serial]);
             }
         }
 
@@ -726,16 +964,33 @@ class TransactionForm extends Component
     private function destinations(): Collection
     {
         return Warehouse::where('active', true)
-            ->when($this->currentWarehouse(), fn ($query, Warehouse $current) => $query->whereKeyNot($current->id))
+            ->when($this->chosenWarehouse(), fn ($query, Warehouse $current) => $query->whereKeyNot($current->id))
             ->orderBy('name')
             ->get();
     }
 
-    private function currentWarehouse(): ?Warehouse
+    /**
+     * The chosen warehouse, while it is one of the user's (memoized per request).
+     */
+    private function chosenWarehouse(): ?Warehouse
     {
-        $id = session(EnsureCurrentWarehouse::SESSION_KEY);
+        if (! array_key_exists($this->warehouseId, $this->warehouseOptions())) {
+            return null;
+        }
 
-        return $id ? Warehouse::find($id) : null;
+        return $this->warehouse ??= Warehouse::find($this->warehouseId);
+    }
+
+    /**
+     * The user's active warehouses (user_warehouse), id => name.
+     *
+     * @return array<string, string>
+     */
+    private function warehouseOptions(): array
+    {
+        $user = Auth::user();
+
+        return $this->warehouses ??= $user instanceof User ? $user->assignedWarehouses()->pluck('name', 'id')->all() : [];
     }
 
     private function ui(): TypeUi

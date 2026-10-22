@@ -9,7 +9,7 @@ use App\Models\Warehouse;
 use App\Services\Stock\Document;
 use App\Services\Stock\DocumentLine;
 use App\Services\Stock\PostingService;
-use Carbon\CarbonImmutable;
+use App\Support\CompanyTime;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -60,7 +60,7 @@ class StockSeeder extends Seeder
 
         $admin = User::where('email', 'admin@example.test')->firstOrFail();
         $posting = app(PostingService::class);
-        $today = CarbonImmutable::now($warehouse->timezone)->startOfDay();
+        $today = CompanyTime::today();
 
         foreach (self::OPENING as $customerCode => $lines) {
             $customer = Customer::where('code', $customerCode)->firstOrFail();

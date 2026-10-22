@@ -3,6 +3,8 @@
 namespace App\Support\Transactions;
 
 use App\Models\TransactionType;
+use App\Support\Format;
+use Carbon\CarbonImmutable;
 
 /**
  * Everything a transaction screen needs to know about one type: presentation
@@ -37,6 +39,20 @@ final class TypeUi
     public function prefix(): string
     {
         return $this->config['prefix'];
+    }
+
+    public function viewPermission(): string
+    {
+        return $this->config['view'];
+    }
+
+    /**
+     * The gate of the list, details and print pages: the view permission, or
+     * creating / approving the type (AppServiceProvider).
+     */
+    public function viewGate(): string
+    {
+        return 'documents.'.$this->slug();
     }
 
     public function createPermission(): string
@@ -141,6 +157,61 @@ final class TypeUi
     public function cancellable(): bool
     {
         return $this->postsDirectly() || $this->dispatchReceive();
+    }
+
+    /**
+     * A line's key (CLAUDE.md rule 12, `line_key`): two lines with the same key
+     * may not be on one document. The item, plus its unit and/or its expiry
+     * date (expiry-tracked items only, '' when none is chosen yet).
+     */
+    public function lineKey(string $productId, string $unit, ?string $expiry, bool $tracksExpiry): string
+    {
+        $parts = $this->config['line_key'] ?? ['unit', 'expiry'];
+        $key = [$productId];
+
+        if (in_array('unit', $parts, true)) {
+            $key[] = $unit;
+        }
+
+        if (in_array('expiry', $parts, true) && $tracksExpiry) {
+            $key[] = $expiry ?? '';
+        }
+
+        return implode('|', $key);
+    }
+
+    /**
+     * "Olive Oil 1L (Carton, expiry 12 Mar 2027) is already in row 1 — change
+     * the quantity there": translation key and parameters, for a repeated line
+     * (the row number goes in `row`).
+     *
+     * @return array{0: string, 1: array<string, string>}
+     */
+    public function duplicateMessage(string $item, string $unit, ?string $expiry, bool $tracksExpiry, int $row): array
+    {
+        $parts = $this->config['line_key'] ?? ['unit', 'expiry'];
+        $withExpiry = in_array('expiry', $parts, true) && $tracksExpiry && $expiry !== null && $expiry !== '';
+        $params = ['item' => $item, 'row' => Format::qty($row)];
+
+        if ($withExpiry) {
+            $params['expiry'] = Format::date(CarbonImmutable::parse($expiry));
+        }
+
+        if (! in_array('unit', $parts, true)) {
+            return [$withExpiry ? 'transactions.form.duplicate.count_expiry' : 'transactions.form.duplicate.count', $params];
+        }
+
+        return [$withExpiry ? 'transactions.form.duplicate.unit_expiry' : 'transactions.form.duplicate.unit', $params + ['unit' => Format::unit($unit)]];
+    }
+
+    /**
+     * Whether Save asks first when the document posts at once: always for types
+     * that can't be cancelled (Damage, Adjustment), and for those with
+     * `confirm_save` (Opening Balance). Sending for approval never asks.
+     */
+    public function confirmsSave(): bool
+    {
+        return ! $this->cancellable() || ($this->config['confirm_save'] ?? false);
     }
 
     /**

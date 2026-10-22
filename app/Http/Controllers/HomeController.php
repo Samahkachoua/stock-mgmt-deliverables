@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Models\StockTransaction;
 use App\Models\User;
+use App\Support\Drafts\DraftTypes;
+use App\Support\Drafts\DraftUi;
 use App\Support\Transactions\PendingApprovals;
 use App\Support\Transactions\TransactionTypes;
 use App\Support\Transactions\TypeUi;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class HomeController extends Controller
@@ -21,7 +23,6 @@ class HomeController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User, 403);
-        $warehouseId = (string) $request->session()->get(EnsureCurrentWarehouse::SESSION_KEY);
         // In sidebar order (config/transactions.php), like everywhere else.
         $order = array_keys(config('transactions.types'));
         $types = collect(TransactionTypes::all())->sortBy(fn (TypeUi $type) => array_search($type->code, $order, true));
@@ -36,15 +37,35 @@ class HomeController extends Controller
             ? StockTransaction::query()
                 ->where('transaction_type', 'TRANSFER')
                 ->where('status', 'DISPATCHED')
-                ->where('to_warehouse_id', $warehouseId)
+                // On their way to any of the user's warehouses.
+                ->whereIn('to_warehouse_id', $user->warehouseIds())
                 ->count()
             : null;
 
         return view('home', [
-            'create' => $types->filter(fn (TypeUi $type) => $user->hasPermission($type->createPermission()))->values(),
+            'create' => $this->creatable($user, $types),
             'approvals' => $approvals,
             'arriving' => $arriving,
             'transfers' => $types->get('TRANSFER'),
         ]);
+    }
+
+    /**
+     * What the user may start: draft receipts / issues and transaction types
+     * they hold the create permission for, in sidebar order (config('ui.nav'):
+     * each draft sits above the document it becomes).
+     *
+     * @param  Collection<string, TypeUi>  $types
+     * @return Collection<int, TypeUi|DraftUi>
+     */
+    private function creatable(User $user, Collection $types): Collection
+    {
+        $order = array_column(config('ui.nav'), 'route');
+
+        return collect(DraftTypes::all())->values()
+            ->concat($types->values())
+            ->filter(fn (TypeUi|DraftUi $kind) => $user->hasPermission($kind->createPermission()))
+            ->sortBy(fn (TypeUi|DraftUi $kind) => array_search($kind->slug(), $order, true))
+            ->values();
     }
 }

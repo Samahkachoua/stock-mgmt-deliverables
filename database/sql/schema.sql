@@ -65,8 +65,13 @@ CREATE TABLE app_user (
     full_name       VARCHAR(150) NOT NULL,
     password_hash   TEXT NOT NULL,           -- Laravel model: protected $authPasswordName = 'password_hash';
     remember_token  VARCHAR(100),            -- required by Laravel's "remember me"
-    is_customer_user BOOLEAN NOT NULL DEFAULT FALSE, -- true for future customer portal logins
-    customer_id     BIGINT NULL, -- set when is_customer_user = true; FK added after customer table
+    -- Set for the customer's own staff (a "customer user"): they only ever see
+    -- that customer's data (CustomerScope). NULL for the warehouse company's
+    -- staff. FK added after the customer table.
+    customer_id     BIGINT NULL,
+    -- The warehouse pages start on (forms, lists, reports); one of the user's
+    -- user_warehouse rows. NULL = their first warehouse. FK added after the warehouse table.
+    default_warehouse_id BIGINT NULL,
     preferred_lang  VARCHAR(5) NOT NULL DEFAULT 'en', -- en | ar | fr
     preferred_theme VARCHAR(10) NOT NULL DEFAULT 'system'
                     CHECK (preferred_theme IN ('light', 'dark', 'system')),
@@ -106,6 +111,20 @@ CREATE TABLE user_role (
 );
 
 -- ----------------------------------------------------------------------------
+-- COMPANY SETTINGS (Settings › General)
+-- ----------------------------------------------------------------------------
+-- One row per setting. 'timezone': the IANA time zone the whole company works
+-- in (what "today" is, how stored UTC times are shown); App\Support\CompanyTime.
+CREATE TABLE app_setting (
+    key         VARCHAR(50) PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_by  BIGINT REFERENCES app_user(id),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO app_setting (key, value) VALUES ('timezone', 'Asia/Beirut');
+
+-- ----------------------------------------------------------------------------
 -- WAREHOUSES & CUSTOMERS
 -- ----------------------------------------------------------------------------
 
@@ -115,7 +134,7 @@ CREATE TABLE warehouse (
     name        VARCHAR(150) NOT NULL,
     city        VARCHAR(100) NOT NULL,   -- one warehouse = one location/city
     address     TEXT,
-    timezone    VARCHAR(50) NOT NULL DEFAULT 'Asia/Beirut',
+    -- No time zone here: every warehouse works in the company's (app_setting 'timezone').
     active      BOOLEAN NOT NULL DEFAULT TRUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -127,6 +146,9 @@ CREATE TABLE user_warehouse (           -- restrict which warehouses a user may 
     warehouse_id BIGINT NOT NULL REFERENCES warehouse(id) ON DELETE CASCADE,
     PRIMARY KEY (user_id, warehouse_id)
 );
+
+ALTER TABLE app_user
+    ADD CONSTRAINT fk_user_default_warehouse FOREIGN KEY (default_warehouse_id) REFERENCES warehouse(id);
 
 CREATE TABLE customer (
     id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -142,6 +164,47 @@ CREATE TABLE customer (
 
 ALTER TABLE app_user
     ADD CONSTRAINT fk_user_customer FOREIGN KEY (customer_id) REFERENCES customer(id);
+
+-- A customer's branches (shops, sites). Shown on draft receipts / issues as
+-- where the goods come from or go to; they never affect stock.
+CREATE TABLE customer_branch (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    customer_id BIGINT NOT NULL REFERENCES customer(id),
+    code        VARCHAR(20) NOT NULL,
+    name        VARCHAR(150) NOT NULL,
+    address     TEXT,
+    active      BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (customer_id, code),
+    UNIQUE (id, customer_id)          -- target of the (branch, customer) foreign keys below
+);
+
+-- Branches a customer user works for (optional). A user with none sees every
+-- branch of their customer.
+CREATE TABLE user_customer_branch (
+    user_id   BIGINT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+    branch_id BIGINT NOT NULL REFERENCES customer_branch(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, branch_id)
+);
+
+-- A user may only be linked to branches of their own customer.
+CREATE OR REPLACE FUNCTION fn_check_user_branch() RETURNS TRIGGER AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM app_user u JOIN customer_branch b ON b.customer_id = u.customer_id
+         WHERE u.id = NEW.user_id AND b.id = NEW.branch_id
+    ) THEN
+        RAISE EXCEPTION 'Branch % does not belong to the customer of user %', NEW.branch_id, NEW.user_id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_check_user_branch
+    BEFORE INSERT OR UPDATE ON user_customer_branch
+    FOR EACH ROW EXECUTE FUNCTION fn_check_user_branch();
 
 -- ----------------------------------------------------------------------------
 -- UNITS OF MEASURE
@@ -159,6 +222,16 @@ CREATE TABLE unit (
 -- PRODUCTS (owned by a customer)
 -- ----------------------------------------------------------------------------
 
+-- How cold an item must be kept (shown on the item, in the item picker and on
+-- printouts). Optional per item; the range is in degrees Celsius.
+CREATE TABLE storage_status (
+    code           VARCHAR(20) PRIMARY KEY,   -- AMBIENT, COOL, CHILLED, FROZEN, DEEP_FROZEN
+    temp_min_c     SMALLINT NOT NULL,
+    temp_max_c     SMALLINT NOT NULL,
+    display_order  SMALLINT NOT NULL,
+    CHECK (temp_max_c > temp_min_c)
+);
+
 CREATE TABLE product (
     id                      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     customer_id             BIGINT NOT NULL REFERENCES customer(id),
@@ -169,6 +242,7 @@ CREATE TABLE product (
     base_unit_id            BIGINT NOT NULL REFERENCES unit(id),
     track_expiry            BOOLEAN NOT NULL DEFAULT FALSE,
     track_serial            BOOLEAN NOT NULL DEFAULT FALSE,
+    storage_status          VARCHAR(20) REFERENCES storage_status(code),  -- NULL = not set
     approval_threshold_qty  NUMERIC(18,4),        -- product-level override; NULL = fall back to customer/global
     active                  BOOLEAN NOT NULL DEFAULT TRUE,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -324,6 +398,10 @@ CREATE TABLE stock_transaction (
     -- opens): the same form submitted twice creates one document. NULL for
     -- documents not created from a form (imports).
     client_request_id UUID,
+    -- Receipts / issues created by confirming a draft: the draft and its
+    -- branch (information only). FK to stock_draft added after that table.
+    customer_branch_id BIGINT REFERENCES customer_branch(id),
+    draft_id         BIGINT,
     created_by       BIGINT NOT NULL REFERENCES app_user(id),
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     dispatched_at    TIMESTAMPTZ,
@@ -349,13 +427,17 @@ CREATE INDEX idx_stock_transaction_list ON stock_transaction (warehouse_id, tran
 -- a rolled-back save leaves a gap in the numbering. They belong to no table,
 -- so `migrate:fresh` leaves them behind: drop them first to restart at 1.
 DROP SEQUENCE IF EXISTS doc_no_opening_balance_seq, doc_no_in_seq, doc_no_out_seq,
-    doc_no_transfer_seq, doc_no_adjustment_seq, doc_no_damage_seq;
+    doc_no_transfer_seq, doc_no_adjustment_seq, doc_no_damage_seq,
+    doc_no_draft_in_seq, doc_no_draft_out_seq;
 CREATE SEQUENCE doc_no_opening_balance_seq AS BIGINT START 1;
 CREATE SEQUENCE doc_no_in_seq AS BIGINT START 1;
 CREATE SEQUENCE doc_no_out_seq AS BIGINT START 1;
 CREATE SEQUENCE doc_no_transfer_seq AS BIGINT START 1;
 CREATE SEQUENCE doc_no_adjustment_seq AS BIGINT START 1;
 CREATE SEQUENCE doc_no_damage_seq AS BIGINT START 1;
+-- Draft receipts (DRR-) and draft issues (DRI-), see stock_draft.
+CREATE SEQUENCE doc_no_draft_in_seq AS BIGINT START 1;
+CREATE SEQUENCE doc_no_draft_out_seq AS BIGINT START 1;
 
 CREATE TABLE stock_transaction_line (
     id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -389,11 +471,70 @@ CREATE TABLE stock_transaction_line (
         CHECK (shortage_reason IS NULL OR shortage_reason IN ('DAMAGED_IN_TRANSIT', 'MISSING', 'COUNTING_ERROR'))
 );
 
+-- No duplicate lines (CLAUDE.md rule 12): one line per item + unit + expiry date
+-- in a document, "no expiry" as one value. The app refuses them first, with a message.
+CREATE UNIQUE INDEX uq_transaction_line_key
+    ON stock_transaction_line (transaction_id, product_id, unit_id, COALESCE(expiry_date, DATE '0001-01-01'));
+
 CREATE TABLE stock_transaction_line_serial (   -- serials attached to a transaction line
     line_id         BIGINT NOT NULL REFERENCES stock_transaction_line(id) ON DELETE CASCADE,
     serial_id       BIGINT NOT NULL REFERENCES serial_number(id),
     PRIMARY KEY (line_id, serial_id)
 );
+
+-- ----------------------------------------------------------------------------
+-- DRAFTS (draft receipt / draft issue)
+-- ----------------------------------------------------------------------------
+-- A draft never touches stock. Its lines each name their own warehouse; it can
+-- be edited until it is confirmed. Confirming (App\Services\Stock\PostingService::
+-- confirmDraft) creates one posted document of transaction_type per warehouse,
+-- each pointing back here (stock_transaction.draft_id).
+--   status: DRAFT -> POSTED (shown as "Confirmed") or CANCELLED.
+CREATE TABLE stock_draft (
+    id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    doc_no             VARCHAR(30) NOT NULL UNIQUE,      -- e.g. DRR-2026-000004
+    transaction_type   VARCHAR(30) NOT NULL REFERENCES transaction_type(code), -- what confirming creates (IN / OUT)
+    status             VARCHAR(30) NOT NULL DEFAULT 'DRAFT' REFERENCES transaction_status(code),
+    customer_id        BIGINT NOT NULL REFERENCES customer(id),
+    customer_branch_id BIGINT NOT NULL,
+    document_date      DATE NOT NULL DEFAULT CURRENT_DATE,
+    reference_note     TEXT,
+    client_request_id  UUID UNIQUE,                      -- submission token of the form that created it
+    created_by         BIGINT NOT NULL REFERENCES app_user(id),
+    updated_by         BIGINT REFERENCES app_user(id),
+    confirmed_by       BIGINT REFERENCES app_user(id),   -- may be the creator
+    confirmed_at       TIMESTAMPTZ,
+    cancel_reason      TEXT,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- The branch is one of the draft's customer's.
+    CONSTRAINT fk_stock_draft_branch FOREIGN KEY (customer_branch_id, customer_id)
+        REFERENCES customer_branch (id, customer_id)
+);
+
+CREATE INDEX idx_stock_draft_list ON stock_draft (transaction_type, customer_id, document_date DESC);
+
+CREATE TABLE stock_draft_line (
+    id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    draft_id     BIGINT NOT NULL REFERENCES stock_draft(id) ON DELETE CASCADE,
+    line_no      INT NOT NULL,
+    warehouse_id BIGINT NOT NULL REFERENCES warehouse(id),
+    product_id   BIGINT NOT NULL REFERENCES product(id),
+    unit_id      BIGINT NOT NULL REFERENCES unit(id),
+    qty_entered  NUMERIC(18,4) NOT NULL CHECK (qty_entered > 0),
+    qty_base     NUMERIC(18,4) NOT NULL CHECK (qty_base > 0),
+    expiry_date  DATE,                                  -- typed (receipt) or picked (issue) for expiry items
+    serials      JSONB NOT NULL DEFAULT '[]'::jsonb,    -- serial numbers, for serial-numbered items
+    UNIQUE (draft_id, line_no)
+);
+
+-- Which drafts a user may see (their warehouses).
+CREATE INDEX idx_stock_draft_line_warehouse ON stock_draft_line (warehouse_id, draft_id);
+
+ALTER TABLE stock_transaction
+    ADD CONSTRAINT fk_stock_transaction_draft FOREIGN KEY (draft_id) REFERENCES stock_draft(id);
+
+CREATE INDEX idx_stock_transaction_draft ON stock_transaction (draft_id);
 
 -- Immutable ledger: every posted movement writes one row here (never updated/deleted).
 -- seq is the order movements were posted in: created_at is the posting
@@ -753,6 +894,13 @@ INSERT INTO transaction_status (code, name, is_terminal, affects_stock, display_
     ('POSTED',           'Posted',            TRUE,  TRUE,  7),
     ('CANCELLED',        'Cancelled',         TRUE,  FALSE, 8);
 
+INSERT INTO storage_status (code, temp_min_c, temp_max_c, display_order) VALUES
+    ('AMBIENT',      15,  25, 1),
+    ('COOL',          8,  15, 2),
+    ('CHILLED',       2,   8, 3),
+    ('FROZEN',      -25, -18, 4),
+    ('DEEP_FROZEN', -40, -30, 5);
+
 INSERT INTO role (code, name, is_system) VALUES
     ('ADMIN', 'Administrator', TRUE),
     ('MANAGER', 'Warehouse Manager', TRUE),
@@ -786,7 +934,22 @@ INSERT INTO permission (code, description, module) VALUES
     ('stock.opening.create', 'Create opening balance documents', 'STOCK'),
     ('stock.view', 'View stock balances and documents', 'STOCK'),
     ('masterdata.manage', 'Manage warehouses, customers and units', 'MASTERDATA'),
-    ('transaction.cancel', 'Cancel stock documents', 'STOCK');
+    ('transaction.cancel', 'Cancel stock documents', 'STOCK'),
+    ('draft.in.create', 'Create and edit draft receipts', 'STOCK'),
+    ('draft.in.confirm', 'Confirm draft receipts (creates the receipts)', 'STOCK'),
+    ('draft.out.create', 'Create and edit draft issues', 'STOCK'),
+    ('draft.out.confirm', 'Confirm draft issues (creates the issues)', 'STOCK'),
+    -- List, details and print pages of each type (creating / approving it opens them too).
+    ('stock.in.view', 'View receipts', 'STOCK'),
+    ('stock.out.view', 'View issues', 'STOCK'),
+    ('stock.transfer.view', 'View transfers', 'STOCK'),
+    ('stock.adjustment.view', 'View adjustments', 'STOCK'),
+    ('stock.damage.view', 'View damage documents', 'STOCK'),
+    ('stock.opening.view', 'View opening balances', 'STOCK'),
+    ('draft.in.view', 'View draft receipts', 'STOCK'),
+    ('draft.out.view', 'View draft issues', 'STOCK'),
+    -- The owner dashboard (/dashboard). Only ADMIN at first (it gets every permission).
+    ('dashboard.view', 'View the owner dashboard', 'REPORT');
 
 -- Default grants for the system roles. ADMIN gets every permission.
 INSERT INTO role_permission (role_id, permission_id)
@@ -802,6 +965,13 @@ SELECT r.id, p.id
     ('MANAGER', 'stock.opening.create'), ('MANAGER', 'stock.view'), ('MANAGER', 'report.view'),
     ('MANAGER', 'masterdata.manage'), ('MANAGER', 'product.manage'), ('MANAGER', 'product.import'),
     ('MANAGER', 'transaction.cancel'),
+    ('MANAGER', 'draft.in.create'), ('MANAGER', 'draft.in.confirm'),
+    ('MANAGER', 'draft.out.create'), ('MANAGER', 'draft.out.confirm'),
+    ('OPERATOR', 'draft.in.create'), ('OPERATOR', 'draft.out.create'),
+    ('CUSTOMER', 'draft.in.create'), ('CUSTOMER', 'draft.out.create'),
+    ('MANAGER', 'draft.in.view'), ('MANAGER', 'draft.out.view'),
+    ('OPERATOR', 'draft.in.view'), ('OPERATOR', 'draft.out.view'),
+    ('CUSTOMER', 'draft.in.view'), ('CUSTOMER', 'draft.out.view'),
     ('OPERATOR', 'stock.in.create'), ('OPERATOR', 'stock.out.create'),
     ('OPERATOR', 'stock.damage.create'), ('OPERATOR', 'stock.adjustment.create'),
     ('OPERATOR', 'stock.transfer.dispatch'), ('OPERATOR', 'stock.transfer.receive'),
@@ -814,6 +984,16 @@ SELECT r.id, p.id
   ) AS g (role_code, permission_code)
   JOIN role r ON r.code = g.role_code
   JOIN permission p ON p.code = g.permission_code;
+
+-- Each type's list: every role that sees stock and documents (stock.view).
+INSERT INTO role_permission (role_id, permission_id)
+SELECT rp.role_id, p.id
+  FROM role_permission rp
+  JOIN permission sv ON sv.id = rp.permission_id AND sv.code = 'stock.view'
+  JOIN role r ON r.id = rp.role_id AND r.code <> 'ADMIN'
+  CROSS JOIN permission p
+ WHERE p.code IN ('stock.in.view', 'stock.out.view', 'stock.transfer.view',
+                  'stock.adjustment.view', 'stock.damage.view', 'stock.opening.view');
 
 
 -- ============================================================================

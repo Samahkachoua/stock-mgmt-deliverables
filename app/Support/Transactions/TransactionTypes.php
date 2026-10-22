@@ -3,6 +3,7 @@
 namespace App\Support\Transactions;
 
 use App\Models\TransactionType;
+use App\Support\Drafts\DraftTypes;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -53,5 +54,6 @@ final class TransactionTypes
     {
         Cache::forget(self::CACHE_KEY);
         self::$resolved = null;
+        DraftTypes::flush();
     }
 }

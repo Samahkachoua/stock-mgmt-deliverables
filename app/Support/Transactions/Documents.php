@@ -5,8 +5,11 @@ namespace App\Support\Transactions;
 use App\Models\Product;
 use App\Models\StockTransaction;
 use App\Services\Stock\UnitConverter;
+use App\Support\CompanyTime;
 use App\Support\DateRange;
+use App\Support\Drafts\DraftTypes;
 use App\Support\Format;
+use App\Support\StorageStatuses;
 use Carbon\CarbonImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -22,16 +25,17 @@ use Illuminate\Support\Facades\DB;
 final class Documents
 {
     /**
-     * One page of a type's documents in a warehouse, newest first. Transfers
-     * appear in both their source and destination warehouse; `direction`
-     * (incoming / outgoing) narrows that down.
+     * One page of a type's documents in one or more warehouses, newest first.
+     * Transfers appear in both their source and destination warehouse;
+     * `direction` (incoming / outgoing) narrows that down.
      *
      * Approvers see documents waiting for approval first (`pending_first`).
      *
+     * @param  list<string>  $warehouseIds  the warehouse filter: one, or all of the user's
      * @param  array{search?: string, customer?: string, status?: string, dates?: DateRange, direction?: string, pending_first?: bool}  $filters
      * @return LengthAwarePaginator<int, ListRow>
      */
-    public static function page(TypeUi $type, string $warehouseId, array $filters, int $perPage, int $page): LengthAwarePaginator
+    public static function page(TypeUi $type, array $warehouseIds, array $filters, int $perPage, int $page): LengthAwarePaginator
     {
         $search = mb_strtolower(trim($filters['search'] ?? ''));
         $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search).'%';
@@ -43,9 +47,9 @@ final class Documents
             ->leftJoin('warehouse as to_warehouse', 'to_warehouse.id', '=', 'stock_transaction.to_warehouse_id')
             ->where('stock_transaction.transaction_type', $type->code)
             ->where(fn ($query) => match ($type->dispatchReceive() ? ($filters['direction'] ?? '') : 'outgoing') {
-                'incoming' => $query->where('stock_transaction.to_warehouse_id', $warehouseId),
-                'outgoing' => $query->where('stock_transaction.warehouse_id', $warehouseId),
-                default => $query->where('stock_transaction.warehouse_id', $warehouseId)->orWhere('stock_transaction.to_warehouse_id', $warehouseId),
+                'incoming' => $query->whereIn('stock_transaction.to_warehouse_id', $warehouseIds),
+                'outgoing' => $query->whereIn('stock_transaction.warehouse_id', $warehouseIds),
+                default => $query->whereIn('stock_transaction.warehouse_id', $warehouseIds)->orWhereIn('stock_transaction.to_warehouse_id', $warehouseIds),
             })
             ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query
                 ->whereRaw('lower(stock_transaction.doc_no) like ?', [$like])
@@ -82,23 +86,26 @@ final class Documents
             'from' => (string) $row->getAttribute('from_name'),
             // Only transfers have a destination.
             'to_warehouse' => $row->getAttribute('to_name') === null ? null : (string) $row->getAttribute('to_name'),
-            'incoming' => $row->to_warehouse_id === $warehouseId,
+            // Arriving in the filtered warehouse(s) from elsewhere.
+            'incoming' => in_array($row->to_warehouse_id, $warehouseIds, true) && ! in_array($row->warehouse_id, $warehouseIds, true),
         ]);
     }
 
     /**
      * The header facts of a document (from find()), as the details page and its
      * print view show them. Empty values are skipped by x-transaction-summary.
+     * The print leaves out the bookkeeping rows (from draft, created by / on).
      *
      * @param  array<string, mixed>  $document
      * @return list<array{label: string, value: mixed}>
      */
-    public static function summary(TypeUi $ui, array $document): array
+    public static function summary(TypeUi $ui, array $document, bool $print = false): array
     {
         $decision = $document['decision'];
 
         return [
             ['label' => __('transactions.details.customer'), 'value' => $document['customer']],
+            ['label' => __('transactions.details.branch'), 'value' => $document['branch'] ?? null],
             ...($ui->requiresDestination()
                 ? [
                     ['label' => __('transactions.details.from_warehouse'), 'value' => $document['warehouse']],
@@ -112,8 +119,11 @@ final class Documents
             ...($decision ? [['label' => __($decision['approved'] ? 'stock.approval.approved_by' : 'stock.approval.rejected_by'), 'value' => $decision['by']]] : []),
             ...($decision['reason'] ?? null ? [['label' => __('stock.approval.rejection_reason'), 'value' => $decision['reason']]] : []),
             ['label' => __('transactions.details.reference_note'), 'value' => $document['note']],
-            ['label' => __('transactions.details.created_by'), 'value' => $document['created_by']],
-            ['label' => __('transactions.details.created_on'), 'value' => Format::dateTime($document['created_at'])],
+            ...($print ? [] : [
+                ['label' => __('transactions.details.from_draft'), 'value' => $document['draft'] ?? null, 'ltr' => true, 'url' => $document['draft_url'] ?? null],
+                ['label' => __('transactions.details.created_by'), 'value' => $document['created_by']],
+                ['label' => __('transactions.details.created_on'), 'value' => Format::dateTime($document['created_at'])],
+            ]),
         ];
     }
 
@@ -139,8 +149,11 @@ final class Documents
             ->join('warehouse as w', 'w.id', '=', 't.warehouse_id')
             ->leftJoin('warehouse as tw', 'tw.id', '=', 't.to_warehouse_id')
             ->join('app_user as u', 'u.id', '=', 't.created_by')
+            ->leftJoin('customer_branch as b', 'b.id', '=', 't.customer_branch_id')
+            ->leftJoin('stock_draft as d', 'd.id', '=', 't.draft_id')
             ->where('t.id', $transaction->id)
-            ->first(['t.*', 'c.name as customer_name', 'w.name as warehouse_name', 'w.timezone', 'tw.name as to_warehouse_name', 'u.full_name as creator_name']);
+            ->first(['t.*', 'c.name as customer_name', 'w.name as warehouse_name', 'tw.name as to_warehouse_name', 'u.full_name as creator_name',
+                'b.name as branch_name', 'd.doc_no as draft_reference', 'd.transaction_type as draft_type']);
 
         $lines = self::lines($transaction->id);
 
@@ -154,18 +167,24 @@ final class Documents
             'warehouse' => $header->warehouse_name,
             'status' => $header->status,
             'created_by' => $header->creator_name,
-            'created_at' => CarbonImmutable::parse($header->created_at)->setTimezone($header->timezone),
-            'posted_at' => $header->posted_at ? CarbonImmutable::parse($header->posted_at)->setTimezone($header->timezone) : null,
+            'created_at' => CarbonImmutable::parse($header->created_at)->setTimezone(CompanyTime::zone()),
+            'posted_at' => $header->posted_at ? CarbonImmutable::parse($header->posted_at)->setTimezone(CompanyTime::zone()) : null,
             'note' => $header->reference_note,
             'reason' => $header->reason_code,
             'to_warehouse_id' => $header->to_warehouse_id,
             'to_warehouse' => $header->to_warehouse_name,
-            'dispatched_at' => $header->dispatched_at ? CarbonImmutable::parse($header->dispatched_at)->setTimezone($header->timezone) : null,
-            'received_at' => $header->received_at ? CarbonImmutable::parse($header->received_at)->setTimezone($header->timezone) : null,
+            'dispatched_at' => $header->dispatched_at ? CarbonImmutable::parse($header->dispatched_at)->setTimezone(CompanyTime::zone()) : null,
+            'received_at' => $header->received_at ? CarbonImmutable::parse($header->received_at)->setTimezone(CompanyTime::zone()) : null,
+            // Created by confirming a draft: its branch and the draft itself.
+            'branch' => $header->branch_name,
+            'draft' => $header->draft_reference,
+            'draft_url' => $header->draft_reference === null || ! isset(DraftTypes::all()[$header->draft_type])
+                ? null
+                : DraftTypes::get($header->draft_type)->route('show', $header->draft_reference),
             'lines' => $lines,
             'items' => count($lines),
             'total' => array_sum(array_column($lines, 'base_qty')),
-            'activity' => self::activity($header->id, $header->timezone),
+            'activity' => self::activity($header->id, CompanyTime::zone()),
             'decision' => self::decision($header->id),
         ];
     }
@@ -232,6 +251,7 @@ final class Documents
                 'id' => $row->id,
                 'code' => $product->sku,
                 'name' => $product->name(),
+                'storage' => StorageStatuses::label($product->storage_status),
                 'unit' => $row->unit,
                 'qty' => $counted ?? (float) $row->qty_entered,
                 'base_qty' => (float) $row->qty_base,

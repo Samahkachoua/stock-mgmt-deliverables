@@ -17,7 +17,7 @@ it('renders Arabic right-to-left for a user who prefers Arabic', function () {
         ->assertOk()
         ->assertSee('lang="ar"', false)
         ->assertSee('dir="rtl"', false)
-        ->assertSee(__('nav.receive', [], 'ar'));
+        ->assertSee(__('transactions.types.receive.title', [], 'ar'));
 });
 
 it('saves the language to the user and reloads the page', function () {

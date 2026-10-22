@@ -2,7 +2,6 @@
 
 namespace Tests\Support;
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Unit;
@@ -74,7 +73,6 @@ final class Catalog
      */
     public function user(string $role = 'ADMIN'): User
     {
-        session([EnsureCurrentWarehouse::SESSION_KEY => $this->warehouse->id]);
 
         return userWithRole($role, $this->warehouse);
     }

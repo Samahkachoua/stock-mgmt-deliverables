@@ -22,8 +22,8 @@ use Tests\Support\Stock;
 beforeEach(function () {
     $this->artisan('migrate', ['--force' => true]);
 
-    $this->source = Warehouse::factory()->create(['timezone' => 'Asia/Beirut']);
-    $this->destination = Warehouse::factory()->create(['timezone' => 'Asia/Beirut']);
+    $this->source = Warehouse::factory()->create();
+    $this->destination = Warehouse::factory()->create();
     $this->customer = Customer::factory()->create();
     $this->sender = userWithRole('OPERATOR', $this->source);
     $this->receiver = userWithRole('OPERATOR', $this->destination);

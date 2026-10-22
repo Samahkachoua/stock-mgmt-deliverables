@@ -51,6 +51,8 @@ return [
         'track_expiry_hint' => 'The expiry date is asked on every receipt; the nearest expiry goes out first.',
         'track_serial' => 'Has serial numbers',
         'track_serial_hint' => 'Each piece is recorded by its serial number. The item then uses only its base unit.',
+        'storage_status' => 'Storage status',
+        'storage_status_hint' => 'How cold the item must be kept. Shown when choosing the item and on printouts.',
         'threshold' => 'Approval limit',
         'threshold_hint' => 'Damage or adjustment above this quantity needs a manager’s approval. Leave empty to use the customer’s or the general limit.',
     ],
@@ -74,6 +76,7 @@ return [
         'name_required' => 'Enter the English name.',
         'base_unit_required' => 'Choose the base unit.',
         'threshold' => 'Enter a number of 0 or more, with at most 4 decimals, or leave it empty.',
+        'storage_status' => 'Choose a storage status from the list, or “Not set”.',
         'unit_required' => 'Choose a unit.',
         'unit_is_base' => 'This is the base unit. It is always 1.',
         'unit_twice' => 'This unit is already on another row.',
@@ -82,5 +85,19 @@ return [
         'factor_more_than_one' => 'Enter more than 1: the base unit is the smallest unit.',
         'serial_and_expiry' => 'An item can’t have both serial numbers and an expiry date yet. Choose one.',
         'locked' => 'This item already has stock movements, so its customer, base unit and tracking were kept.',
+    ],
+
+    'storage' => [
+        'none' => 'Not set',
+        // "Chilled (2 to 8 °C)"
+        'label' => ':name (:range)',
+        'range' => ':min to :max °C',
+        'codes' => [
+            'AMBIENT' => 'Ambient',
+            'COOL' => 'Cool',
+            'CHILLED' => 'Chilled',
+            'FROZEN' => 'Frozen',
+            'DEEP_FROZEN' => 'Deep frozen',
+        ],
     ],
 ];

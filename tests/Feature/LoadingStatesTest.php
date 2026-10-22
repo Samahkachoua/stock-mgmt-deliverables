@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Livewire\Reports\ReportPage;
 use App\Livewire\Transactions\TransactionForm;
 use App\Livewire\Transactions\TransactionList;
@@ -27,7 +26,6 @@ use Tests\Support\Stock;
  */
 function loadingList(Stock $stock): Testable
 {
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     return Livewire::actingAs($stock->user)->test(TransactionList::class, ['type' => 'IN']);
 }
@@ -37,7 +35,6 @@ function loadingList(Stock $stock): Testable
  */
 function issueForm(Stock $stock, string $qty): Testable
 {
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     $form = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'OUT'])
         ->call('chooseCustomer', $stock->customer->id);
@@ -260,7 +257,6 @@ it('keeps the remembered page through the skeleton first load', function () {
 
 it('shows a spinner and “Preparing file…” on the export buttons', function () {
     $data = ReportData::create();
-    session([EnsureCurrentWarehouse::SESSION_KEY => $data->beirut->id]);
 
     $html = Livewire::actingAs($data->admin)->test(ReportPage::class, ['report' => 'damage'])->html();
 
@@ -278,7 +274,6 @@ it('navigates from the sidebar with wire:navigate and a brand-coloured progress 
     $stock = Stock::create();
 
     $html = $this->actingAs($stock->user)
-        ->withSession([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id])
         ->get(route('receive'))->assertOk()->getContent();
 
     preg_match('/<aside\b.*?<\/aside>/s', $html, $sidebar);

@@ -16,6 +16,8 @@ final class Document
      * @param  string|null  $reason  reason code, for types that ask for one (Damage, Adjustment)
      * @param  string|null  $requestId  UUID of the form that submits it (stock_transaction.client_request_id);
      *                                  a document with the same one is saved only once
+     * @param  string|null  $draftId  the draft this document was created from by confirming it
+     * @param  string|null  $branchId  the customer branch of that draft (information only)
      */
     public function __construct(
         public readonly string $type,
@@ -27,5 +29,7 @@ final class Document
         public readonly ?string $toWarehouseId = null,
         public readonly ?string $reason = null,
         public readonly ?string $requestId = null,
+        public readonly ?string $draftId = null,
+        public readonly ?string $branchId = null,
     ) {}
 }

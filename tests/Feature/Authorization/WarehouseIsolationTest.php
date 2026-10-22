@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
-use App\Livewire\WarehouseSwitcher;
+use App\Livewire\Transactions\TransactionForm;
+use App\Livewire\Transactions\TransactionList;
 use App\Models\Customer;
 use App\Models\StockTransaction;
 use App\Models\Warehouse;
@@ -30,29 +30,31 @@ beforeEach(function () {
     $this->operator = userWithRole('OPERATOR', $this->beirut);
 });
 
-it('does not let an operator switch to an unassigned warehouse', function () {
+it('does not let an operator choose an unassigned warehouse on a form', function () {
     Livewire::actingAs($this->operator)
-        ->test(WarehouseSwitcher::class)
-        ->call('select', $this->tripoli->id)
-        ->assertForbidden();
-
-    expect(session(EnsureCurrentWarehouse::SESSION_KEY))->not->toBe($this->tripoli->id);
+        ->test(TransactionForm::class, ['type' => 'IN'])
+        ->call('chooseWarehouse', $this->tripoli->id)
+        ->assertSet('warehouseId', $this->beirut->id);
 });
 
-it('ignores an unassigned warehouse planted in the session', function () {
-    $this->actingAs($this->operator)
-        ->withSession([EnsureCurrentWarehouse::SESSION_KEY => $this->tripoli->id])
-        ->get(route('receive'))
-        ->assertOk()
-        ->assertSessionHas(EnsureCurrentWarehouse::SESSION_KEY, $this->beirut->id)
+it('ignores an unassigned warehouse put in a list filter', function () {
+    Livewire::actingAs($this->operator)
+        ->test(TransactionList::class, ['type' => 'IN'])
+        ->set('warehouse', $this->tripoli->id)
+        ->assertSet('warehouse', $this->beirut->id)
+        ->set('warehouse', 'all')
+        ->assertSet('warehouse', 'all')
         ->assertDontSee('Tripoli');
 });
 
 it('ignores a warehouse put in the URL', function () {
+    $tripoliDocument = documentIn($this->tripoli, Customer::factory()->create());
+    $reference = DB::table('stock_transaction')->where('id', $tripoliDocument)->value('doc_no');
+
     $this->actingAs($this->operator)
         ->get(route('receive', ['warehouse_id' => $this->tripoli->id, 'warehouse' => $this->tripoli->id]))
         ->assertOk()
-        ->assertSessionHas(EnsureCurrentWarehouse::SESSION_KEY, $this->beirut->id);
+        ->assertDontSee($reference);
 });
 
 it('does not return documents of an unassigned warehouse', function () {

@@ -113,7 +113,6 @@ final class StockOnHandReport extends Report
                 'h.nearest_expiry',
                 'c.name as customer_name',
                 'w.name as warehouse_name',
-                'w.timezone',
             ])
             ->orderBy('p.name_en')
             ->orderBy('c.name')
@@ -132,7 +131,7 @@ final class StockOnHandReport extends Report
             'qty' => $this->qtyCell($row->qty, $row->product_id) + ['strong' => true],
             'breakdown' => (float) $row->qty > 0 ? $this->breakdown($row->qty, $row->product_id) : '',
             'in_transit' => (float) $row->in_transit > 0 ? $this->qtyCell($row->in_transit, $row->product_id) : ['text' => '', 'value' => 0],
-            'expiry' => $this->expiryCell($row->nearest_expiry, (string) $row->timezone, self::EXPIRING_DAYS),
+            'expiry' => $this->expiryCell($row->nearest_expiry, self::EXPIRING_DAYS),
         ];
     }
 

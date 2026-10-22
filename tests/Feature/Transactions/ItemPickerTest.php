@@ -68,7 +68,7 @@ it('sets the product id when an item is chosen, and ignores other customers’ i
 
 it('limits a customer portal user to their own customer’s items', function () {
     $user = $this->catalog->user('CUSTOMER');
-    $user->forceFill(['is_customer_user' => true, 'customer_id' => $this->catalog->acme->id])->save();
+    $user->forceFill(['customer_id' => $this->catalog->acme->id])->save();
 
     $picker = Livewire::actingAs($user->fresh())
         ->test(ItemPicker::class, ['customer' => $this->catalog->cedar->id, 'inputId' => 'pick'])

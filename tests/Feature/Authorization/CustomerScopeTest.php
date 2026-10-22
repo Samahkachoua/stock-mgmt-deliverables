@@ -29,10 +29,10 @@ function documentFor(Customer $customer, Warehouse $warehouse): string
     ], 'id');
 }
 
-function customerUser(?Customer $customer, Warehouse $warehouse): User
+function customerUser(Customer $customer, Warehouse $warehouse): User
 {
     $user = userWithRole('CUSTOMER', $warehouse);
-    $user->forceFill(['is_customer_user' => true, 'customer_id' => $customer?->id])->save();
+    $user->forceFill(['customer_id' => $customer->id])->save();
 
     return $user->fresh();
 }
@@ -59,12 +59,11 @@ it('shows a customer user only their own customer, items and documents', functio
         ->and(StockTransaction::where('customer_id', $this->cedar->id)->exists())->toBeFalse();
 });
 
-it('shows a customer login without a customer nothing at all', function () {
-    $this->actingAs(customerUser(null, $this->warehouse));
+it('treats a user with a customer as a customer user, and one without as staff', function () {
+    $staff = userWithRole('CUSTOMER', $this->warehouse);
 
-    expect(Customer::count())->toBe(0)
-        ->and(Product::count())->toBe(0)
-        ->and(StockTransaction::count())->toBe(0);
+    expect($staff->isCustomerUser())->toBeFalse()
+        ->and(customerUser($this->acme, $this->warehouse)->isCustomerUser())->toBeTrue();
 });
 
 it('does not limit staff users to one customer', function () {

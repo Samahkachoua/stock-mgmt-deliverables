@@ -16,7 +16,10 @@
 |   token          colour token in config('ui.types') and lang/<locale>/types.php
 |   icon           resources/icons/<icon>.svg
 |   prefix         reference prefix shown on documents, e.g. ISS-2026-000123
-|   create         permission needed for the "New" page (the list needs stock.view)
+|   view           permission to open the list, details and print pages (also
+|                  open to whoever may create or approve the type, see `view_also`)
+|   view_also      other permissions that also open them (e.g. receiving transfers)
+|   create         permission needed for the "New" page
 |   approve        permission to approve/reject (types that support approval)
 |   header_fields  extra header fields besides Customer, Date and Reference note:
 |                  reason  (choices from `reasons`); the To-warehouse field is added
@@ -30,6 +33,12 @@
 |   hint           available = "Available: N" and quantity may not exceed it;
 |                  in_stock  = "In stock now: N" and no maximum
 |   reasons        reason codes (database enum values) for the `reason` field
+|   line_key       what makes two lines the same (CLAUDE.md rule 12): item plus
+|                  `unit` and/or `expiry` (expiry only for expiry-tracked items).
+|                  Two lines with the same key are refused, in the form and on save.
+|   confirm_save   ask before saving (true), even though the type can be cancelled
+|                  afterwards; types that can't be cancelled (Damage, Adjustment)
+|                  always ask when they post at once
 |   lang           key under lang/<locale>/transactions.php `types`
 |
 */
@@ -42,10 +51,12 @@ return [
             'token' => 'receive',
             'icon' => 'move_to_inbox',
             'prefix' => 'REC',
+            'view' => 'stock.in.view',
             'create' => 'stock.in.create',
             'header_fields' => [],
             'line_columns' => ['expiry'],
             'hint' => 'in_stock',
+            'line_key' => ['unit', 'expiry'],
             'lang' => 'receive',
         ],
         'OUT' => [
@@ -53,10 +64,12 @@ return [
             'token' => 'issue',
             'icon' => 'outbox',
             'prefix' => 'ISS',
+            'view' => 'stock.out.view',
             'create' => 'stock.out.create',
             'header_fields' => [],
             'line_columns' => ['expiry_pick'],
             'hint' => 'available',
+            'line_key' => ['unit', 'expiry'],
             'lang' => 'issue',
         ],
         'TRANSFER' => [
@@ -64,10 +77,14 @@ return [
             'token' => 'transfer',
             'icon' => 'swap_horiz',
             'prefix' => 'TRF',
+            'view' => 'stock.transfer.view',
+            // The destination sees what is on its way to be received.
+            'view_also' => ['stock.transfer.receive'],
             'create' => 'stock.transfer.dispatch',
             'header_fields' => [],
             'line_columns' => ['expiry_pick'],
             'hint' => 'available',
+            'line_key' => ['unit', 'expiry'],
             'lang' => 'transfer',
         ],
         'ADJUSTMENT' => [
@@ -75,6 +92,7 @@ return [
             'token' => 'adjustment',
             'icon' => 'tune',
             'prefix' => 'ADJ',
+            'view' => 'stock.adjustment.view',
             'create' => 'stock.adjustment.create',
             'approve' => 'stock.adjustment.approve',
             'header_fields' => ['reason'],
@@ -82,6 +100,8 @@ return [
             // A sum of counted quantities means nothing; the reason says why the stock was counted.
             'list_columns' => ['reason'],
             'hint' => 'in_stock',
+            // A count is per item (and expiry date) in any unit: two units would adjust it twice.
+            'line_key' => ['expiry'],
             'reasons' => ['STOCK_COUNT_VARIANCE', 'LOSS_THEFT', 'DATA_ENTRY_CORRECTION', 'OTHER'],
             'lang' => 'adjustment',
         ],
@@ -90,12 +110,14 @@ return [
             'token' => 'damage',
             'icon' => 'report',
             'prefix' => 'DMG',
+            'view' => 'stock.damage.view',
             'create' => 'stock.damage.create',
             'approve' => 'stock.damage.approve',
             'header_fields' => ['reason'],
             'line_columns' => ['expiry_pick'],
             'list_columns' => ['total', 'reason'],
             'hint' => 'available',
+            'line_key' => ['unit', 'expiry'],
             'reasons' => ['HANDLING', 'TRANSPORT', 'EXPIRED', 'WAREHOUSE_INCIDENT', 'OTHER'],
             'lang' => 'damage',
         ],
@@ -104,12 +126,65 @@ return [
             'token' => 'opening',
             'icon' => 'account_balance_wallet',
             'prefix' => 'OPB',
+            'view' => 'stock.opening.view',
             'create' => 'stock.opening.create',
             'header_fields' => [],
             'line_columns' => ['expiry'],
             'hint' => 'in_stock',
+            'line_key' => ['unit', 'expiry'],
+            // Starting stock is usually entered once, in bulk: check it before it posts.
+            'confirm_save' => true,
             'lang' => 'opening',
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Drafts: draft receipt / draft issue
+    |--------------------------------------------------------------------------
+    |
+    | Keyed by the transaction_type.code that confirming a draft creates (one
+    | posted document per warehouse of its lines). A draft never touches stock.
+    |
+    |   slug      URL segment and route name prefix: <slug>, <slug>.create,
+    |             <slug>.show, <slug>.edit, <slug>.print
+    |   token     colour token in config('ui.types') (same as the type it creates)
+    |   prefix    reference prefix, e.g. DRR-2026-000004 (sequence doc_no_draft_<code>_seq)
+    |   view      permission to open the list, details and print pages (also open
+    |             to whoever may create or confirm drafts of this kind)
+    |   create    permission to create and edit drafts
+    |   confirm   permission to confirm (and to change a draft while confirming it)
+    |   lang      key under lang/<locale>/drafts.php `types`
+    |
+    */
+    'drafts' => [
+        'IN' => [
+            'slug' => 'draft-receipts',
+            'token' => 'receive',
+            'icon' => 'assignment_returned',
+            'prefix' => 'DRR',
+            'view' => 'draft.in.view',
+            'create' => 'draft.in.create',
+            'confirm' => 'draft.in.confirm',
+            'lang' => 'receipt',
+        ],
+        'OUT' => [
+            'slug' => 'draft-issues',
+            'token' => 'issue',
+            'icon' => 'content_paste_go',
+            'prefix' => 'DRI',
+            'view' => 'draft.out.view',
+            'create' => 'draft.out.create',
+            'confirm' => 'draft.out.confirm',
+            'lang' => 'issue',
+        ],
+    ],
+
+    // Status of a draft (stock_draft.status, a transaction_status.code) as the UI shows it.
+    'draft_statuses' => [
+        'DRAFT' => ['token' => 'draft', 'label' => 'draft'],
+        'POSTED' => ['token' => 'completed', 'label' => 'confirmed'],
+        'CANCELLED' => ['token' => 'cancelled', 'label' => 'cancelled'],
     ],
 
     /*

@@ -13,7 +13,7 @@ use App\Support\Audit;
 final class ItemWriter
 {
     /**
-     * @param  array{customer_id: string, sku: string, name_en: string, name_ar: ?string, name_fr: ?string, base_unit_id: string, track_expiry: bool, track_serial: bool, approval_threshold_qty: ?string, active: bool}  $attributes
+     * @param  array{customer_id: string, sku: string, name_en: string, name_ar: ?string, name_fr: ?string, base_unit_id: string, track_expiry: bool, track_serial: bool, storage_status: ?string, approval_threshold_qty: ?string, active: bool}  $attributes
      * @param  list<array{unit_id: string, factor: string|float}>  $units  alternate units (ignored for serial items)
      */
     public function save(Product $product, array $attributes, array $units, ?string $userId = null): Product
@@ -60,6 +60,7 @@ final class ItemWriter
             'units' => $product->units->mapWithKeys(fn ($row) => [$row->unit->code => $row->factor_to_base])->sortKeys()->all(),
             'track_expiry' => $product->track_expiry,
             'track_serial' => $product->track_serial,
+            'storage_status' => $product->storage_status,
             'approval_threshold_qty' => $product->approval_threshold_qty,
             'active' => $product->active,
         ];

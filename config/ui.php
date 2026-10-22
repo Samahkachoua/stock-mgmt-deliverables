@@ -46,18 +46,27 @@ return [
         'completed' => 'bg-status-completed-soft text-status-completed border-status-completed-line',
         'rejected' => 'bg-status-rejected-soft text-status-rejected border-status-rejected-line',
         'cancelled' => 'bg-status-cancelled-soft text-status-cancelled border-status-cancelled-line',
+        'draft' => 'bg-status-draft-soft text-status-draft border-status-draft-line',
     ],
 
     // Sidebar. `permission` (a permission code or gate) is required to see the
     // item and open its page; `type` picks the colour from `types`; null = neutral item.
+    // Document types and drafts use their page title as label, so the sidebar
+    // and the page (and the Dashboard) always say the same name.
     'nav' => [
         ['route' => 'home', 'permission' => 'stock.view', 'label' => 'nav.home', 'icon' => 'home', 'type' => null],
-        ['route' => 'receive', 'permission' => 'stock.view', 'label' => 'nav.receive', 'icon' => 'move_to_inbox', 'type' => 'receive'],
-        ['route' => 'issue', 'permission' => 'stock.view', 'label' => 'nav.issue', 'icon' => 'outbox', 'type' => 'issue'],
-        ['route' => 'transfer', 'permission' => 'stock.view', 'label' => 'nav.transfer', 'icon' => 'swap_horiz', 'type' => 'transfer'],
-        ['route' => 'adjustment', 'permission' => 'stock.view', 'label' => 'nav.adjustment', 'icon' => 'tune', 'type' => 'adjustment'],
-        ['route' => 'damage', 'permission' => 'stock.view', 'label' => 'nav.damage', 'icon' => 'report', 'type' => 'damage'],
-        ['route' => 'opening-balance', 'permission' => 'stock.view', 'label' => 'nav.opening_balance', 'icon' => 'account_balance_wallet', 'type' => 'opening'],
+        // Figures for the owner (only ADMIN holds dashboard.view for now).
+        ['route' => 'dashboard', 'permission' => 'dashboard.view', 'label' => 'nav.dashboard', 'icon' => 'bar_chart', 'type' => null],
+        // Drafts sit above the document they become; open to anyone who may create or
+        // confirm them (gates in AppServiceProvider).
+        ['route' => 'draft-receipts', 'permission' => 'drafts.in.open', 'label' => 'drafts.types.receipt.title', 'icon' => 'assignment_returned', 'type' => 'receive'],
+        ['route' => 'receive', 'permission' => 'documents.receive', 'label' => 'transactions.types.receive.title', 'icon' => 'move_to_inbox', 'type' => 'receive'],
+        ['route' => 'draft-issues', 'permission' => 'drafts.out.open', 'label' => 'drafts.types.issue.title', 'icon' => 'content_paste_go', 'type' => 'issue'],
+        ['route' => 'issue', 'permission' => 'documents.issue', 'label' => 'transactions.types.issue.title', 'icon' => 'outbox', 'type' => 'issue'],
+        ['route' => 'transfer', 'permission' => 'documents.transfer', 'label' => 'transactions.types.transfer.title', 'icon' => 'swap_horiz', 'type' => 'transfer'],
+        ['route' => 'adjustment', 'permission' => 'documents.adjustment', 'label' => 'transactions.types.adjustment.title', 'icon' => 'tune', 'type' => 'adjustment'],
+        ['route' => 'damage', 'permission' => 'documents.damage', 'label' => 'transactions.types.damage.title', 'icon' => 'report', 'type' => 'damage'],
+        ['route' => 'opening-balance', 'permission' => 'documents.opening-balance', 'label' => 'transactions.types.opening.title', 'icon' => 'account_balance_wallet', 'type' => 'opening'],
         ['divider' => true],
         ['route' => 'stock', 'permission' => 'stock.view', 'label' => 'nav.stock', 'icon' => 'inventory_2', 'type' => null],
         ['route' => 'reports', 'permission' => 'reports.open', 'label' => 'nav.reports', 'icon' => 'description', 'type' => null],
@@ -66,16 +75,21 @@ return [
         ['route' => 'settings', 'permission' => 'settings.open', 'label' => 'nav.settings', 'icon' => 'settings', 'type' => null],
     ],
 
+    // Seconds a success or warning toast stays on screen (errors stay until closed).
+    'toast_seconds' => 10,
+
     // Settings tabs (docs/design/stitch-exports/settings). Each tab is its own page
     // with its own permission; the Settings sidebar item opens for anyone who may
     // open at least one tab (the `settings.open` gate).
     'settings_tabs' => [
         ['route' => 'settings.warehouses', 'permission' => 'masterdata.manage', 'label' => 'settings.tabs.warehouses', 'icon' => 'warehouse'],
         ['route' => 'settings.customers', 'permission' => 'masterdata.manage', 'label' => 'settings.tabs.customers', 'icon' => 'groups'],
+        ['route' => 'settings.branches', 'permission' => 'masterdata.manage', 'label' => 'settings.tabs.branches', 'icon' => 'apartment'],
         ['route' => 'settings.units', 'permission' => 'masterdata.manage', 'label' => 'settings.tabs.units', 'icon' => 'straighten'],
         ['route' => 'settings.approval-limits', 'permission' => 'admin.settings.manage', 'label' => 'settings.tabs.approval_limits', 'icon' => 'verified_user'],
         ['route' => 'settings.users', 'permission' => 'admin.users.manage', 'label' => 'settings.tabs.users', 'icon' => 'badge'],
         ['route' => 'settings.roles', 'permission' => 'admin.users.manage', 'label' => 'settings.tabs.roles', 'icon' => 'admin_panel_settings'],
+        ['route' => 'settings.general', 'permission' => 'admin.settings.manage', 'label' => 'settings.tabs.general', 'icon' => 'schedule'],
     ],
 
 ];

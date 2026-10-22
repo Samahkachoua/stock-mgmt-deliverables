@@ -6,4 +6,11 @@ return [
     'received_by' => 'Received by',
     'signature' => 'Name, signature and date',
     'printed_by' => 'Printed by :name on :date',
+
+    'lines' => [
+        'sku' => 'SKU',
+        'description' => 'Description',
+        'unit' => 'Unit of measure',
+        'qty' => 'QTY',
+    ],
 ];

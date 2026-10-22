@@ -3,10 +3,16 @@
 namespace Tests\Browser;
 
 use App\Models\Customer;
+use App\Models\CustomerBranch;
 use App\Models\StockTransaction;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\Stock\DraftInput;
+use App\Services\Stock\DraftLineInput;
+use App\Services\Stock\DraftService;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Laravel\Dusk\Browser;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -31,6 +37,8 @@ class ResponsiveTest extends DuskTestCase
 
     private static string $reference = '';
 
+    private static string $draft = '';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -38,6 +46,9 @@ class ResponsiveTest extends DuskTestCase
         // One set of data for the whole class, committed so the app under test sees it.
         if (! self::$seeded) {
             Artisan::call('migrate:fresh', ['--drop-types' => true]);
+            // The app under test caches the permission map in its file cache (DuskTestCase):
+            // one left from an earlier run would miss permissions added since.
+            Cache::store('file')->flush();
 
             $stock = Stock::create();
             Customer::factory()->create(['code' => 'CEDAR', 'name' => 'Cedar Trading']);
@@ -55,6 +66,15 @@ class ResponsiveTest extends DuskTestCase
             self::$warehouseId = $stock->warehouse->id;
             self::$itemId = $stock->id('BEANS');
             self::$reference = $receipt->doc_no;
+
+            // A draft issue with lines in both warehouses.
+            $branch = CustomerBranch::create(['customer_id' => $stock->customer->id, 'code' => 'DT', 'name' => 'Downtown']);
+            $stock->post('IN', [$stock->line('BEANS', 10)], warehouse: $tripoli);
+            self::$draft = app(DraftService::class)->save(new DraftInput('OUT', $stock->customer->id, $branch->id, CarbonImmutable::today(), 'PO 77', [
+                'r1' => new DraftLineInput($stock->warehouse->id, $stock->id('BEANS'), 'BOX', 2),
+                'r2' => new DraftLineInput($tripoli->id, $stock->id('BEANS'), 'PC', 5),
+            ]), $stock->user)->doc_no;
+
             self::$seeded = true;
         }
 
@@ -76,7 +96,7 @@ class ResponsiveTest extends DuskTestCase
      */
     private function pages(): array
     {
-        $pages = ['home' => '/'];
+        $pages = ['home' => '/', 'dashboard' => '/dashboard'];
 
         foreach (['receive', 'issue', 'transfer', 'adjustment', 'damage', 'opening-balance'] as $slug) {
             $pages[$slug.' list'] = '/'.$slug;
@@ -85,6 +105,12 @@ class ResponsiveTest extends DuskTestCase
 
         return $pages + [
             'receive details' => '/receive/'.self::$reference,
+            'draft receipts' => '/draft-receipts',
+            'draft receipt form' => '/draft-receipts/new',
+            'draft issues' => '/draft-issues',
+            'draft issue details' => '/draft-issues/'.self::$draft,
+            'draft issue edit' => '/draft-issues/'.self::$draft.'/edit',
+            'branches' => '/settings/branches',
             'stock' => '/stock',
             'item stock' => '/stock/'.self::$itemId.'/'.self::$warehouseId,
             'items' => '/items',
@@ -100,6 +126,7 @@ class ResponsiveTest extends DuskTestCase
             'reports' => '/reports',
             'stock card' => '/reports/stock-card',
             'expiry report' => '/reports/expiry',
+            'dormant stock' => '/reports/dormant-stock',
             'damage report' => '/reports/damage',
             'adjustments report' => '/reports/adjustments',
             'transfers in transit' => '/reports/transfers-in-transit',
@@ -143,8 +170,8 @@ class ResponsiveTest extends DuskTestCase
     private function open(Browser $browser, string $size, string $path): Browser
     {
         $this->viewport($browser, $size)->visit($path)->waitFor('main', 10);
-        // Lists fetch their rows right after the first paint.
-        $browser->pause(350)->waitUntilMissing('tr[aria-hidden="true"]', 10);
+        // Lists (and the dashboard) fetch their rows right after the first paint.
+        $browser->pause(350)->waitUntilMissing('tr[aria-hidden="true"]', 10)->waitUntilMissing('[aria-busy="true"]', 10);
 
         return $browser;
     }

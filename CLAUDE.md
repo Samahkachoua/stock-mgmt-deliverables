@@ -83,8 +83,16 @@ needs less explanation, not the one that is more configurable.
    / `user_role` / `user_warehouse` tables (no spatie package). Register them
    as Gates at boot (cached), and check them in Policies — never inline
    `if ($user->role == ...)` checks in components.
-7. Use the Laravel app's local timezone only for display; store `TIMESTAMPTZ`
-   in UTC.
+   Each list (with its details and print pages) has its own view permission
+   (`stock.in.view` … `stock.opening.view`, `draft.in.view`, `draft.out.view`;
+   `view` in config/transactions.php). Creating or approving/confirming a type
+   opens it too (gates `documents.<slug>`, `drafts.in.open` / `drafts.out.open`).
+7. Store `TIMESTAMPTZ` in UTC (the app and the DB session run in UTC). One
+   company-wide time zone (Settings › General, `app_setting` `timezone`,
+   `App\Support\CompanyTime`) decides "today" (form defaults, future-date
+   checks, expiry, document number years) and every time shown
+   (`Format::dateTime()` converts to it). Never use `CarbonImmutable::today()`,
+   `now()->toDateString()` or a per-warehouse time zone for these.
 
 ## Non-negotiable business rules
 These are enforced in the database, but the application must also respect
@@ -99,6 +107,9 @@ them so users get a clear, translated message instead of a raw DB error.
    `Negative stock blocked: ...`. `PostingService` must pre-check available
    quantity and throw a domain exception that the UI shows inline next to the
    quantity field (and the API returns as `409` with the available amount).
+   Line quantities are whole numbers up to **999,999 in the chosen unit**
+   (`PostingService::MAX_QTY`; base quantity ≤ `MAX_BASE`), checked live in
+   the forms, in the Excel import and again in PostingService / DraftService.
 3. **Base unit = smallest unit.** The base unit's own `product_unit` row has
    `factor_to_base = 1`; every alternate unit must be `> 1` (1 Box = 12 Piece).
    Enforced by `trg_validate_product_unit`; validate the same rule in the Form
@@ -118,6 +129,10 @@ them so users get a clear, translated message instead of a raw DB error.
 7. **Warehouse scoping is mandatory.** A user can only act on warehouses in
    `user_warehouse`. Enforce it in one shared place (middleware + a global
    query scope on warehouse-bound models), never by hand per component.
+   There is **no warehouse selector in the top bar**: each page that needs a
+   warehouse has its own field or filter, starting on the user's default
+   warehouse (`app_user.default_warehouse_id`, set in Settings › Users;
+   `User::defaultWarehouseId()`).
 8. **Customer scoping**: every stock query is filterable by `customer_id` and
    must stay correct for a future customer-portal user who sees only their
    own customer's stock.
@@ -134,6 +149,36 @@ them so users get a clear, translated message instead of a raw DB error.
     line stores what the user counted; the difference against the system
     balance (at save time) becomes an IN or OUT movement. Show the difference
     live in the form.
+11. **No backdated stock going out.** An Issue, Transfer or Damage dated
+    before today may only take what was in the warehouse on that date and
+    must leave every later day ≥ 0 (`Availability::onDate()`: a movement
+    counts on its document date; transfer stock at the destination on the
+    day it was received). Serials must have been there on that date too.
+    The form's "Available on <date>" hint, expiry dates and serials follow
+    the chosen date; PostingService re-checks it on save and on approval.
+12. **No duplicate lines in a transaction.** A line's key (`line_key` in
+    config/transactions.php, `TypeUi::lineKey()`):
+  - Receive, Opening Balance, Issue, Transfer, Damage: item + unit, plus the
+    expiry date for expiry-tracked items (so one item can still be taken from
+    two expiry dates with two rows, rule 9).
+  - Adjustment: item + expiry date, in any unit (a count is compared with the
+    whole balance: counting it in two units would adjust it twice).
+  Two lines with the same key are never allowed; the same item in another
+  unit (not on a count) or with another expiry date is. There are no batch
+  numbers (rule 9): wherever a spec says batch, read expiry date. Availability
+  is checked on the combined base quantity of all lines of that item.
+  - Prevent it while typing: a new row of an item starts on a unit (and
+    nearest expiry date) no other row of it has yet. When a row's key still
+    matches an existing row, clear the new row, show the toast "Olive Oil 1L
+    (Carton, expiry 12 Mar 2027) is already in row 1 — change the quantity
+    there" and move focus to that row's quantity.
+  - Check again on save (server side, `PostingService` for every path, and
+    `DraftService` per warehouse of a draft): `DuplicateLine`, same toast,
+    red border on both rows. The Opening Balance import adds up rows of the
+    same item + unit + expiry (and a serial item's pieces) into one line.
+  - Database safety net: unique index `uq_transaction_line_key` on
+    stock_transaction_line over transaction + item + unit + expiry, with
+    "no expiry" treated as one value.
 
 ## i18n and RTL (English, Arabic, French)
 - Every user-facing string goes through `__('file.key')` with translations in
@@ -158,13 +203,17 @@ pages, built from shared Blade/Livewire components — never a one-off layout
 per type. Only the colour, title and the type-specific columns differ.
 
 1. **List page** — title + "+ New <Type>" button; filters: search (reference
-   or customer), Customer, Date range, Status; table: Reference, Date,
-   Customer, Items, Total quantity, Status, Created by (Transfer adds
-   From → To). The whole row links to the details page. Paginated.
+   or customer), Warehouse (users with several warehouses: starts on their
+   default, or "All my warehouses"), Customer, Date range, Status; table:
+   Reference, Date, Customer, Items, Total quantity, Status, Created by
+   (Transfer adds From → To; several warehouses add a Warehouse column).
+   The whole row links to the details page. Paginated.
 2. **New transaction form** — header card (Customer first and required;
-   everything else disabled until it is chosen; Date defaults to today;
-   optional one-line Reference note; plus type-specific header fields:
-   Reason for Adjustment/Damage, To warehouse for Transfer).
+   everything else disabled until it is chosen; Warehouse pre-filled with
+   the user's default, hidden when they have only one; Date defaults to
+   today; optional one-line Reference note; plus type-specific header fields:
+   Reason for Adjustment/Damage, From and To warehouse for Transfer).
+   Changing the warehouse after lines exist clears the lines (warn inline first).
    Lines grid: Item (searchable by name or code, limited to the chosen
    customer's items) → Unit (dropdown, defaults to base unit) → Quantity,
    with a grey hint under it: "Available: 64 Piece" in the selected unit,
@@ -216,8 +265,8 @@ components — never per page.
   tooltips). Phone: sidebar hidden, opened as a drawer from a menu button
   in the top bar (closes on navigation / outside tap; slides from the
   correct side in Arabic).
-- Phone top bar: menu button, page title, warehouse selector (compact);
-  theme and language move into the user menu.
+- Phone top bar: menu button, page title, user menu; theme and language
+  move into the user menu. No warehouse selector (see rule 7).
 
 **Filters bar**
 - The search input keeps its current size and position.
@@ -274,6 +323,9 @@ One shared confirmation modal component; never the browser's `confirm()`.
 - Save an Adjustment/Damage that posts at once (under the approval limit,
   or self-approved): it changes stock immediately and can't be cancelled.
   "Send for approval" does not ask — nothing changes until it is approved.
+- Save an Opening Balance (`confirm_save` in config/transactions.php): it
+  posts at once; the question asks to check items and quantities (it can
+  still be cancelled later, so it doesn't say it is final).
 
 **Don't confirm**
 - Saving other forms, approving, confirming receipt (they already show a
@@ -305,7 +357,7 @@ One shared toast component + one notify helper; never ad-hoc alerts per page.
   and the reference: "Issue ISS-2026-000123 saved" + link "View".
 - Sent for approval → amber toast: "Damage DMG-2026-000045 sent for manager approval".
 - Approve / Reject / Confirm receipt / Cancel each have their own message.
-- Survives the redirect (session flash), auto-closes after 4 s, closable.
+- Survives the redirect (session flash), auto-closes after 10 s (`config('ui.toast_seconds')`), closable.
 
 **Errors — always say what went wrong, in the user's language**
 1. Validation errors: inline under each field (as already defined) PLUS a
@@ -388,7 +440,7 @@ never ad-hoc spinners per page.
 - Route parameters that identify a record (e.g. `/issues/{id}`) are fine;
   this rule is about filter/sort/page state only.
 - Date filters are always two fields, "Date from" and "Date to", empty by
-  default (no date filter), inclusive, interpreted in the app timezone.
+  default (no date filter), inclusive, interpreted in the company time zone.
 
 ## Printing
 - Every screen that can be printed has a dedicated print view
@@ -406,8 +458,11 @@ never ad-hoc spinners per page.
 
 ## UX rules for "no training needed"
 - Nothing that isn't in the approved designs: no barcode scanning UI, no
-  photo/file attachments on transactions, no dashboard widgets. If a new
-  field seems useful, ask before adding it.
+  photo/file attachments on transactions, no dashboard widgets on Home or
+  the operator pages. Figures and charts live only on the owner dashboard
+  (`/dashboard`, permission `dashboard.view`, ADMIN by default; built from
+  `App\Reports\Dashboard`, each figure = the row count of the report it
+  opens). If a new field seems useful, ask before adding it.
 - The system suggests instead of asking: base unit pre-selected, nearest expiry
   date pre-selected (changeable) for Issue/Transfer/Damage, today's date pre-filled.
 - Prevent errors instead of reporting them: live availability hint and
@@ -416,7 +471,8 @@ never ad-hoc spinners per page.
   Receive green, Issue orange, Transfer blue, Adjustment purple,
   Damage red, Opening Balance slate. Status badges: Pending approval amber,
   In transit blue, Completed green, Rejected red, Cancelled grey.
-- Normal saves never ask for confirmation (except a final Adjustment/Damage).
+- Normal saves never ask for confirmation (except a final Adjustment/Damage
+  and an Opening Balance).
   Deleting, deactivating, cancelling and rejecting always do (see "Confirmations"). Empty states say what to do next.
 - Compact density (see "Density"): inputs and buttons 36px with a mouse,
   44px on touch screens (`pointer: coarse`). Every page works on phone,

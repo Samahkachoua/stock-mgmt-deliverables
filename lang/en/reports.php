@@ -53,6 +53,8 @@ return [
         'from' => 'From',
         'to' => 'To',
         'quantity_change' => 'Quantity (+/−)',
+        'last_moved' => 'Last movement',
+        'days_idle' => 'Not moved for',
     ],
 
     'expiry_badge' => [
@@ -100,6 +102,13 @@ return [
         'status_expired' => 'Expired',
         'status_expiring' => 'Expiring soon',
         'days' => 'Within (days)',
+    ],
+
+    'dormant_stock' => [
+        'title' => 'Dormant stock',
+        'description' => 'Items in stock that have not moved for a while, longest first.',
+        'days' => 'Not moved for (days)',
+        'idle' => ':days days',
     ],
 
     'damage' => [

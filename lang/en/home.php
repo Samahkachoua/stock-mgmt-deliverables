@@ -6,8 +6,9 @@ return [
     'title' => 'Hello, :name',
     'subtitle' => 'What would you like to do?',
     'waiting' => 'Waiting for you',
-    'approvals' => '{0} :type, no approval needed|{1} :type waiting for your approval|[2,*] :type waiting for your approval',
-    'arriving' => '{0} No transfers arriving|{1} Transfer arriving here|[2,*] Transfers arriving here',
+    // Each approvable type names its own card (transactions.types.<type>.to_approve).
+    // Dispatched transfers have no arrival date: this counts every one on its way.
+    'arriving' => 'Transfers on the way to your warehouses',
     'start' => 'Start something new',
     'nothing_to_create' => 'You can look at stock and documents, but not create them. Ask an administrator if you need to.',
 ];

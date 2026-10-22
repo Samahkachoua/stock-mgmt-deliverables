@@ -44,7 +44,7 @@ class LocalSeeder extends Seeder
         $this->account('auditor@example.test', 'Adam Auditor', 'AUDITOR', $warehouses);
 
         $customer = $this->account('customer@example.test', 'Acme Portal', 'CUSTOMER', $warehouses);
-        $customer->forceFill(['is_customer_user' => true, 'customer_id' => $acme->id])->save();
+        $customer->forceFill(['customer_id' => $acme->id])->save();
 
         $this->call(ItemSeeder::class);
         $this->call(StockSeeder::class);

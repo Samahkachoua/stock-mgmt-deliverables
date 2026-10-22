@@ -70,7 +70,7 @@ final class ReportData
         $data->stock = $stock = Stock::create();
         $data->beirut = $stock->warehouse;
         $data->acme = $stock->customer;
-        $data->tripoli = Warehouse::factory()->create(['code' => 'TRP', 'name' => 'Tripoli', 'timezone' => 'Asia/Beirut']);
+        $data->tripoli = Warehouse::factory()->create(['code' => 'TRP', 'name' => 'Tripoli']);
         $data->cedar = Customer::factory()->create(['code' => 'CEDAR', 'name' => 'Cedar Trading']);
 
         $data->admin = $stock->user;
@@ -79,7 +79,7 @@ final class ReportData
         $data->tripoliOperator = userWithRole('OPERATOR', $data->tripoli);
         $data->auditorTripoli = userWithRole('AUDITOR', $data->tripoli);
         $data->acmePortal = userWithRole('AUDITOR', $data->beirut);
-        $data->acmePortal->forceFill(['is_customer_user' => true, 'customer_id' => $data->acme->id])->save();
+        $data->acmePortal->forceFill(['customer_id' => $data->acme->id])->save();
 
         $units = Unit::pluck('id', 'code');
         $data->rice = Product::create([

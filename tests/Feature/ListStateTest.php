@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Livewire\Imports\ImportList;
 use App\Livewire\Items\ItemList;
 use App\Livewire\Reports\ReportPage;
@@ -68,7 +67,6 @@ function receipts(Stock $stock, int $count): void
 
 function receiveList(Stock $stock): Testable
 {
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     return Livewire::actingAs($stock->user)->test(TransactionList::class, ['type' => 'IN']);
 }
@@ -131,7 +129,6 @@ it('keeps each list’s state apart', function () {
     $stock = Stock::create();
 
     receiveList($stock)->set('search', 'only receipts');
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
     $issues = Livewire::actingAs($stock->user)->test(TransactionList::class, ['type' => 'OUT']);
 
     expect($issues->get('search'))->toBe('')
@@ -169,7 +166,7 @@ it('goes back to the last page when the remembered page no longer exists', funct
 
 it('opens the incoming transfers from Home through a clean URL', function () {
     $stock = Stock::create();
-    $this->actingAs($stock->user)->withSession([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
+    $this->actingAs($stock->user);
 
     $this->get(route('transfer.incoming'))->assertRedirect(route('transfer'));
     expect(Livewire::actingAs($stock->user)->test(TransactionList::class, ['type' => 'TRANSFER'])->get('direction'))->toBe('incoming');
@@ -198,7 +195,6 @@ it('remembers item, settings and import lists without the URL', function () {
 
 it('remembers a report’s filters and exports exactly what they show', function () {
     $data = ReportData::create();
-    session([EnsureCurrentWarehouse::SESSION_KEY => $data->beirut->id]);
 
     $page = Livewire::actingAs($data->admin)->test(ReportPage::class, ['report' => 'damage'])
         ->set('filters.warehouse', 'all')

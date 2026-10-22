@@ -148,12 +148,14 @@ it('keeps Save disabled while a row is invalid and explains why', function (stri
     'zero' => ['0', 'more_than_zero', []],
     'not a number' => ['abc', 'number', []],
     'a decimal' => ['1.5', 'number', []],
+    'over 999,999' => ['1000000', 'too_large', ['max' => '999,999']],
 ]);
 
 it('counts earlier rows of the same item against what is available', function () {
     $form = form($this->catalog);
     [$first] = rowKeys($form);
-    $form->set("lines.$first.item", $this->catalog->id('CB-400'))->set("lines.$first.qty", '60');
+    // Same item, another unit (the same unit twice is refused: rule 12): 5 Box = 60 Piece.
+    $form->set("lines.$first.item", $this->catalog->id('CB-400'))->set("lines.$first.unit", 'BOX')->set("lines.$first.qty", '5');
 
     $second = rowKeys($form)[1];
     $form->set("lines.$second.item", $this->catalog->id('CB-400'))->set("lines.$second.qty", '5');

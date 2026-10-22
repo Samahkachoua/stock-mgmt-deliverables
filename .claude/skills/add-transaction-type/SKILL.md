@@ -52,6 +52,7 @@ this status must call `fn_post_movement`.
   logic, only new header/line validation around the existing posting call.
 - If `supports_approval_threshold = true`, call `fn_resolve_threshold` with
   the new type's code exactly as you would for DAMAGE/ADJUSTMENT.
+- Define the new type's duplicate-line key (CLAUDE.md rule 12) in its UI config; the shared form and PostingService enforce it.
 
 ## 4. Wire the frontend
 - Add the screen following the "one task per screen" rule in `CLAUDE.md`.
@@ -73,3 +74,5 @@ files (EN/AR/FR). Test the new screen specifically in Arabic (RTL).
 ## 7. Update docs
 Add the new type to `docs/api_endpoints.md` and to the SRS's transaction
 type table so the two stay in sync with the database.
+
+

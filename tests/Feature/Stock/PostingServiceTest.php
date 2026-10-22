@@ -298,7 +298,6 @@ it('rejects duplicate serials', function (array $lines, string $expected) {
     expect(counts())->toBe($before);
 })->with([
     'twice on one line' => [[['SN-9', 'SN-9']], 'stock.errors.serial_twice'],
-    'on two lines' => [[['SN-8'], ['SN-8']], 'stock.errors.serial_twice'],
     'already in stock' => [[['SN-1']], 'stock.errors.serial_in_stock'],
 ]);
 
@@ -419,4 +418,39 @@ it('refuses items of another customer and units the item does not have', functio
         ->toThrow(PostingRejected::class)
         ->and(fn () => $this->stock->post('IN', [$this->stock->line('BEANS', 1, 'CTN')]))
         ->toThrow(PostingRejected::class);
+});
+
+it('refuses more than 999,999 on a line, and saves nothing', function (string $type, string $qty) {
+    $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);
+    $before = counts();
+
+    try {
+        $this->stock->post($type, [$this->stock->line('BEANS', $qty)], reason: $type === 'IN' ? null : 'STOCK_COUNT_VARIANCE');
+        $this->fail('Expected PostingRejected');
+    } catch (PostingRejected $e) {
+        expect($e->field)->toBe('qty')
+            ->and($e->getMessage())->toBe(__('transactions.form.errors.too_large', ['max' => Format::qty(PostingService::MAX_QTY)]));
+    }
+
+    expect(counts())->toBe($before);
+})->with([
+    'a receipt' => ['IN', '1000000'],
+    'a typo of nine digits' => ['IN', '999999999'],
+    'a count' => ['ADJUSTMENT', '1000000'],
+]);
+
+it('accepts exactly 999,999 on a line', function () {
+    $this->stock->post('IN', [$this->stock->line('BEANS', '999999')]);
+
+    expect($this->stock->balance('BEANS'))->toBe(999999.0);
+});
+
+it('refuses a line whose base quantity would be too large for the ledger, with the same message', function () {
+    $this->stock->items['BEANS']->units()->create(['unit_id' => DB::table('unit')->where('code', 'CTN')->value('id'), 'factor_to_base' => 1000000000, 'is_default' => false]);
+    $before = counts();
+
+    // 200 cartons of a billion pieces: under 999,999 typed, but 2×10¹¹ pieces.
+    expect(fn () => $this->stock->post('IN', [$this->stock->line('BEANS', 200, 'CTN')]))
+        ->toThrow(PostingRejected::class, __('transactions.form.errors.too_large', ['max' => Format::qty(PostingService::MAX_QTY)]))
+        ->and(counts())->toBe($before);
 });

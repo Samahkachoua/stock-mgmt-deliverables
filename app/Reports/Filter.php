@@ -2,7 +2,6 @@
 
 namespace App\Reports;
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\User;
@@ -19,7 +18,7 @@ use App\Support\Ids;
  *   search     free text (item name or code, reference...)
  *   customer   one of the customers the user may see, or '' for all
  *   warehouse  one of the user's warehouses (user_warehouse); default the
- *              current one; 'all' = all of them when $allowAll
+ *              user's default warehouse; 'all' = all of them when $allowAll
  *   item       one of the chosen customer's items ('' until chosen)
  *   date       Y-m-d, or '' for no date (the default): see App\Support\DateRange
  *   number     whole number between $min and $max
@@ -111,7 +110,7 @@ final class Filter
             'warehouse' => match (true) {
                 $this->allowAll && $value === 'all' => 'all',
                 $value !== '' && $user->canAccessWarehouse($value) => $value,
-                default => (string) (session(EnsureCurrentWarehouse::SESSION_KEY) ?: ($user->warehouseIds()[0] ?? '')),
+                default => (string) $user->defaultWarehouseId(),
             },
             'item' => $value !== '' && Ids::valid($value) && ($previous['customer'] ?? '') !== ''
                 && Product::whereKey($value)->where('customer_id', $previous['customer'])->exists() ? $value : '',

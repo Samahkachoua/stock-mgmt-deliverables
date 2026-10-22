@@ -51,6 +51,8 @@ return [
         'track_expiry_hint' => 'La date de péremption est demandée à chaque réception ; la péremption la plus proche sort en premier.',
         'track_serial' => 'A des numéros de série',
         'track_serial_hint' => 'Chaque pièce est enregistrée par son numéro de série. L’article n’utilise alors que son unité de base.',
+        'storage_status' => 'Conditions de stockage',
+        'storage_status_hint' => 'La température à laquelle l’article doit être conservé. Affichée au choix de l’article et sur les impressions.',
         'threshold' => 'Limite d’approbation',
         'threshold_hint' => 'Une casse ou un ajustement au-delà de cette quantité doit être approuvé par un responsable. Laissez vide pour utiliser la limite du client ou la limite générale.',
     ],
@@ -74,6 +76,7 @@ return [
         'name_required' => 'Saisissez le nom en anglais.',
         'base_unit_required' => 'Choisissez l’unité de base.',
         'threshold' => 'Saisissez un nombre égal ou supérieur à 0, avec au plus 4 décimales, ou laissez vide.',
+        'storage_status' => 'Choisissez des conditions de stockage dans la liste, ou « Non défini ».',
         'unit_required' => 'Choisissez une unité.',
         'unit_is_base' => 'C’est l’unité de base : elle vaut toujours 1.',
         'unit_twice' => 'Cette unité est déjà sur une autre ligne.',
@@ -82,5 +85,19 @@ return [
         'factor_more_than_one' => 'Saisissez plus de 1 : l’unité de base est la plus petite unité.',
         'serial_and_expiry' => 'Un article ne peut pas encore avoir à la fois des numéros de série et une date de péremption. Choisissez l’un des deux.',
         'locked' => 'Cet article a déjà des mouvements de stock : son client, son unité de base et son suivi ont été conservés.',
+    ],
+
+    'storage' => [
+        'none' => 'Non défini',
+        // "Réfrigéré (2 à 8 °C)"
+        'label' => ':name (:range)',
+        'range' => ':min à :max °C',
+        'codes' => [
+            'AMBIENT' => 'Ambiant',
+            'COOL' => 'Frais',
+            'CHILLED' => 'Réfrigéré',
+            'FROZEN' => 'Congelé',
+            'DEEP_FROZEN' => 'Surgelé',
+        ],
     ],
 ];

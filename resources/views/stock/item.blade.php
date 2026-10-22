@@ -6,7 +6,7 @@
         if ($expiry === null) {
             return null;
         }
-        $left = (int) $today->diffInDays($expiry, false);
+        $left = \App\Support\Days::between($today, $expiry);
 
         return match (true) {
             $left < 0 => ['tone' => 'rejected', 'text' => __('reports.item.expired')],

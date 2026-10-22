@@ -4,7 +4,7 @@
     The app's only feedback messages (CLAUDE.md "Feedback messages"), sent with
     App\Support\Notify. Top-end corner (left in Arabic), stacked, at most 3;
     full width at the top on a phone.
-    Success and warning close after 4 s; errors stay until closed.
+    Success and warning close after config('ui.toast_seconds') (10 s); errors stay until closed.
 
     Toasts arrive two ways: flashed in the session for this page (after a
     redirect), or as a `toast` browser event (from a Livewire component, or from
@@ -29,6 +29,7 @@
         items: [],
         next: 1,
         looks: @js($looks),
+        seconds: @js((int) config('ui.toast_seconds')),
         known: @js($known),
         add(toast) {
             if (! toast) return;
@@ -46,7 +47,7 @@
                 this.close(oldest.id);
             }
 
-            if (item.type !== 'error') setTimeout(() => this.close(item.id), 4000);
+            if (item.type !== 'error') setTimeout(() => this.close(item.id), this.seconds * 1000);
         },
         close(id) {
             this.items = this.items.filter((item) => item.id !== id);

@@ -2,12 +2,13 @@
 
 namespace App\Reports;
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\Stock\Availability;
 use App\Services\Stock\UnitConverter;
+use App\Support\CompanyTime;
 use App\Support\DateRange;
+use App\Support\Days;
 use App\Support\Format;
 use App\Support\Transactions\TransactionTypes;
 use Carbon\CarbonImmutable;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * A read-only report (the add-report skill): filters, columns, one query, and
@@ -200,6 +202,42 @@ abstract class Report
     }
 
     /**
+     * How many rows the report has with these filters (a dashboard figure
+     * that always matches the report it opens).
+     *
+     * @param  array<string, string>  $filters
+     */
+    public function count(array $filters, User $user): int
+    {
+        if ($this->blocked($filters) !== null) {
+            return 0;
+        }
+
+        $query = $this->query($filters, $user);
+
+        return ($query instanceof EloquentBuilder ? $query->toBase() : $query)->getCountForPagination();
+    }
+
+    /**
+     * The first $limit rows with their links, in the report's order (a
+     * dashboard table: the full list is the report itself).
+     *
+     * @param  array<string, string>  $filters
+     * @return Collection<int, array{cells: array<string, Cell>, link: string|null}>
+     */
+    public function top(array $filters, User $user, int $limit): Collection
+    {
+        if ($this->blocked($filters) !== null) {
+            return collect();
+        }
+
+        $rows = collect($this->query($filters, $user)->limit($limit)->get()->all());
+        $this->loadProducts($rows->pluck('product_id')->all());
+
+        return $rows->map(fn (object $row) => ['cells' => $this->row($row, $filters), 'link' => $this->link($row)])->values();
+    }
+
+    /**
      * Filters as "Label: value" for the export header.
      *
      * @param  array<string, string>  $filters
@@ -282,14 +320,14 @@ abstract class Report
      *
      * @return Cell
      */
-    protected function expiryCell(?string $expiry, string $timezone, int $days = 30): array|string
+    protected function expiryCell(?string $expiry, int $days = 30): array|string
     {
         if ($expiry === null) {
             return '';
         }
 
         $date = CarbonImmutable::parse($expiry);
-        $left = (int) CarbonImmutable::now($timezone)->startOfDay()->diffInDays($date, false);
+        $left = Days::until($expiry, CompanyTime::zone());
 
         return match (true) {
             $left < 0 => ['text' => __('reports.expiry_badge.expired', ['date' => Format::date($date)]), 'tone' => 'rejected'],
@@ -337,13 +375,14 @@ abstract class Report
     }
 
     /**
-     * Today in the current warehouse (its time zone).
+     * Today in the user's default warehouse (its time zone).
      */
     protected function today(): CarbonImmutable
     {
-        $warehouse = (string) session(EnsureCurrentWarehouse::SESSION_KEY);
+        $user = Auth::user();
+        $warehouse = $user instanceof User ? $user->defaultWarehouseId() : null;
 
-        return $warehouse !== '' ? app(Availability::class)->today($warehouse) : CarbonImmutable::today();
+        return $warehouse !== null ? app(Availability::class)->today($warehouse) : CarbonImmutable::today();
     }
 
     protected function langKey(): string

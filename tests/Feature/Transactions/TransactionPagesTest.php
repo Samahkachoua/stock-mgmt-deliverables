@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Livewire\Transactions\TransactionList;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -125,7 +124,6 @@ it('shows the reason on the adjustment (instead of the total) and damage lists',
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 3, 'BOX')]);
     $stock->post('ADJUSTMENT', [$stock->line('BEANS', 30)], reason: 'LOSS_THEFT');
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     $adjustments = Livewire::actingAs($stock->user)->test(TransactionList::class, ['type' => 'ADJUSTMENT'])->call('loadRows');
     expect($adjustments->viewData('rows')->first())->toMatchArray(['reason' => 'LOSS_THEFT', 'total' => null]);
@@ -158,7 +156,6 @@ it('offers only the statuses a type can reach, from its transaction_type flags',
 it('drops a remembered status the opening balance list does not offer', function () {
     $stock = Stock::create();
     session([
-        EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id,
         'list_state.opening-balance' => ['properties' => ['status' => 'DISPATCHED'], 'page' => 1],
     ]);
 

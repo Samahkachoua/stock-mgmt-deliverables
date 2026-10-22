@@ -35,6 +35,7 @@
             <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
                 <bdi class="min-w-0 break-words font-semibold">{{ $this->chosen['name'] }}</bdi>
                 <span dir="ltr" class="tabular shrink-0 rounded bg-card-hover px-1.5 text-small font-semibold tracking-wide text-muted">{{ $this->chosen['code'] }}</span>
+                <x-storage-status :label="$this->chosen['storage']" class="shrink-0" />
             </span>
             <x-busy-icon name="keyboard_arrow_down" target="change" class="text-muted" />
         </button>
@@ -95,7 +96,8 @@
                             <bdi class="min-w-0 break-words font-semibold text-fg">{{ $item['name'] }}</bdi>
                             <span dir="ltr" class="tabular shrink-0 rounded bg-card-hover px-1.5 text-small font-semibold tracking-wide text-muted">{{ $item['code'] }}</span>
                         </span>
-                        <span class="text-small text-muted">
+                        <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-small text-muted">
+                            <x-storage-status :label="$item['storage']" />
                             {{ __('transactions.picker.in_stock', ['qty' => (new UnitConverter($item['units'], $item['base']))->breakdown($item['available'])]) }}
                         </span>
                     </li>

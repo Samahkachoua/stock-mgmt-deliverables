@@ -12,7 +12,7 @@ use Livewire\Component;
  *   Notify::error($e->getMessage(), on: $this);                 // on the page that is open (Livewire)
  *
  * Success (green) and warning (amber, e.g. "sent for approval") close after
- * 4 s; errors (red) stay until closed. Messages are already translated.
+ * 10 s (config('ui.toast_seconds')); errors (red) stay until closed. Messages are already translated.
  *
  * @phpstan-type Toast array{type: 'success'|'warning'|'error', message: string, url: string|null, link: string|null}
  */

@@ -15,7 +15,7 @@ use Tests\Support\Stock;
 
 beforeEach(function () {
     $this->stock = Stock::create();
-    $this->tripoli = Warehouse::factory()->create(['code' => 'TRP', 'name' => 'Tripoli', 'timezone' => 'Asia/Beirut']);
+    $this->tripoli = Warehouse::factory()->create(['code' => 'TRP', 'name' => 'Tripoli']);
     $this->receiver = userWithRole('OPERATOR', $this->tripoli);
     // Two expiry dates of the yogurt.
     $this->soon = now()->addDays(5)->toDateString();

@@ -4,6 +4,7 @@ namespace App\Reports;
 
 use App\Models\StockTransaction;
 use App\Models\User;
+use App\Support\CompanyTime;
 use App\Support\Format;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -75,7 +76,7 @@ final class TransfersInTransitReport extends Report
             ->select([
                 'stock_transaction.doc_no', 'stock_transaction.dispatched_at',
                 'i.product_id', 'i.qty_base', 'i.expiry_date',
-                'wf.name as from_name', 'wf.timezone', 'wt.name as to_name', 'c.name as customer_name',
+                'wf.name as from_name', 'wt.name as to_name', 'c.name as customer_name',
             ])
             ->orderBy('stock_transaction.dispatched_at')
             ->orderBy('stock_transaction.doc_no')
@@ -85,8 +86,8 @@ final class TransfersInTransitReport extends Report
     public function row(object $row, array $filters): array
     {
         $product = $this->product($row->product_id);
-        $dispatched = CarbonImmutable::parse($row->dispatched_at)->setTimezone($row->timezone);
-        $days = (int) $dispatched->startOfDay()->diffInDays(CarbonImmutable::now($row->timezone)->startOfDay());
+        $dispatched = CarbonImmutable::parse($row->dispatched_at)->setTimezone(CompanyTime::zone());
+        $days = (int) $dispatched->startOfDay()->diffInDays(CompanyTime::today());
 
         return [
             'dispatched' => Format::dateTime($dispatched),

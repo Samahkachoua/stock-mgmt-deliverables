@@ -46,7 +46,7 @@ function itemRow(array $values): array
 {
     $row = array_merge([
         'customer_code' => 'ACME', 'item_code' => 'RICE-5K', 'name_en' => 'Rice 5kg', 'name_ar' => 'أرز', 'name_fr' => 'Riz',
-        'base_unit' => 'PC', 'tracks_expiry' => 'N', 'tracks_serial' => 'N', 'approval_limit' => '',
+        'base_unit' => 'PC', 'tracks_expiry' => 'N', 'tracks_serial' => 'N', 'storage_status' => '', 'approval_limit' => '',
         'alternate_unit_1' => '', 'factor_1' => '', 'alternate_unit_2' => '', 'factor_2' => '', 'alternate_unit_3' => '', 'factor_3' => '',
     ], $values);
 
@@ -129,6 +129,7 @@ it('catches every kind of mistake with a plain message', function (array $values
     'serial and expiry together' => [['tracks_serial' => 'Y', 'tracks_expiry' => 'Y'], 'An item can’t have both serial numbers and an expiry date yet.'],
     'code with spaces' => [['item_code' => 'RICE 5K'], 'may only use letters, digits'],
     'negative approval limit' => [['approval_limit' => '-3'], 'Approval limit must be a number of 0 or more'],
+    'unknown storage status, with a suggestion' => [['storage_status' => 'CHILLD'], 'Storage status “CHILLD” was not found. Did you mean “CHILLED”?'],
 ]);
 
 it('finds the same item code twice in a file', function () {
@@ -340,4 +341,19 @@ it('shows the wizard in Arabic, right to left', function () {
     // Messages are shown in each viewer's language, whoever uploaded the file.
     expect($job->rows()->sole()->text('en'))->toContain('Base unit “XX” was not found.');
     expect($job->rows()->sole()->text('ar'))->toContain(__('imports.errors.unknown', ['column' => __('imports.columns.base_unit', [], 'ar'), 'value' => 'XX'], 'ar'));
+});
+
+it('imports the storage status, written as a code in any case, and leaves it empty when blank', function () {
+    $job = uploadItems($this->user, Spreadsheets::upload(itemHeaders(), [
+        itemRow(['item_code' => 'RICE-5K', 'storage_status' => 'ambient']),
+        itemRow(['item_code' => 'ICE-1K', 'storage_status' => 'Deep frozen']),
+        itemRow(['item_code' => 'OIL-1L', 'storage_status' => '']),
+    ]));
+
+    expect(app(ImportEngine::class)->counts($job)['ready'])->toBe(3);
+    app(ImportEngine::class)->confirm($job, $this->user);
+
+    expect(Product::where('sku', 'RICE-5K')->value('storage_status'))->toBe('AMBIENT')
+        ->and(Product::where('sku', 'ICE-1K')->value('storage_status'))->toBe('DEEP_FROZEN')
+        ->and(Product::where('sku', 'OIL-1L')->value('storage_status'))->toBeNull();
 });

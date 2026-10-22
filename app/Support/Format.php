@@ -101,8 +101,12 @@ final class Format
         return $date ? Carbon::instance($date)->locale(app()->getLocale())->isoFormat('D MMM YYYY') : '';
     }
 
+    /**
+     * A moment (stored in UTC) as the clock showed it in the company's time
+     * zone (Settings › General), whatever time zone $date carries.
+     */
     public static function dateTime(?DateTimeInterface $date): string
     {
-        return $date ? Carbon::instance($date)->locale(app()->getLocale())->isoFormat('D MMM YYYY, HH:mm') : '';
+        return $date ? Carbon::instance($date)->setTimezone(CompanyTime::zone())->locale(app()->getLocale())->isoFormat('D MMM YYYY, HH:mm') : '';
     }
 }

@@ -53,6 +53,8 @@ return [
         'from' => 'من',
         'to' => 'إلى',
         'quantity_change' => 'الكمية (+/−)',
+        'last_moved' => 'آخر حركة',
+        'days_idle' => 'بلا حركة منذ',
     ],
 
     'expiry_badge' => [
@@ -100,6 +102,13 @@ return [
         'status_expired' => 'المنتهية الصلاحية',
         'status_expiring' => 'تنتهي قريبًا',
         'days' => 'خلال (أيام)',
+    ],
+
+    'dormant_stock' => [
+        'title' => 'المخزون الراكد',
+        'description' => 'أصناف في المخزون لم تتحرك منذ مدة، الأطول أولًا.',
+        'days' => 'بلا حركة منذ (أيام)',
+        'idle' => ':days يومًا',
     ],
 
     'damage' => [

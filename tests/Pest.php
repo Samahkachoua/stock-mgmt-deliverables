@@ -65,6 +65,17 @@ function userWithWarehouses(Warehouse ...$warehouses): User
 }
 
 /**
+ * Makes $warehouse (one of the user's) their default warehouse: where forms,
+ * lists and reports start.
+ */
+function startIn(User $user, Warehouse $warehouse): User
+{
+    $user->forceFill(['default_warehouse_id' => $warehouse->id])->save();
+
+    return $user;
+}
+
+/**
  * An active user with the given system role (seeded by schema.sql), assigned
  * to the given warehouses (one new warehouse if none given).
  */

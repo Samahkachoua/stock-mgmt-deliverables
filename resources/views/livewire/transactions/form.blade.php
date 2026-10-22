@@ -19,17 +19,7 @@
         :subtitle="$ui->label('form_subtitle')"
         :back="$ui->route()"
         :back-label="$ui->label('title')"
-    >
-        @if ($currentWarehouse)
-            <x-slot:actions>
-                <span class="inline-flex h-control items-center gap-2 rounded-lg border border-default bg-card px-3 text-body text-muted shadow-card">
-                    <x-icon name="warehouse" class="text-muted" />
-                    {{ __('transactions.form.warehouse') }}
-                    <span class="font-semibold text-fg">{{ $currentWarehouse->name }}</span>
-                </span>
-            </x-slot:actions>
-        @endif
-    </x-page-header>
+    />
 
     <form wire:submit="save" class="flex flex-col gap-section" novalidate>
         {{-- Read-only from the moment Save is clicked until the answer is back. --}}
@@ -78,6 +68,57 @@
                     @endif
                 </div>
 
+                {{-- Warehouse (a transfer's "From"): one of the user's, their default pre-selected.
+                     With a single warehouse there is nothing to choose: shown on transfers only. --}}
+                @php
+                    $warehouseLabel = $ui->hasHeaderField('to_warehouse') ? __('transfers.from_warehouse') : __('transactions.form.warehouse');
+                @endphp
+                @if (count($warehouseOptions) > 1)
+                    <div>
+                        <label for="field-warehouse" class="mb-1 block text-body font-semibold text-fg">
+                            {{ $warehouseLabel }} <span class="text-danger" aria-hidden="true">*</span>
+                        </label>
+                        <div class="relative">
+                            <select
+                                id="field-warehouse"
+                                wire:key="warehouse-{{ $warehouseVersion }}"
+                                wire:change="chooseWarehouse($event.target.value)"
+                                @disabled($locked)
+                                @isset($header['warehouse']) aria-invalid="true" aria-describedby="field-warehouse-error" @endisset
+                                class="{{ $control }} {{ isset($header['warehouse']) ? $bad : $ok }} appearance-none pe-10"
+                            >
+                                @foreach ($warehouseOptions as $id => $name)
+                                    <option value="{{ $id }}" @selected($warehouseId === (string) $id)>{{ $name }}</option>
+                                @endforeach
+                            </select>
+                            <x-busy-icon name="keyboard_arrow_down" target="chooseWarehouse, confirmWarehouseChange, keepWarehouse" class="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-muted" />
+                        </div>
+                        @if ($pendingWarehouse)
+                            <div class="mt-2 rounded-lg border px-3 py-2 text-body {{ config('ui.statuses.pending') }}" role="alert">
+                                <p class="font-semibold">{{ trans_choice('transactions.form.change_warehouse_warning', max($check['filled'], 1), ['warehouse' => $warehouseOptions[$pendingWarehouse] ?? '', 'count' => Format::qty($check['filled'])]) }}</p>
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    <button type="button" wire:click="confirmWarehouseChange" class="h-control rounded-lg bg-brand px-4 text-body font-semibold text-on-brand hover:bg-brand-hover">
+                                        {{ __('transactions.form.change_warehouse_confirm') }}
+                                    </button>
+                                    <button type="button" wire:click="keepWarehouse" class="h-control rounded-lg border border-control bg-card px-4 text-body font-semibold text-fg hover:bg-card-hover">
+                                        {{ __('transactions.form.change_warehouse_keep', ['warehouse' => $warehouseOptions[$warehouseId] ?? '']) }}
+                                    </button>
+                                </div>
+                            </div>
+                        @elseif (isset($header['warehouse']))
+                            <p id="field-warehouse-error" class="mt-1 text-small text-danger" role="alert">{{ $header['warehouse'] }}</p>
+                        @endif
+                    </div>
+                @elseif ($ui->hasHeaderField('to_warehouse'))
+                    <div>
+                        <span class="mb-1 block text-body font-semibold text-fg">{{ $warehouseLabel }}</span>
+                        <span class="flex h-control items-center gap-2 rounded-lg border border-default bg-surface px-3 text-body font-semibold text-fg">
+                            <x-icon name="warehouse" class="text-muted" />
+                            <bdi>{{ $chosenWarehouse?->name }}</bdi>
+                        </span>
+                    </div>
+                @endif
+
                 <div>
                     <label for="field-date" class="mb-1 block text-body font-semibold text-fg">
                         {{ __('transactions.form.date') }} <span class="text-danger" aria-hidden="true">*</span>
@@ -86,7 +127,7 @@
                         id="field-date"
                         type="date"
                         wire:model.live="date"
-                        max="{{ now()->toDateString() }}"
+                        max="{{ \App\Support\CompanyTime::today()->toDateString() }}"
                         @disabled($locked)
                         @isset($header['date']) aria-invalid="true" aria-describedby="field-date-error" @endisset
                         class="{{ $control }} {{ isset($header['date']) ? $bad : $ok }}"
@@ -96,19 +137,6 @@
                     @endisset
                 </div>
 
-                @if ($ui->hasHeaderField('to_warehouse'))
-                    {{-- Transfers leave from the current warehouse; it can't be changed here. --}}
-                    <div>
-                        <span class="mb-1 block text-body font-semibold text-fg">{{ __('transfers.from_warehouse') }}</span>
-                        <span class="flex h-control items-center justify-between gap-2 rounded-lg border border-default bg-surface px-3 text-body font-semibold text-fg">
-                            <span class="flex items-center gap-2">
-                                <x-icon name="warehouse" class="text-muted" />
-                                <bdi>{{ $currentWarehouse?->name }}</bdi>
-                            </span>
-                            <x-icon name="lock" class="size-4 text-muted" />
-                        </span>
-                    </div>
-                @endif
 
                 @if ($ui->hasHeaderField('to_warehouse'))
                     <div>
@@ -162,7 +190,16 @@
                     </div>
                 @endif
 
-                <div @class(['md:col-span-2 xl:col-span-1' => count($ui->headerFields()) === 0])>
+                {{-- Reference fills the rest of its row: 2 per row on tablet, 3 on desktop. --}}
+                @php
+                    $before = 2 + count($ui->headerFields()) + (count($warehouseOptions) > 1 || $ui->hasHeaderField('to_warehouse') ? 1 : 0);
+                @endphp
+                <div @class([
+                    'md:col-span-2' => $before % 2 === 0,
+                    'xl:col-span-1' => $before % 3 === 2,
+                    'xl:col-span-2' => $before % 3 === 1,
+                    'xl:col-span-3' => $before % 3 === 0,
+                ])>
                     <label for="field-reference" class="mb-1 block text-body font-semibold text-fg">
                         {{ __('transactions.form.reference') }}
                         <span class="font-normal text-muted">{{ __('transactions.form.optional') }}</span>
@@ -197,7 +234,14 @@
                 @endif
             </div>
 
-            <fieldset data-lines @disabled($locked) class="min-w-0">
+            {{-- A repeated row was cleared: the cursor goes to the quantity of the row that already has the item (rule 12). --}}
+            <fieldset
+                data-lines
+                @disabled($locked)
+                x-data
+                x-on:focus-field.window="$nextTick(() => { const el = document.getElementById($event.detail.id); (el?.matches('input, select, textarea') ? el : el?.querySelector('input, select, textarea'))?.focus(); })"
+                class="min-w-0"
+            >
                 <legend class="sr-only">{{ $ui->label('items_heading') }}</legend>
                 <div class="relative overflow-x-auto">
                     {{-- A table on desktop and tablet; on a phone every line is a card (the `cards` rules in app.css). --}}
@@ -237,6 +281,7 @@
                                         <livewire:item-picker
                                             wire:model.live="lines.{{ $key }}.item"
                                             :customer="$customerId"
+                                            :warehouse="$warehouseId"
                                             :invalid="isset($errors['item'])"
                                             :input-id="$id.'-item'"
                                             :next="$id.'-unit'"
@@ -369,7 +414,11 @@
                                             <p id="{{ $id }}-qty-error" class="mt-1 text-small text-danger" role="alert">{{ $errors['qty'] }}</p>
                                         @elseif (! $counted && ($row['available_text'] ?? null))
                                             <p class="mt-1 text-small text-muted">
-                                                {{ __($ui->limitedByStock() ? 'transactions.form.available' : 'transactions.form.in_stock_now') }}
+                                                @if ($stockDate)
+                                                    {{ __('transactions.form.available_on', ['date' => Format::date($stockDate)]) }}
+                                                @else
+                                                    {{ __($ui->limitedByStock() ? 'transactions.form.available' : 'transactions.form.in_stock_now') }}
+                                                @endif
                                                 <span class="font-semibold text-fg">{{ $row['available_text'] }}</span>
                                             </p>
                                         @endisset

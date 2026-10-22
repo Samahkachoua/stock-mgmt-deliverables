@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Livewire\Reports\ReportPage;
 use App\Livewire\Transactions\CancelTransaction;
 use App\Livewire\Transactions\ReceiveTransfer;
@@ -15,7 +14,7 @@ use Tests\Support\Stock;
 
 beforeEach(function () {
     $this->stock = Stock::create();
-    $this->tripoli = Warehouse::factory()->create(['code' => 'TRP', 'name' => 'Tripoli', 'timezone' => 'Asia/Beirut']);
+    $this->tripoli = Warehouse::factory()->create(['code' => 'TRP', 'name' => 'Tripoli']);
     $this->receiver = userWithRole('OPERATOR', $this->tripoli);
     $this->sender = userWithRole('OPERATOR', $this->stock->warehouse);
     $this->stock->post('IN', [$this->stock->line('BEANS', 5, 'BOX'), $this->stock->line('PHONE', 2, serials: ['SN-1', 'SN-2'])]);
@@ -37,7 +36,6 @@ function transferLines(StockTransaction $transfer): array
 // New transfer
 
 it('sends a transfer from the form: From is the current warehouse, Save dispatches', function () {
-    session([EnsureCurrentWarehouse::SESSION_KEY => $this->stock->warehouse->id]);
     $form = Livewire::actingAs($this->sender)->test(TransactionForm::class, ['type' => 'TRANSFER'])
         ->call('chooseCustomer', $this->stock->customer->id);
 
@@ -67,7 +65,6 @@ it('sends a transfer from the form: From is the current warehouse, Save dispatch
 it('shows the available quantity without what is in transit, and refuses more', function () {
     $this->stock->dispatch([$this->stock->line('BEANS', 4, 'BOX')], $this->tripoli);
 
-    session([EnsureCurrentWarehouse::SESSION_KEY => $this->stock->warehouse->id]);
     $form = Livewire::actingAs($this->sender)->test(TransactionForm::class, ['type' => 'TRANSFER'])
         ->call('chooseCustomer', $this->stock->customer->id)
         ->set('toWarehouse', $this->tripoli->id);
@@ -93,7 +90,6 @@ it('lists transfers sent and received, with an Incoming / Outgoing filter', func
     $elsewhere = $this->stock->dispatch([$this->stock->line('BEANS', 1)], $unrelated, $this->stock->user->fresh(), $this->tripoli);
 
     // The sender's warehouse: both directions; nothing between other warehouses.
-    session([EnsureCurrentWarehouse::SESSION_KEY => $this->stock->warehouse->id]);
     $list = Livewire::actingAs($this->sender)->test(TransactionList::class, ['type' => 'TRANSFER']);
 
     $list->assertSee($outgoing->doc_no)->assertSee($incoming->doc_no)->assertDontSee($elsewhere->doc_no)
@@ -102,7 +98,6 @@ it('lists transfers sent and received, with an Incoming / Outgoing filter', func
     $list->set('direction', 'outgoing')->assertSee($outgoing->doc_no)->assertDontSee($incoming->doc_no);
 
     // The destination sees it too.
-    session([EnsureCurrentWarehouse::SESSION_KEY => $this->tripoli->id]);
     Livewire::actingAs($this->receiver)->test(TransactionList::class, ['type' => 'TRANSFER'])
         ->assertSee($outgoing->doc_no);
 });

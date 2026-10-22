@@ -14,7 +14,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property string $name
  * @property string $city
  * @property string|null $address
- * @property string $timezone
  * @property bool $active
  */
 class Warehouse extends Model
@@ -32,7 +31,6 @@ class Warehouse extends Model
         'name',
         'city',
         'address',
-        'timezone',
         'active',
     ];
 

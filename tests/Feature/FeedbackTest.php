@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Livewire\Settings\Customers;
 use App\Livewire\Transactions\CancelTransaction;
 use App\Livewire\Transactions\ReceiveTransfer;
@@ -36,7 +35,6 @@ use Tests\Support\Stock;
  */
 function feedbackForm(Stock $stock, string $type = 'OUT'): Testable
 {
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     return Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => $type])
         ->call('chooseCustomer', $stock->customer->id);
@@ -58,7 +56,7 @@ it('draws flashed toasts on the next page, top-end, with a role per kind', funct
     $stock = Stock::create();
 
     $html = $this->actingAs($stock->user)
-        ->withSession([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id, Notify::SESSION_KEY => [
+        ->withSession([Notify::SESSION_KEY => [
             ['type' => 'success', 'message' => 'Issue ISS-TEST-1 saved', 'url' => '/issue/ISS-TEST-1', 'link' => 'View'],
         ]])
         ->get(route('receive'))->assertOk()->getContent();
@@ -72,12 +70,14 @@ it('draws flashed toasts on the next page, top-end, with a role per kind', funct
 
     $source = (string) file_get_contents(resource_path('views/components/toasts.blade.php'));
 
-    // Stacked, at most 3; success closes after 4 s, errors stay; closable; icon and text.
+    // Stacked, at most 3; success closes after 10 s, errors stay; closable; icon and text.
     expect($source)->toContain('this.items.length > 3')
-        ->toContain("if (item.type !== 'error') setTimeout(() => this.close(item.id), 4000)")
+        ->toContain("if (item.type !== 'error') setTimeout(() => this.close(item.id), this.seconds * 1000)")
+        ->toContain("seconds: @js((int) config('ui.toast_seconds')),")
         ->toContain('x-on:click="close(toast.id)"')
         ->toContain('name="check_circle"')->toContain('name="report"')
-        ->toContain("config('ui.statuses.completed')")->toContain("config('ui.statuses.rejected')");
+        ->toContain("config('ui.statuses.completed')")->toContain("config('ui.statuses.rejected')")
+        ->and(config('ui.toast_seconds'))->toBe(10);
 });
 
 it('adds up the toasts of one request and forgets those of an earlier one', function () {
@@ -131,7 +131,6 @@ it('says what was saved, with the reference and a link, after the redirect', fun
 it('has its own message for cancelling and for confirming a receipt', function () {
     $stock = Stock::create();
     $receipt = $stock->post('IN', [$stock->line('BEANS', 10)]);
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     Livewire::actingAs($stock->user)->test(CancelTransaction::class, ['transactionId' => $receipt->id])
         ->call('ask')->set('confirmReason', 'Entered by mistake')->call('runConfirmed');
@@ -147,7 +146,6 @@ it('has its own message for cancelling and for confirming a receipt', function (
     $transfer = $stock->dispatch([$stock->line('BEANS', 10)], $tripoli);
     $receiver = userWithRole('ADMIN', $tripoli);
     session()->forget(Notify::SESSION_KEY);
-    session([EnsureCurrentWarehouse::SESSION_KEY => $tripoli->id]);
 
     Livewire::actingAs($receiver)->test(ReceiveTransfer::class, ['transactionId' => $transfer->id])->call('confirm');
 
@@ -247,7 +245,6 @@ it('shows a business error in a red toast as well as on the page', function () {
     $stock = Stock::create();
     $receipt = $stock->post('IN', [$stock->line('BEANS', 10)]);
     $stock->post('OUT', [$stock->line('BEANS', 4)]);
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     // Part of the receipt has gone out: it can't be cancelled.
     Livewire::actingAs($stock->user)->test(CancelTransaction::class, ['transactionId' => $receipt->id])

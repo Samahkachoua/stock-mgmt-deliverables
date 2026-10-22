@@ -29,6 +29,7 @@ return [
 
     'errors' => [
         'not_enough' => 'Only :qty of :item available in :warehouse.',
+        'not_enough_on_date' => 'On :date only :qty of :item was available in :warehouse. Stock that arrived later can’t go out on that date.',
         'not_enough_plain' => 'Not enough stock: only :qty (base units) available.',
         'not_enough_with_expired' => 'Only :qty of :item available in :warehouse that has not expired (:expired more has expired).',
         'only_expired' => 'The remaining :qty of :item in :warehouse are expired. Expired stock can’t be issued.',
@@ -42,6 +43,7 @@ return [
         'serial_twice' => 'Serial :serial is entered twice.',
         'serial_in_stock' => 'Serial :serial is already in stock.',
         'serial_not_in_stock' => 'Serial :serial is not in stock in this warehouse.',
+        'serial_not_on_date' => 'Serial :serial arrived in this warehouse after :date, so it can’t go out on that date.',
         'expiry_expired' => 'The stock expiring :date has expired. Expired stock can’t go out this way.',
         'cannot_cancel_status' => 'Only completed documents can be cancelled.',
         'already_used' => 'Some of this stock has already gone out: :item received :received, only :left is left. It can’t be cancelled.',

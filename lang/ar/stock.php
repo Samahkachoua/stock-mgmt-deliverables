@@ -29,6 +29,7 @@ return [
 
     'errors' => [
         'not_enough' => 'المتاح من :item في :warehouse هو :qty فقط.',
+        'not_enough_on_date' => 'في :date كان المتاح من :item في :warehouse هو :qty فقط. لا يمكن إخراج مخزون وصل لاحقًا بهذا التاريخ.',
         'not_enough_plain' => 'المخزون غير كافٍ: المتاح :qty فقط (بالوحدة الأساسية).',
         'not_enough_with_expired' => 'المتاح غير المنتهي الصلاحية من :item في :warehouse هو :qty فقط (و:expired منتهي الصلاحية).',
         'only_expired' => 'المتبقي من :item في :warehouse (:qty) منتهي الصلاحية. لا يمكن صرف مخزون منتهي الصلاحية.',
@@ -42,6 +43,7 @@ return [
         'serial_twice' => 'الرقم التسلسلي :serial مُدخل مرتين.',
         'serial_in_stock' => 'الرقم التسلسلي :serial موجود في المخزون مسبقًا.',
         'serial_not_in_stock' => 'الرقم التسلسلي :serial غير موجود في مخزون هذا المستودع.',
+        'serial_not_on_date' => 'وصل الرقم التسلسلي :serial إلى هذا المستودع بعد :date، لذا لا يمكن إخراجه بهذا التاريخ.',
         'expiry_expired' => 'انتهت صلاحية المخزون الذي ينتهي في :date. لا يمكن إخراج مخزون منتهي الصلاحية بهذه الطريقة.',
         'cannot_cancel_status' => 'لا يمكن إلغاء إلا المستندات المكتملة.',
         'already_used' => 'خرج جزء من هذا المخزون: استُلم من :item :received، والمتبقي :left فقط. لا يمكن إلغاؤه.',

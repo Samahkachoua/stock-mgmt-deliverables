@@ -7,6 +7,8 @@
         'date' => ['label' => __('transactions.list.date')],
         'customer' => ['label' => __('transactions.list.customer'), 'card' => 'lead'],
         ...($ui->requiresDestination() ? ['route' => ['label' => __('transactions.list.route')]] : []),
+        // Users of several warehouses: where each document is (transfers show From → To instead).
+        ...($warehouses !== null && ! $ui->requiresDestination() ? ['warehouse' => ['label' => __('transactions.list.warehouse'), 'priority' => 2]] : []),
         'items' => ['label' => __('transactions.list.items'), 'align' => 'end', 'priority' => 2, 'card' => 'hide'],
         ...($ui->hasListColumn('total') ? ['total' => ['label' => __('transactions.list.total'), 'align' => 'end']] : []),
         ...($ui->hasListColumn('reason') ? ['reason' => ['label' => __('transactions.list.reason')]] : []),
@@ -42,7 +44,7 @@
         @endif
     </x-page-header>
 
-    <x-filters-bar :customers="$customers" :statuses="$statuses" :directions="$directions" :all-statuses="$pendingFirst ? __('transactions.filters.pending_first') : null" dates :date-error="$dateError" :search-placeholder="__('transactions.filters.search_placeholder')" />
+    <x-filters-bar :warehouses="$warehouses" :customers="$customers" :statuses="$statuses" :directions="$directions" :all-statuses="$pendingFirst ? __('transactions.filters.pending_first') : null" dates :date-error="$dateError" :search-placeholder="__('transactions.filters.search_placeholder')" />
 
     <x-data-table
         :columns="$columns"
@@ -65,6 +67,9 @@
                 <x-data-table.cell col="reference" class="whitespace-nowrap"><span dir="ltr" class="tabular font-semibold text-fg">{{ $row['reference'] }}</span></x-data-table.cell>
                 <x-data-table.cell col="date" class="whitespace-nowrap text-fg">{{ Format::date($row['date']) }}</x-data-table.cell>
                 <x-data-table.cell col="customer" class="font-semibold text-fg"><bdi>{{ $row['customer'] }}</bdi></x-data-table.cell>
+                @if ($warehouses !== null && ! $ui->requiresDestination())
+                    <x-data-table.cell col="warehouse" class="whitespace-nowrap text-fg"><bdi>{{ $row['from'] }}</bdi></x-data-table.cell>
+                @endif
                 @if ($ui->requiresDestination())
                     <x-data-table.cell col="route" class="whitespace-nowrap text-fg">
                         <bdi @class(['font-semibold' => ! ($row['incoming'] ?? false)])>{{ $row['from'] }}</bdi>

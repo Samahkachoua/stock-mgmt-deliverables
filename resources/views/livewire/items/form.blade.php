@@ -135,14 +135,22 @@
                     <x-form.toggle model="trackExpiry" :label="__('items.fields.track_expiry')" :hint="$locked ? __('items.locked_field') : __('items.fields.track_expiry_hint')" :disabled="$locked" />
                     <x-form.toggle model="trackSerial" :label="__('items.fields.track_serial')" :hint="$locked ? __('items.locked_field') : __('items.fields.track_serial_hint')" :disabled="$locked" />
                 </div>
-                <x-form.input
-                    model="threshold"
-                    inputmode="decimal"
-                    :label="__('items.fields.threshold')"
-                    :hint="__('items.fields.threshold_hint')"
-                    :suffix="$baseName"
-                    class="tabular"
-                />
+                <div class="flex flex-col gap-4">
+                    <x-form.select
+                        model="storageStatus"
+                        :label="__('items.fields.storage_status')"
+                        :hint="__('items.fields.storage_status_hint')"
+                        :options="['' => __('items.storage.none')] + \App\Support\StorageStatuses::options()"
+                    />
+                    <x-form.input
+                        model="threshold"
+                        inputmode="decimal"
+                        :label="__('items.fields.threshold')"
+                        :hint="__('items.fields.threshold_hint')"
+                        :suffix="$baseName"
+                        class="tabular"
+                    />
+                </div>
             </div>
         </section>
 

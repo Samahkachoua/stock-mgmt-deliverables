@@ -40,7 +40,7 @@ saw in **Notes** (a screenshot helps).
 
 1. In the menu on the side, click **Stock**. Find **Canned Beans 400g**
    (Acme Foods). Write down the quantity in pieces: ________
-2. In the menu, click **Receive**, then **New Receipt**.
+2. In the menu, click **Receipts**, then **New Receipt**.
 3. **Customer:** choose **Acme Foods**.
 4. In the first line, type `beans` in **Item** and choose **Canned Beans 400g**.
 5. **Unit:** choose **Box**. **Quantity:** type `2`.
@@ -65,7 +65,7 @@ Pass ☐ Fail ☐ Notes:
 
 **Sign in as:** operator@example.test
 
-1. In the menu, click **Issue**, then **New Issue**. **Customer:** **Acme Foods**.
+1. In the menu, click **Issues**, then **New Issue**. **Customer:** **Acme Foods**.
 2. First line: **Sugar 1kg**. Look at the grey hint under the quantity:
    "Available: …". Write it down: ________
 3. In the quantity, type a number **larger** than what is available.
@@ -77,8 +77,10 @@ Pass ☐ Fail ☐ Notes:
       only so much is available.
 - [ ] The **Save** button stays greyed out; you cannot save.
 - [ ] Change the quantity to one that fits: the red message disappears and Save works.
-- [ ] Before you correct it, nothing was saved: **Issue** list does not show a new document, and
+- [ ] Before you correct it, nothing was saved: **Issues** list does not show a new document, and
       **Stock** shows Sugar and Canned Beans unchanged.
+- [ ] Type `1000000` in a quantity (on any form, even a receipt): a red message says
+      "At most 999,999 per line", and Save stays greyed out.
 
 Pass ☐ Fail ☐ Notes:
 
@@ -91,10 +93,10 @@ Pass ☐ Fail ☐ Notes:
 **Sign in as:** manager@example.test, working in **Beirut Main**.
 
 1. Note on **Stock** the quantity of **Rice 5kg** in Beirut Main: ________
-2. **Transfer** → **New Transfer**. **Customer:** Acme Foods. **To warehouse:** **Tripoli**.
+2. **Transfers** → **New Transfer**. **Customer:** Acme Foods. **To warehouse:** **Tripoli**.
 3. Line: **Rice 5kg**, **10** bags. Click **Send to Tripoli**.
 4. The transfer shows **In transit**. On **Stock**, Beirut Main now has 10 bags fewer.
-5. At the top, switch the warehouse to **Tripoli**. Open **Transfer**; set the
+5. At the top, switch the warehouse to **Tripoli**. Open **Transfers**; set the
    filter to **Incoming** and open the transfer.
 6. In **Received**, change 10 to **8**. A **Reason** list appears: choose **Missing**.
 7. Click **Confirm receipt**.
@@ -118,10 +120,10 @@ Pass ☐ Fail ☐ Notes:
 
 1. **Settings** → **Approval limits**. Set **Damage limit** to `10`. Save.
 2. Sign out. **Sign in as:** operator@example.test.
-3. **Damage** → **New Damage**. Customer **Acme Foods**, **Reason** "Damaged in handling".
+3. **Damage** → **New Damage Record**. Customer **Acme Foods**, **Reason** "Damaged in handling".
    Line: **Sugar 1kg**, quantity `2`. Click **Save Damage**.
 4. Expected: the document is **Completed** straight away.
-5. **New Damage** again, same customer and reason. Line: **Sugar 1kg**, quantity `12`.
+5. **New Damage Record** again, same customer and reason. Line: **Sugar 1kg**, quantity `12`.
 6. Expected: a notice says a manager must approve it, and the button reads
    **Send for approval**. Click it.
 7. Sign out. **Sign in as:** manager@example.test.
@@ -149,7 +151,7 @@ Pass ☐ Fail ☐ Notes:
 1. **Reports** → **Expiry**. Keep "Expired and expiring" and 30 days.
 2. Expected: **Yogurt 500g** that expired 3 days ago shows **Expired** (red), and the
    Yogurt expiring in 4 days shows "< 30 days" (amber).
-3. **Issue** → **New Issue**, Customer Acme Foods, line **Yogurt 500g**.
+3. **Issues** → **New Issue**, Customer Acme Foods, line **Yogurt 500g**.
    The "Available" hint does **not** include the 12 expired pieces.
 4. Type a quantity larger than the available (non-expired) amount.
 
@@ -176,12 +178,12 @@ Pass ☐ Fail ☐ Notes:
 
 **Sign in as:** manager@example.test, in Beirut Main.
 
-1. **Receive** → **New Receipt**, Customer **Cedar Trading**, item **Espresso Machine**.
+1. **Receipts** → **New Receipt**, Customer **Cedar Trading**, item **Espresso Machine**.
 2. Expected: there is no unit choice (only Piece). Type two serial numbers, one per line:
    `UAT-SN-1` and `UAT-SN-2`. The quantity shows **2**.
 3. Try typing `UAT-SN-1` twice, or the existing `EM-2026-0001`: a red message says it
    is entered twice / already in stock. Fix it and save.
-4. **Issue** → **New Issue**, Cedar Trading, Espresso Machine.
+4. **Issues** → **New Issue**, Cedar Trading, Espresso Machine.
 
 **Expected**
 
@@ -222,6 +224,9 @@ Pass ☐ Fail ☐ Notes:
 - [ ] Nothing is saved yet: **Items** does not show UAT-NEW-1.
 - [ ] Click **Import 1 row**: UAT-NEW-1 now appears in **Items**; the two bad rows were left out.
 - [ ] Upload the same file again: every row now says it already exists; nothing is duplicated.
+- [ ] Open UAT-NEW-1, set **Storage status** to **Chilled (2 to 8 °C)** and save. In a new
+      **Issue**, search `UAT-NEW-1` in **Item**: the result shows "Chilled (2 to 8 °C)". Print an
+      issue or a draft receipt with that item: the storage status is under the item's name.
 
 Pass ☐ Fail ☐ Notes:
 
@@ -260,7 +265,7 @@ Pass ☐ Fail ☐ Notes:
 
 **Expected**
 
-- [ ] The warehouse selector at the top offers **only Beirut Main**.
+- [ ] **New Receipt** has no Warehouse field to choose (Beirut Main is the only one), and lists have no Warehouse filter.
 - [ ] **Stock**, lists and reports show Beirut Main only ("All my warehouses" is Beirut Main).
 - [ ] Paste the Tripoli address from step 1: the page says it was **not found**.
 - [ ] In **New Transfer** you can send *from* Beirut Main, but you cannot receive
@@ -288,6 +293,32 @@ Pass ☐ Fail ☐ Notes:
       the log shows **Rejected** by the manager, and "Before → after" shows the reason.
 - [ ] The **Before → after** column reads in words (e.g. "Status: Pending approval → Completed").
 - [ ] Export the log with **Excel** and **PDF**: the files contain the same rows.
+
+Pass ☐ Fail ☐ Notes:
+
+---
+
+## 11. The owner dashboard shows the same numbers as the reports
+
+*The dashboard is for the owner; only the Administrator role has it until it is given to another role in Settings › Roles.*
+
+**Sign in as:** admin@example.test (then manager@example.test)
+
+1. Sidebar → **Dashboard**. Set **Warehouse** to "All my warehouses".
+2. Note each figure, then click it.
+
+**Expected**
+
+- [ ] Manager: there is no **Dashboard** in the sidebar, and `/dashboard` says you don't have permission.
+- [ ] **Waiting for approval** opens the list of that type showing **Pending approval** documents; the count matches.
+- [ ] **Transfers on the way**, **Expired or expiring within 30 days**, **Damaged lines** and
+      **Lines corrected by a count** each open their report with the same warehouse, customer
+      (and dates for damage / adjustments), showing exactly as many rows as the figure.
+- [ ] Choose a customer: every figure, chart and table changes to that customer only.
+- [ ] Set **Date from** after **Date to**: the dates are outlined in red and nothing is counted.
+- [ ] **Activity by type** shows one small chart per type in its colour; **Show as a table** lists the same numbers.
+- [ ] **Not moving** and **Expiring soon** show at most 5 items; **See all** opens the full report.
+- [ ] Check it in Arabic, in dark mode, and on a phone (one figure per row, no sideways scrolling).
 
 Pass ☐ Fail ☐ Notes:
 

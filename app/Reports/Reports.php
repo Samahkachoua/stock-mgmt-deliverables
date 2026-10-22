@@ -16,6 +16,7 @@ final class Reports
         StockOnHandReport::class,
         StockCardReport::class,
         ExpiryReport::class,
+        DormantStockReport::class,
         DamageReport::class,
         AdjustmentsReport::class,
         TransfersInTransitReport::class,

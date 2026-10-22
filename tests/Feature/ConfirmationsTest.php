@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Livewire\Concerns\ConfirmsActions;
 use App\Livewire\Items\ItemForm;
 use App\Livewire\Settings\ApprovalLimits;
@@ -266,7 +265,6 @@ it('asks before cancelling, with the consequence and a required reason kept in t
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 60)]);
     $issue = $stock->post('OUT', [$stock->line('BEANS', 3, 'BOX')]);
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     $page = Livewire::actingAs($stock->user)->test(CancelTransaction::class, ['transactionId' => $issue->id])->call('ask');
 
@@ -300,7 +298,6 @@ it('asks before cancelling, with the consequence and a required reason kept in t
 it('says what a cancelled receipt takes out of stock, and counts the other lines', function () {
     $stock = Stock::create();
     $receipt = $stock->post('IN', [$stock->line('BEANS', 10), $stock->line('PHONE', 2, serials: ['SN-1', 'SN-2'])]);
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     Livewire::actingAs($stock->user)->test(CancelTransaction::class, ['transactionId' => $receipt->id])->call('ask')
         ->assertSet('confirm.body', 'This takes 10 Piece of Canned Beans and 1 other item out of Beirut Main stock again and can’t be undone.');
@@ -310,7 +307,6 @@ it('explains instead of asking when a document can’t be cancelled', function (
     $stock = Stock::create();
     $receipt = $stock->post('IN', [$stock->line('BEANS', 10)]);
     $stock->post('OUT', [$stock->line('BEANS', 4)]);
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     Livewire::actingAs($stock->user)->test(CancelTransaction::class, ['transactionId' => $receipt->id])->call('ask')
         ->assertSet('confirm', null)
@@ -342,7 +338,6 @@ it('asks before rejecting, with a required reason kept in the audit log and show
     $operator = userWithRole('OPERATOR', $stock->warehouse);
     $manager = userWithRole('MANAGER', $stock->warehouse);
     $damage = damageAwaitingApproval($stock, $operator);
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     $page = Livewire::actingAs($manager)->test(DecideApproval::class, ['transactionId' => $damage->id])->call('startReject');
 
@@ -376,7 +371,6 @@ it('never asks for saving what can be cancelled, approving, confirming a receipt
 
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 36)]);
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     // An issue can be cancelled later: Save posts at once.
     $issue = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'OUT'])->call('chooseCustomer', $stock->customer->id);
@@ -400,7 +394,6 @@ it('never asks for saving what can be cancelled, approving, confirming a receipt
     DB::table('approval_threshold')->delete();
     $manager = userWithRole('MANAGER', $stock->warehouse);
     $damage = damageAwaitingApproval($stock, userWithRole('OPERATOR', $stock->warehouse));
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     // Approve posts at once.
     Livewire::actingAs($manager)->test(DecideApproval::class, ['transactionId' => $damage->id])
@@ -419,7 +412,6 @@ it('never asks for saving what can be cancelled, approving, confirming a receipt
 it('asks before saving a damage or adjustment that changes stock at once and can’t be cancelled', function () {
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 36)]);
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     $form = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'DAMAGE'])
         ->call('chooseCustomer', $stock->customer->id)->set('reason', 'HANDLING');
@@ -446,10 +438,36 @@ it('asks before saving a damage or adjustment that changes stock at once and can
     expect($damage->status)->toBe('POSTED')->and($stock->balance('BEANS'))->toBe(32.0);
 });
 
+it('asks before saving an opening balance, without saying it can’t be cancelled', function () {
+    $stock = Stock::create();
+
+    $form = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'OPENING_BALANCE'])
+        ->call('chooseCustomer', $stock->customer->id);
+    $row = array_key_first($form->get('lines'));
+    $form->set("lines.$row.item", $stock->id('BEANS'))->set("lines.$row.qty", '24')->call('save');
+
+    // It can be cancelled later, so the question says to check, not that it is final.
+    expect($form->get('confirm'))->toMatchArray([
+        'action' => 'save',
+        'title' => __('transactions.form.confirm_final.title', ['action' => __('transactions.types.opening.save'), 'customer' => $stock->customer->name]),
+        'button' => __('transactions.types.opening.save'),
+    ])->and($form->get('confirm')['body'])->toBe(__('transactions.form.confirm_final.body_cancellable', ['warehouse' => $stock->warehouse->name, 'summary' => '1 item · 24 Piece']));
+
+    // "Keep it": nothing saved.
+    $form->call('dismissConfirm')->assertSet('confirm', null)->assertSet("lines.$row.qty", '24');
+    expect(StockTransaction::query()->where('transaction_type', 'OPENING_BALANCE')->exists())->toBeFalse()
+        ->and($stock->balance('BEANS'))->toBe(0.0);
+
+    // Confirmed: posted, and on to the document.
+    $form->call('save')->call('runConfirmed');
+    $opening = StockTransaction::query()->where('transaction_type', 'OPENING_BALANCE')->sole();
+    $form->assertRedirect(route('opening-balance.show', $opening->doc_no));
+    expect($opening->status)->toBe('POSTED')->and($stock->balance('BEANS'))->toBe(24.0);
+});
+
 it('checks the form again when a final save is confirmed', function () {
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 36)]);
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     $form = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'DAMAGE'])
         ->call('chooseCustomer', $stock->customer->id)->set('reason', 'HANDLING');
@@ -471,7 +489,6 @@ it('refuses on the server when the modal is bypassed', function () {
     $stock = Stock::create();
     $receipt = $stock->post('IN', [$stock->line('BEANS', 3)]);
     $operator = userWithRole('OPERATOR', $stock->warehouse);
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     // Without permission the modal doesn't even open.
     Livewire::actingAs($operator)->test(CancelTransaction::class, ['transactionId' => $receipt->id])->call('ask')->assertForbidden();
@@ -500,7 +517,6 @@ it('checks permission and rules again when the confirmation arrives', function (
     $operator = userWithRole('OPERATOR', $stock->warehouse);
     $manager = userWithRole('MANAGER', $stock->warehouse);
     $damage = damageAwaitingApproval($stock, $operator);
-    session([EnsureCurrentWarehouse::SESSION_KEY => $stock->warehouse->id]);
 
     // The modal is open; meanwhile another manager approves the document.
     $page = Livewire::actingAs($manager)->test(DecideApproval::class, ['transactionId' => $damage->id])->call('startReject');

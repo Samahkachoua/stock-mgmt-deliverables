@@ -53,6 +53,8 @@ return [
         'from' => 'De',
         'to' => 'Vers',
         'quantity_change' => 'Quantité (+/−)',
+        'last_moved' => 'Dernier mouvement',
+        'days_idle' => 'Sans mouvement depuis',
     ],
 
     'expiry_badge' => [
@@ -100,6 +102,13 @@ return [
         'status_expired' => 'Périmés',
         'status_expiring' => 'Bientôt périmés',
         'days' => 'Dans les (jours)',
+    ],
+
+    'dormant_stock' => [
+        'title' => 'Stock dormant',
+        'description' => 'Les articles en stock qui n’ont pas bougé depuis un moment, les plus anciens d’abord.',
+        'days' => 'Sans mouvement depuis (jours)',
+        'idle' => ':days jours',
     ],
 
     'damage' => [

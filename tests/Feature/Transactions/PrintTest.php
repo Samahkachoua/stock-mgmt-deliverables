@@ -1,8 +1,8 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Models\StockTransaction;
 use App\Models\Warehouse;
+use App\Support\StorageStatuses;
 use App\Support\Transactions\TransactionTypes;
 use Tests\Support\Stock;
 
@@ -14,7 +14,7 @@ use Tests\Support\Stock;
 
 beforeEach(function () {
     $this->stock = Stock::create();
-    $this->tripoli = Warehouse::factory()->create(['code' => 'TRP', 'name' => 'Tripoli', 'timezone' => 'Asia/Beirut']);
+    $this->tripoli = Warehouse::factory()->create(['code' => 'TRP', 'name' => 'Tripoli']);
     $this->stock->post('IN', [$this->stock->line('BEANS', 50)]);
 });
 
@@ -36,7 +36,6 @@ it('prints every type of document on its own A4 page, without the app around it'
     $ui = TransactionTypes::get($type);
 
     $details = $this->actingAs($this->stock->user)
-        ->withSession([EnsureCurrentWarehouse::SESSION_KEY => $this->stock->warehouse->id])
         ->get($ui->route('show', $document->doc_no))
         ->assertOk();
     // The details page's Print button opens the print view.
@@ -93,7 +92,7 @@ it('does not print a document of a warehouse the user does not work in', functio
     $issue = printable($this->stock, $this->tripoli, 'OUT');
     $outsider = userWithRole('ADMIN', $this->tripoli);
 
-    $this->actingAs($outsider)->withSession([EnsureCurrentWarehouse::SESSION_KEY => $this->tripoli->id])
+    $this->actingAs($outsider)
         ->get(TransactionTypes::get('OUT')->route('print', $issue->doc_no))
         ->assertNotFound();
 });
@@ -105,5 +104,15 @@ it('hides the sidebar, top bar and actions when a normal page is printed', funct
 
     expect($html)->toMatch('/<aside[^>]*\bprint:hidden\b/')
         ->toMatch('/<header[^>]*\bprint:hidden\b/')
-        ->toMatch('/<div class="flex flex-wrap items-center gap-3 print:hidden">/');
+        // The action buttons (page header), whatever their spacing.
+        ->toMatch('/<div class="flex flex-wrap items-center gap-\d print:hidden">/');
+});
+
+it('prints each item’s storage status under its name', function () {
+    $this->stock->items['BEANS']->update(['storage_status' => 'CHILLED']);
+    $issue = printable($this->stock, $this->tripoli, 'OUT');
+
+    $this->actingAs($this->stock->user)->get(TransactionTypes::get('OUT')->route('print', $issue->doc_no))
+        ->assertOk()
+        ->assertSee(StorageStatuses::label('CHILLED'));
 });

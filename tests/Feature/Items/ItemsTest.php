@@ -1,9 +1,11 @@
 <?php
 
+use App\Livewire\ItemPicker;
 use App\Livewire\Items\ItemForm;
 use App\Livewire\Items\ItemList;
 use App\Models\Product;
 use App\Models\Unit;
+use App\Support\StorageStatuses;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -258,4 +260,43 @@ it('does not let users without the permission save', function () {
     Livewire::actingAs(userWithRole('OPERATOR'))
         ->test(ItemForm::class, ['product' => $this->catalog->items['CB-400']])
         ->assertForbidden();
+});
+
+// Storage status
+
+it('saves an optional storage status, shown with its temperature range', function () {
+    newItem($this->catalog)->set('storageStatus', 'FROZEN')->call('save')->assertHasNoErrors();
+    newItem($this->catalog, 'CP-500')->call('save')->assertHasNoErrors();
+
+    $frozen = Product::where('sku', 'CP-400')->sole();
+    expect($frozen->storage_status)->toBe('FROZEN')
+        ->and(Product::where('sku', 'CP-500')->value('storage_status'))->toBeNull()
+        ->and(StorageStatuses::label('FROZEN', plain: true))->toBe('Frozen (-25 to -18 °C)')
+        ->and(StorageStatuses::label(null))->toBeNull()
+        ->and(json_decode(DB::table('audit_log')->where('entity_id', $frozen->id)->value('after_data'), true))->toMatchArray(['storage_status' => 'FROZEN']);
+
+    Livewire::actingAs(userWithRole('DATA_ENTRY'))
+        ->test(ItemForm::class, ['product' => $frozen])
+        ->assertSet('storageStatus', 'FROZEN')
+        ->set('storageStatus', '')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($frozen->fresh()->storage_status)->toBeNull();
+});
+
+it('refuses a storage status that is not in the list', function () {
+    newItem($this->catalog)->set('storageStatus', 'WARM')->call('save')->assertHasErrors(['storageStatus']);
+
+    expect(Product::where('sku', 'CP-400')->exists())->toBeFalse();
+});
+
+it('shows the storage status in the item picker', function () {
+    $product = $this->catalog->items['CB-400'];
+    $product->update(['storage_status' => 'CHILLED']);
+
+    Livewire::actingAs(userWithRole('ADMIN'))
+        ->test(ItemPicker::class, ['customer' => $product->customer_id])
+        ->set('search', 'CB-400')
+        ->assertSee(StorageStatuses::label('CHILLED'));
 });

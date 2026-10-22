@@ -74,6 +74,49 @@
                     @endforeach
                 </div>
 
+                {{-- Where this person's forms, lists and reports start (there is no warehouse in the top bar). --}}
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <x-form.select
+                        model="defaultWarehouseId"
+                        :label="__('settings.users.default_warehouse')"
+                        :hint="__('settings.users.default_warehouse_hint')"
+                        :options="['' => __('settings.users.choose_default_warehouse')] + $this->allWarehouses->whereIn('id', array_map('strval', $warehouseIds))->pluck('name', 'id')->all()"
+                        :disabled="$warehouseIds === []"
+                        required
+                    />
+                </div>
+
+                {{-- The customer's own staff: linked to that customer, and optionally to some of its branches. --}}
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <x-form.select
+                        model="customerId"
+                        :label="__('settings.users.customer')"
+                        :hint="__('settings.users.customer_hint')"
+                        :options="['' => __('settings.users.staff')] + $this->customers"
+                    />
+                    @if ($customerId !== '')
+                        <fieldset @error('branchIds.*') aria-invalid="true" @enderror>
+                            <legend class="text-body font-semibold text-fg">{{ __('settings.users.branches') }}</legend>
+                            <p class="mt-0.5 text-body text-muted">{{ __('settings.users.branches_hint') }}</p>
+                            @if ($this->customerBranches->isEmpty())
+                                <p class="mt-2 text-body text-muted">{{ __('settings.users.no_branches') }}</p>
+                            @else
+                                <div class="mt-2 grid gap-x-4 rounded-lg border border-control bg-card px-3 py-1 sm:grid-cols-2">
+                                    @foreach ($this->customerBranches as $branch)
+                                        <label wire:key="branch-{{ $branch->id }}" class="flex min-h-control cursor-pointer items-center gap-3">
+                                            <input type="checkbox" wire:model.live="branchIds" value="{{ $branch->id }}" class="size-5 shrink-0 rounded border-control accent-brand">
+                                            <span class="text-body text-fg">{{ $branch->name }}{{ $branch->active ? '' : ' · '.__('settings.inactive') }}</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            @endif
+                            @error('branchIds.*')
+                                <p class="mt-1 text-body text-danger" role="alert">{{ $message }}</p>
+                            @enderror
+                        </fieldset>
+                    @endif
+                </div>
+
                 <label class="mt-4 flex min-h-control cursor-pointer items-center gap-3">
                     <input type="checkbox" wire:model.live="active" class="size-5 rounded border-control accent-brand">
                     <span class="text-body text-fg">{{ __('settings.users.can_sign_in') }}</span>
@@ -110,6 +153,15 @@
                             <td data-card="title" class="px-edge py-cell-y">
                                 <div class="font-semibold text-fg">{{ $user->full_name }}</div>
                                 <div class="text-muted"><span dir="ltr">{{ $user->email }}</span></div>
+                                @if ($user->isCustomerUser())
+                                    {{-- The customer's own staff, and the branches they work for. --}}
+                                    <div class="mt-0.5 text-small text-muted">
+                                        <bdi class="font-semibold text-fg">{{ $this->customers[$user->customer_id] ?? '' }}</bdi>
+                                        @if ($user->branches->isNotEmpty())
+                                            · <bdi>{{ $user->branches->sortBy('name')->pluck('name')->implode(', ') }}</bdi>
+                                        @endif
+                                    </div>
+                                @endif
                             </td>
                             <td data-label="{{ __('settings.users.roles') }}" class="px-cell py-cell-y">
                                 <div class="flex flex-wrap gap-1.5 max-md:justify-end">
@@ -123,7 +175,15 @@
                             <td data-label="{{ __('settings.users.warehouses') }}" data-priority="2" class="px-cell py-cell-y">
                                 <div class="flex flex-wrap gap-1.5 max-md:justify-end">
                                     @forelse ($user->warehouses->sortBy('name') as $warehouse)
-                                        <span dir="ltr" title="{{ $warehouse->name }}" class="tabular rounded bg-card-hover px-1.5 py-0.5 text-small font-semibold tracking-wide text-muted">{{ $warehouse->code }}</span>
+                                        @php
+                                            $isDefault = (string) $user->default_warehouse_id === $warehouse->id;
+                                        @endphp
+                                        {{-- The default warehouse is outlined and named for screen readers. --}}
+                                        <span dir="ltr" title="{{ $warehouse->name }}{{ $isDefault ? ' · '.__('settings.users.default_warehouse') : '' }}" @class([
+                                            'tabular rounded px-1.5 py-0.5 text-small font-semibold tracking-wide',
+                                            'bg-card-hover text-muted' => ! $isDefault,
+                                            'border border-brand text-fg' => $isDefault,
+                                        ])>{{ $warehouse->code }}@if ($isDefault)<span class="sr-only"> ({{ __('settings.users.default_warehouse') }})</span>@endif</span>
                                     @empty
                                         <span class="text-muted">{{ __('settings.users.no_warehouses') }}</span>
                                     @endforelse

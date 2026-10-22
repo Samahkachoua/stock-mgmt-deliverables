@@ -3,6 +3,8 @@
 namespace App\Livewire\Settings;
 
 use App\Livewire\Concerns\ConfirmsActions;
+use App\Models\Customer;
+use App\Models\CustomerBranch;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -22,7 +24,9 @@ use Livewire\Component;
 
 /**
  * Settings › Users: accounts, their roles (user_role) and the warehouses they
- * may work in (user_warehouse). Accounts are switched off, never deleted.
+ * may work in (user_warehouse). A customer's own staff are linked to that
+ * customer (app_user.customer_id), and optionally to some of its branches
+ * (user_customer_branch). Accounts are switched off, never deleted.
  *
  * @property-read Collection<int, User> $users
  * @property-read Collection<int, Role> $roles
@@ -49,6 +53,19 @@ class Users extends Component
     /** @var list<string> */
     public array $warehouseIds = [];
 
+    /** Where this person's forms, lists and reports start: one of the ticked warehouses. */
+    public string $defaultWarehouseId = '';
+
+    /** The customer whose own staff this person is; '' = the warehouse company's staff. */
+    public string $customerId = '';
+
+    /**
+     * Branches of that customer this person works for (optional).
+     *
+     * @var list<string>
+     */
+    public array $branchIds = [];
+
     public string $preferred_lang = '';
 
     public bool $active = true;
@@ -64,7 +81,7 @@ class Users extends Component
     #[Computed]
     public function users(): Collection
     {
-        return User::with(['roles', 'warehouses'])->orderBy('full_name')->get();
+        return User::with(['roles', 'warehouses', 'branches'])->orderBy('full_name')->get();
     }
 
     /**
@@ -83,6 +100,26 @@ class Users extends Component
     public function allWarehouses(): Collection
     {
         return Warehouse::orderBy('name')->get();
+    }
+
+    /**
+     * @return array<string, string> id => name
+     */
+    #[Computed]
+    public function customers(): array
+    {
+        return Customer::orderBy('name')->pluck('name', 'id')->all();
+    }
+
+    /**
+     * Branches of the chosen customer.
+     *
+     * @return Collection<int, CustomerBranch>
+     */
+    #[Computed]
+    public function customerBranches(): Collection
+    {
+        return CustomerBranch::where('customer_id', $this->customerId === '' ? null : $this->customerId)->orderBy('name')->get();
     }
 
     public function add(): void
@@ -108,6 +145,23 @@ class Users extends Component
 
     public function updated(string $property): void
     {
+        // Branches belong to a customer: another customer, no branches chosen.
+        if ($property === 'customerId') {
+            $this->branchIds = [];
+        }
+
+        // The default warehouse is one of the ticked ones: kept while ticked, the
+        // only one when a single warehouse is ticked, else to be chosen again.
+        if (str_starts_with($property, 'warehouseIds')) {
+            $ticked = array_map('strval', $this->warehouseIds);
+
+            if (count($ticked) === 1) {
+                $this->defaultWarehouseId = $ticked[0];
+            } elseif (! in_array($this->defaultWarehouseId, $ticked, true)) {
+                $this->defaultWarehouseId = '';
+            }
+        }
+
         if ($this->editing !== null) {
             $this->validateOnly(str($property)->before('.')->toString());
         }
@@ -159,6 +213,8 @@ class Users extends Component
             $user->email = $data['email'];
             $user->preferred_lang = $data['preferred_lang'];
             $user->active = $data['active'];
+            $user->customer_id = $data['customerId'] === '' ? null : $data['customerId'];
+            $user->default_warehouse_id = $data['defaultWarehouseId'];
 
             if ($data['password'] !== '') {
                 $user->password_hash = $data['password']; // hashed by the model cast
@@ -167,6 +223,8 @@ class Users extends Component
             $user->save();
             $user->roles()->sync($data['roleIds']);
             $user->warehouses()->sync($data['warehouseIds']);
+            // After the customer is saved: a branch must be of the user's customer (trg_check_user_branch).
+            $user->branches()->sync($user->customer_id === null ? [] : $data['branchIds']);
 
             $after = $this->snapshot($user);
 
@@ -207,6 +265,10 @@ class Users extends Component
             'roleIds.*' => ['integer', 'exists:role,id'],
             'warehouseIds' => ['required', 'array', 'min:1'],
             'warehouseIds.*' => ['integer', 'exists:warehouse,id'],
+            'defaultWarehouseId' => ['required', Rule::in(array_map('strval', $this->warehouseIds))],
+            'customerId' => ['nullable', 'integer', 'exists:customer,id'],
+            'branchIds' => ['array'],
+            'branchIds.*' => ['integer', Rule::exists('customer_branch', 'id')->where('customer_id', $this->customerId === '' ? null : $this->customerId)],
             'active' => ['boolean', $this->staySignedIn($editingSelf)],
         ];
     }
@@ -230,6 +292,12 @@ class Users extends Component
             'roleIds.min' => __('settings.users.errors.role_required'),
             'warehouseIds.required' => __('settings.users.errors.warehouse_required'),
             'warehouseIds.min' => __('settings.users.errors.warehouse_required'),
+            'defaultWarehouseId.required' => __('settings.users.errors.default_warehouse_required'),
+            'defaultWarehouseId.in' => __('settings.users.errors.default_warehouse_required'),
+            'customerId.integer' => __('settings.users.errors.customer_invalid'),
+            'customerId.exists' => __('settings.users.errors.customer_invalid'),
+            'branchIds.*.integer' => __('settings.users.errors.branch_invalid'),
+            'branchIds.*.exists' => __('settings.users.errors.branch_invalid'),
         ];
     }
 
@@ -290,6 +358,10 @@ class Users extends Component
             'active' => (bool) $user->active,
             'roles' => $user->roles()->orderBy('code')->pluck('code')->all(),
             'warehouses' => $user->warehouses()->orderBy('code')->pluck('code')->all(),
+            // The warehouse they actually start in (a user saved before defaults existed has none stored).
+            'default_warehouse' => Warehouse::whereKey($user->fresh()?->defaultWarehouseId())->value('code'),
+            'customer_id' => $user->customer_id,
+            'branches' => $user->branches()->orderBy('code')->pluck('code')->all(),
         ];
     }
 
@@ -304,5 +376,8 @@ class Users extends Component
         $this->active = $user->active ?? true;
         $this->roleIds = $user->exists ? $user->roles()->pluck('role.id')->all() : [];
         $this->warehouseIds = $user->exists ? $user->warehouses()->pluck('warehouse.id')->all() : [];
+        $this->defaultWarehouseId = $user->exists ? (string) $user->defaultWarehouseId() : '';
+        $this->customerId = (string) $user->customer_id;
+        $this->branchIds = $user->exists ? $user->branches()->pluck('customer_branch.id')->all() : [];
     }
 }

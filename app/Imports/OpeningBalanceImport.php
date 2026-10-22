@@ -13,6 +13,7 @@ use App\Services\Stock\Availability;
 use App\Services\Stock\Document;
 use App\Services\Stock\DocumentLine;
 use App\Services\Stock\PostingService;
+use App\Support\CompanyTime;
 use App\Support\Format;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -87,7 +88,7 @@ final class OpeningBalanceImport extends ImportType
 
     public function check(Collection $rows, User $user): array
     {
-        $warehouses = Warehouse::query()->get(['id', 'code', 'name', 'active', 'timezone'])->keyBy(fn (Warehouse $w) => mb_strtoupper($w->code));
+        $warehouses = Warehouse::query()->get(['id', 'code', 'name', 'active'])->keyBy(fn (Warehouse $w) => mb_strtoupper($w->code));
         $customers = Customer::query()->get(['id', 'code', 'active'])->keyBy(fn (Customer $c) => mb_strtoupper($c->code));
         $products = Product::query()->with(['baseUnit', 'units.unit'])
             ->whereIn('customer_id', $customers->pluck('id'))
@@ -198,10 +199,14 @@ final class OpeningBalanceImport extends ImportType
 
                 if ($qty === null || ! PostingService::whole($qty) || (float) $qty <= 0) {
                     $check->error('imports.errors.quantity', ['value' => $v['quantity']]);
+                } elseif (PostingService::tooLarge($qty)) {
+                    $check->error('imports.errors.quantity_too_large', ['value' => $v['quantity'], 'max' => Format::qty(PostingService::MAX_QTY)]);
                 } elseif ($product !== null && $unit !== null) {
                     $base = $product->converter()->toBase($qty, $unit);
 
-                    if (round($base, 4) != $base) {
+                    if (PostingService::tooLarge($qty, $base)) {
+                        $check->error('imports.errors.quantity_too_large', ['value' => $v['quantity'], 'max' => Format::qty(PostingService::MAX_QTY)]);
+                    } elseif (round($base, 4) != $base) {
                         $check->error('stock.errors.not_exact');
                     }
                 }
@@ -217,7 +222,7 @@ final class OpeningBalanceImport extends ImportType
                     $check->error('imports.errors.date', ['value' => $v['expiry_date']]);
                 }
 
-                if ($expiry !== null && $warehouse !== null && $expiry < CarbonImmutable::now($warehouse->timezone)->toDateString()) {
+                if ($expiry !== null && $warehouse !== null && $expiry < CompanyTime::today()->toDateString()) {
                     $check->warn('imports.warnings.expired', ['date' => Format::date(CarbonImmutable::parse($expiry))]);
                 }
             } elseif ($product !== null && ($v['expiry_date'] ?? '') !== '') {
@@ -257,6 +262,7 @@ final class OpeningBalanceImport extends ImportType
             $warehouse = $warehouses[$warehouseCode];
             $customer = $customers[$customerCode];
             $lines = [];
+            $merged = []; // item|unit|expiry => the line key it went into
 
             foreach ($group as $row) {
                 $v = array_map(fn ($value) => trim((string) $value), $row->payload['values']);
@@ -265,13 +271,32 @@ final class OpeningBalanceImport extends ImportType
                     ? $product->converter()->base()
                     : $product->units->first(fn ($pu) => mb_strtoupper($pu->unit->code) === mb_strtoupper($v['unit']))->unit->code;
 
-                // Keyed by spreadsheet row, so a refusal names the row.
+                $qty = $product->track_serial ? '1' : (string) Values::number($v['quantity']);
+                $expiry = $product->track_expiry ? Values::date($v['expiry_date']) : null;
+                $serials = $product->track_serial ? [$v['serial_no']] : [];
+
+                // Rows of the same item, unit and expiry date add up into one line
+                // (rule 12: a document never repeats a line); a serial item's pieces
+                // become one line with all their serials.
+                $same = $product->id.'|'.$unit.'|'.$expiry;
+
+                if (isset($merged[$same])) {
+                    $first = $lines[$merged[$same]];
+                    $serials = [...$first->serials, ...$serials];
+                    $qty = $product->track_serial ? (string) count($serials) : (string) round((float) $first->qty + (float) $qty, 4);
+                    $lines[$merged[$same]] = new DocumentLine($first->productId, $first->unit, $qty, $first->expiry, $serials);
+
+                    continue;
+                }
+
+                // Keyed by the first spreadsheet row, so a refusal names the row.
+                $merged[$same] = 'row'.$row->row_no;
                 $lines['row'.$row->row_no] = new DocumentLine(
                     productId: $product->id,
                     unit: $unit,
-                    qty: $product->track_serial ? '1' : (string) Values::number($v['quantity']),
-                    expiry: $product->track_expiry ? Values::date($v['expiry_date']) : null,
-                    serials: $product->track_serial ? [$v['serial_no']] : [],
+                    qty: $qty,
+                    expiry: $expiry,
+                    serials: $serials,
                 );
             }
 

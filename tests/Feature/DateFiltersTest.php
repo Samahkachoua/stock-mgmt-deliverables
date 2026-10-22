@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Livewire\Reports\ReportPage;
 use App\Livewire\Stock\ItemMovements;
 use App\Livewire\Transactions\TransactionList;
@@ -9,6 +8,7 @@ use App\Services\Stock\Document;
 use App\Services\Stock\DocumentLine;
 use App\Services\Stock\PostingService;
 use App\Support\DateRange;
+use App\Support\Format;
 use App\Support\Notify;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +24,6 @@ use Tests\Support\Stock;
 
 beforeEach(function () {
     $this->stock = Stock::create();
-    session([EnsureCurrentWarehouse::SESSION_KEY => $this->stock->warehouse->id]);
 });
 
 /**
@@ -231,6 +230,30 @@ it('starts the stock card at 0 without a Date from, and at the earlier balance w
         ->and($later->viewData('summary')[0]['value'])->toBe('4 Box');
 });
 
+it('dates, filters and orders the stock card by the documents’ own dates, not when they were entered', function () {
+    $today = CarbonImmutable::now('Asia/Beirut')->startOfDay();
+    // Entered in this order today, but dated 10 days ago, 3 days ago and 5 days ago.
+    $first = datedDocument($this->stock, 'IN', $today->subDays(10)->toDateString(), 60);
+    $last = datedDocument($this->stock, 'OUT', $today->subDays(3)->toDateString(), 12);
+    $middle = datedDocument($this->stock, 'OUT', $today->subDays(5)->toDateString(), 6);
+    $filters = ['customer' => $this->stock->customer->id, 'item' => $this->stock->id('BEANS'), 'warehouse' => $this->stock->warehouse->id];
+    $cells = fn (Testable $page, string $cell) => collect($page->viewData('rows')->items())
+        ->map(fn (array $row) => is_array($row['cells'][$cell]) ? ($row['cells'][$cell]['value'] ?? $row['cells'][$cell]['text']) : $row['cells'][$cell])->all();
+
+    $card = datedReport($this->stock, 'stock-card', $filters);
+    expect($cells($card, 'reference'))->toBe([$first->doc_no, $middle->doc_no, $last->doc_no])
+        ->and($cells($card, 'date'))->toBe([Format::date($today->subDays(10)), Format::date($today->subDays(5)), Format::date($today->subDays(3))])
+        ->and($cells($card, 'balance'))->toBe([60.0, 54.0, 42.0]);
+
+    // Filtered by the document date: opening is what was there before it.
+    $period = datedReport($this->stock, 'stock-card', $filters + ['from' => $today->subDays(6)->toDateString(), 'to' => $today->subDays(4)->toDateString()]);
+    expect($cells($period, 'reference'))->toBe([$middle->doc_no])
+        ->and($cells($period, 'balance'))->toBe([54.0])
+        ->and($period->viewData('summary')[0]['value'])->toBe('5 Box')
+        // Entered today, but nothing is dated today.
+        ->and(datedReport($this->stock, 'stock-card', $filters + ['from' => $today->toDateString()])->viewData('rows')->total())->toBe(0);
+});
+
 it('counts a day as it is in Beirut: 23:30 on the Date to day is included', function () {
     $receipt = $this->stock->post('IN', [$this->stock->line('BEANS', 60)]);
     $issue = $this->stock->post('OUT', [$this->stock->line('BEANS', 12)]);
@@ -244,7 +267,10 @@ it('counts a day as it is in Beirut: 23:30 on the Date to day is included', func
     $filters = ['customer' => $this->stock->customer->id, 'item' => $this->stock->id('BEANS'), 'warehouse' => $this->stock->warehouse->id];
     $references = fn (Testable $page) => collect($page->viewData('rows')->items())->map(fn (array $row) => $row['cells']['reference']['text'])->all();
 
-    // Stock card (movement time).
+    // Stock card: by the documents' own dates (the recording time above doesn't matter).
+    DB::table('stock_transaction')->where('id', $receipt->id)->update(['document_date' => '2026-10-13']);
+    DB::table('stock_transaction')->where('id', $issue->id)->update(['document_date' => '2026-10-14']);
+
     expect($references(datedReport($this->stock, 'stock-card', $filters + ['to' => '2026-10-13'])))->toBe([$receipt->doc_no])
         ->and($references(datedReport($this->stock, 'stock-card', $filters + ['from' => '2026-10-14'])))->toBe([$issue->doc_no])
         ->and($references(datedReport($this->stock, 'stock-card', $filters + ['from' => '2026-10-13', 'to' => '2026-10-13'])))->toBe([$receipt->doc_no]);

@@ -24,7 +24,8 @@ it('shows every role and permission grouped by module', function () {
         ->assertSee(__('permissions.modules.STOCK'))
         ->assertSee(__('permissions.labels.stock_in_create'))
         ->assertSee(__('roles.OPERATOR'))
-        ->assertSet('grants.'.role('CUSTOMER')->id, [permissionId('stock.view')]);
+        ->assertSet('grants.'.role('CUSTOMER')->id, fn (array $ids) => collect($ids)->sort()->values()->all()
+            === collect(['draft.in.create', 'draft.in.view', 'draft.out.create', 'draft.out.view', 'stock.adjustment.view', 'stock.damage.view', 'stock.in.view', 'stock.opening.view', 'stock.out.view', 'stock.transfer.view', 'stock.view'])->map(fn (string $code) => permissionId($code))->sort()->values()->all());
 });
 
 it('saves the matrix and the change applies at once', function () {
@@ -58,7 +59,7 @@ it('records each changed role in the audit log', function () {
         ->and($rows[0]->entity_id)->toBe(role('CUSTOMER')->id)
         ->and($rows[0]->action)->toBe('UPDATE')
         ->and($rows[0]->user_id)->toBe($admin->id)
-        ->and(json_decode($rows[0]->before_data, true)['permissions'])->toBe(['stock.view'])
+        ->and(json_decode($rows[0]->before_data, true)['permissions'])->toBe(['draft.in.create', 'draft.in.view', 'draft.out.create', 'draft.out.view', 'stock.adjustment.view', 'stock.damage.view', 'stock.in.view', 'stock.opening.view', 'stock.out.view', 'stock.transfer.view', 'stock.view'])
         ->and(json_decode($rows[0]->after_data, true)['permissions'])->toBe(['report.view', 'stock.view']);
 });
 

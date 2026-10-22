@@ -2,12 +2,11 @@
 
 namespace App\Support\Transactions;
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Models\StockTransaction;
 use App\Models\User;
 
 /**
- * Documents waiting for this user's approval in the current warehouse, per
+ * Documents waiting for this user's approval in any of their warehouses, per
  * type slug, for the sidebar badges: types the user may approve, not created
  * by the user (they can't approve their own).
  */
@@ -18,16 +17,15 @@ final class PendingApprovals
      */
     public static function bySlug(User $user): array
     {
-        $warehouseId = session(EnsureCurrentWarehouse::SESSION_KEY);
         $types = collect(TransactionTypes::all())
             ->filter(fn (TypeUi $type) => $type->approvePermission() !== null && $user->hasPermission($type->approvePermission()));
 
-        if ($warehouseId === null || $types->isEmpty()) {
+        if ($types->isEmpty()) {
             return [];
         }
 
         return StockTransaction::query()
-            ->where('warehouse_id', $warehouseId)
+            ->whereIn('warehouse_id', $user->warehouseIds())
             ->where('status', 'PENDING_APPROVAL')
             ->where('created_by', '<>', $user->id)
             ->whereIn('transaction_type', $types->keys())

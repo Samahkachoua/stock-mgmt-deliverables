@@ -16,8 +16,8 @@ use Illuminate\Notifications\Notifiable;
  * @property string $email
  * @property string $full_name
  * @property string $password_hash
- * @property bool $is_customer_user
- * @property string|null $customer_id
+ * @property string|null $customer_id set for the customer's own staff (a customer user)
+ * @property string|null $default_warehouse_id where pages start; see defaultWarehouseId()
  * @property string $preferred_lang
  * @property string $preferred_theme
  * @property bool $active
@@ -36,6 +36,9 @@ class User extends Authenticatable
 
     /** @var list<string>|null */
     private ?array $warehouseIds = null;
+
+    /** @var list<string>|null */
+    private ?array $branchIds = null;
 
     /**
      * The attributes that are mass assignable.
@@ -70,7 +73,6 @@ class User extends Authenticatable
     {
         return [
             'password_hash' => 'hashed',
-            'is_customer_user' => 'boolean',
             'active' => 'boolean',
         ];
     }
@@ -117,6 +119,64 @@ class User extends Authenticatable
     public function canAccessWarehouse(?string $warehouseId): bool
     {
         return $warehouseId !== null && in_array($warehouseId, $this->warehouseIds(), true);
+    }
+
+    /**
+     * The warehouse forms, lists and reports start on: the user's default
+     * (app_user.default_warehouse_id) while it is still one of their active
+     * warehouses, else the first of those by name; null when they have none.
+     */
+    public function defaultWarehouseId(): ?string
+    {
+        if ($this->default_warehouse_id !== null && $this->canAccessWarehouse((string) $this->default_warehouse_id)) {
+            return (string) $this->default_warehouse_id;
+        }
+
+        return $this->assignedWarehouses()->first()?->id;
+    }
+
+    /**
+     * The customer's own staff: a user linked to a customer. They only ever see
+     * that customer's data (CustomerScope).
+     */
+    public function isCustomerUser(): bool
+    {
+        return $this->customer_id !== null;
+    }
+
+    /**
+     * Branches of their customer a customer user works for (optional).
+     *
+     * @return BelongsToMany<CustomerBranch, $this>
+     */
+    public function branches(): BelongsToMany
+    {
+        return $this->belongsToMany(CustomerBranch::class, 'user_customer_branch', 'user_id', 'branch_id');
+    }
+
+    /**
+     * Ids of the branches this user is limited to; empty = no branch limit
+     * (staff, or a customer user linked to none). Memoized for the request.
+     *
+     * @return list<string>
+     */
+    public function branchIds(): array
+    {
+        return $this->branchIds ??= $this->isCustomerUser() ? $this->branches()->pluck('customer_branch.id')->all() : [];
+    }
+
+    /**
+     * Whether this user may work with drafts of the given branch: any branch for
+     * staff; for a customer user, a branch of their customer, and one of theirs
+     * when they are linked to some.
+     */
+    public function canUseBranch(string $branchId, string $customerId): bool
+    {
+        if (! $this->isCustomerUser()) {
+            return true;
+        }
+
+        return $customerId === $this->customer_id && ($this->branchIds() === [] || in_array($branchId, $this->branchIds(), true));
     }
 
     /**

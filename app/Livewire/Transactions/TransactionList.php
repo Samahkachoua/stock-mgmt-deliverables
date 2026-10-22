@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Transactions;
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Livewire\Concerns\DefersRows;
 use App\Livewire\Concerns\RemembersListState;
 use App\Models\Customer;
+use App\Models\User;
 use App\Support\DateRange;
 use App\Support\Ids;
 use App\Support\Notify;
@@ -15,6 +15,7 @@ use App\Support\Transactions\TransactionTypes;
 use App\Support\Transactions\TypeUi;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -56,22 +57,32 @@ class TransactionList extends Component
     /** Transfers: '' (both), incoming or outgoing. */
     public string $direction = '';
 
+    /** One of the user's warehouses, or 'all' of them; starts on their default warehouse. */
+    public string $warehouse = '';
+
+    /** @var array<string, string>|null per-request cache: the user's warehouses, id => name */
+    private ?array $warehouses = null;
+
     public function mount(string $type): void
     {
-        Gate::authorize('stock.view');
-
         $this->type = TransactionTypes::get($type)->code;
+        Gate::authorize($this->typeUi()->viewGate());
+        $this->warehouse = $this->validWarehouse($this->warehouse);
     }
 
     public function updating(string $property): void
     {
-        if (in_array($property, ['search', 'customer', 'dateFrom', 'dateTo', 'status', 'direction'], true)) {
+        if (in_array($property, ['search', 'customer', 'dateFrom', 'dateTo', 'status', 'direction', 'warehouse'], true)) {
             $this->resetPage();
         }
     }
 
     public function updated(string $property): void
     {
+        if ($property === 'warehouse') {
+            $this->warehouse = $this->validWarehouse($this->warehouse);
+        }
+
         if (! in_array($property, ['dateFrom', 'dateTo'], true)) {
             return;
         }
@@ -86,6 +97,8 @@ class TransactionList extends Component
     public function resetFilters(): void
     {
         $this->clearListState();
+        // Back to the user's default warehouse.
+        $this->warehouse = $this->validWarehouse('');
     }
 
     protected function listStateKey(): string
@@ -95,13 +108,14 @@ class TransactionList extends Component
 
     protected function listStateProperties(): array
     {
-        return ['search', 'customer', 'dateFrom', 'dateTo', 'status', 'direction'];
+        return ['search', 'customer', 'dateFrom', 'dateTo', 'status', 'direction', 'warehouse'];
     }
 
     protected function restoredListState(): void
     {
         $this->dateFrom = DateRange::day($this->dateFrom);
         $this->dateTo = DateRange::day($this->dateTo);
+        $this->warehouse = $this->validWarehouse($this->warehouse);
 
         // A remembered status this type can't have would filter on a choice the list no longer offers.
         if (! array_key_exists($this->status, Statuses::options($this->typeUi()))) {
@@ -126,17 +140,21 @@ class TransactionList extends Component
                 'incoming' => __('transfers.direction.incoming'),
                 'outgoing' => __('transfers.direction.outgoing'),
             ] : null,
+            // A warehouse filter (and column) only for users who work in more than one.
+            'warehouses' => count($this->warehouseOptions()) > 1
+                ? ['all' => __('transactions.filters.all_warehouses')] + $this->warehouseOptions()
+                : null,
         ])->title($type->label('title'));
     }
 
     /**
-     * Documents of this type in the current warehouse.
+     * Documents of this type in the chosen warehouse, or all the user's.
      *
      * @return LengthAwarePaginator<int, ListRow>
      */
     private function documents(TypeUi $type, bool $pendingFirst): LengthAwarePaginator
     {
-        $warehouseId = (string) session(EnsureCurrentWarehouse::SESSION_KEY);
+        $warehouseIds = $this->warehouse === 'all' ? array_keys($this->warehouseOptions()) : [$this->warehouse];
         $dates = $this->dates();
 
         // "Date from" after "Date to": no query; the page shows the error.
@@ -144,7 +162,7 @@ class TransactionList extends Component
             return new LengthAwarePaginator([], 0, self::PER_PAGE, 1);
         }
 
-        return $this->pageInRange(fn (int $page) => Documents::page($type, $warehouseId, [
+        return $this->pageInRange(fn (int $page) => Documents::page($type, array_map('strval', $warehouseIds), [
             'search' => $this->search,
             'customer' => Ids::valid($this->customer) ? $this->customer : '',
             'status' => $this->status,
@@ -157,6 +175,33 @@ class TransactionList extends Component
     private function dates(): DateRange
     {
         return new DateRange($this->dateFrom, $this->dateTo);
+    }
+
+    /**
+     * The user's active warehouses, id => name.
+     *
+     * @return array<string, string>
+     */
+    private function warehouseOptions(): array
+    {
+        $user = Auth::user();
+
+        return $this->warehouses ??= $user instanceof User ? $user->assignedWarehouses()->pluck('name', 'id')->all() : [];
+    }
+
+    /**
+     * 'all', or one of the user's warehouses; anything else (nothing yet, a
+     * warehouse taken away) becomes their default warehouse.
+     */
+    private function validWarehouse(string $value): string
+    {
+        if ($value === 'all' || array_key_exists($value, $this->warehouseOptions())) {
+            return $value;
+        }
+
+        $user = Auth::user();
+
+        return $user instanceof User ? (string) $user->defaultWarehouseId() : '';
     }
 
     private function typeUi(): TypeUi

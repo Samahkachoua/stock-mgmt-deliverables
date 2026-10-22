@@ -5,6 +5,7 @@ namespace App\Reports;
 use App\Models\StockTransaction;
 use App\Models\User;
 use App\Services\Stock\PostingService;
+use App\Support\CompanyTime;
 use App\Support\Format;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -77,7 +78,7 @@ final class TransferShortagesReport extends Report
             ->select([
                 'stock_transaction.doc_no', 'stock_transaction.received_at',
                 'l.product_id', 'l.qty_base', 'l.qty_received', 'l.shortage_reason',
-                'wf.name as from_name', 'wt.name as to_name', 'wt.timezone', 'c.name as customer_name', 'r.full_name as received_by_name',
+                'wf.name as from_name', 'wt.name as to_name', 'c.name as customer_name', 'r.full_name as received_by_name',
             ])
             ->orderByDesc('stock_transaction.received_at')
             ->orderBy('l.line_no');
@@ -89,7 +90,7 @@ final class TransferShortagesReport extends Report
         $short = (float) $row->qty_base - (float) $row->qty_received;
 
         return [
-            'received_on' => Format::date(CarbonImmutable::parse($row->received_at)->setTimezone($row->timezone)),
+            'received_on' => Format::date(CarbonImmutable::parse($row->received_at)->setTimezone(CompanyTime::zone())),
             'reference' => $this->referenceCell($row->doc_no),
             'from' => (string) $row->from_name,
             'to' => (string) $row->to_name,

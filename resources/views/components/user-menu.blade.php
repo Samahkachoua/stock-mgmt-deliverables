@@ -11,9 +11,6 @@
     >
         <span class="hidden flex-col text-end leading-tight md:flex">
             <span class="text-body font-semibold text-fg">{{ $user->full_name }}</span>
-            @isset($currentWarehouse)
-                <span class="text-small font-semibold text-muted">{{ $currentWarehouse->name }}</span>
-            @endisset
         </span>
         <span class="grid size-9 place-items-center rounded-full bg-brand text-on-brand">
             <x-icon name="person" class="size-5" />

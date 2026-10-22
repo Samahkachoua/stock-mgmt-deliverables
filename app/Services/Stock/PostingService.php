@@ -3,9 +3,11 @@
 namespace App\Services\Stock;
 
 use App\Models\Product;
+use App\Models\StockDraft;
 use App\Models\StockTransaction;
 use App\Models\User;
 use App\Services\Stock\Exceptions\AlreadyProcessed;
+use App\Services\Stock\Exceptions\DuplicateLine;
 use App\Services\Stock\Exceptions\InsufficientStock;
 use App\Services\Stock\Exceptions\NotAllowed;
 use App\Services\Stock\Exceptions\PostingRejected;
@@ -15,6 +17,8 @@ use App\Services\Stock\Exceptions\StaleCount;
 use App\Services\Stock\Exceptions\StockAlreadyUsed;
 use App\Services\Stock\Exceptions\StockException;
 use App\Support\Audit;
+use App\Support\CompanyTime;
+use App\Support\Drafts\DraftTypes;
 use App\Support\Format;
 use App\Support\Transactions\TransactionTypes;
 use App\Support\Transactions\TypeUi;
@@ -34,7 +38,8 @@ use Illuminate\Support\Str;
  * Adjustment either POSTED or, at its approval limit, PENDING_APPROVAL with no
  * movements until approve() (or reject()) — unless its creator may approve
  * that type: then it is posted at once. cancel() reverses a posted
- * document. Each runs in one DB::transaction: the
+ * document. confirmDraft() turns a draft receipt / issue into one posted
+ * document per warehouse. Each runs in one DB::transaction: the
  * reference number, header, lines, serials, movements and audit entry are
  * saved together or not at all. Every movement goes through fn_post_movement,
  * which updates stock_balance and refuses negative stock.
@@ -61,6 +66,32 @@ final class PostingService
     public static function whole(string $qty): bool
     {
         return preg_match('/^[+-]?\d+$/', trim($qty)) === 1;
+    }
+
+    /** Most a user may enter on one line, in the line's unit: catches extra zeros and pasted barcodes. */
+    public const MAX_QTY = 999999;
+
+    /**
+     * Most a line may come to in the base unit (quantity × unit factor): far
+     * below what stock_movement.qty_base (NUMERIC(18,4)) can hold.
+     */
+    public const MAX_BASE = 99999999999;
+
+    /**
+     * More than MAX_QTY in the line's unit, or (with $base) more than MAX_BASE
+     * in the base unit. The forms and the import check with this too.
+     */
+    public static function tooLarge(string $qty, ?float $base = null): bool
+    {
+        return (float) trim($qty) > self::MAX_QTY || ($base !== null && $base > self::MAX_BASE);
+    }
+
+    /**
+     * "At most 999,999 per line…", shown under the field like any line error.
+     */
+    public static function tooLargeError(string $key, string $field = 'qty'): PostingRejected
+    {
+        return new PostingRejected('transactions.form.errors.too_large', ['max' => Format::qty(self::MAX_QTY)], $key, $field);
     }
 
     /**
@@ -275,6 +306,10 @@ final class PostingService
                     throw new PostingRejected('transactions.form.errors.not_negative', [], $line->id, 'received');
                 }
 
+                if (self::tooLarge($text)) {
+                    throw self::tooLargeError($line->id, 'received');
+                }
+
                 $receivedBase = $product->converter()->toBase($text, $line->unit_code);
 
                 if ($receivedBase > $sentBase + 1e-9) {
@@ -431,12 +466,14 @@ final class PostingService
             ->findMany(array_map(fn (DocumentLine $line) => $line->productId, $document->lines))
             ->keyBy('id');
 
+        $this->assertNoDuplicateLines($type, $document, $products);
+
         if ($type->supportsApproval()) {
             return $this->submit($type, $document, $by, $warehouse, $products);
         }
 
         $transactionId = (string) DB::table('stock_transaction')->insertGetId([
-            'doc_no' => $this->numbers->next($type, CarbonImmutable::now($warehouse->timezone)->year),
+            'doc_no' => $this->numbers->next($type, CompanyTime::now()->year),
             'transaction_type' => $type->code,
             // A transfer stays In transit until the destination confirms receipt.
             'status' => $transfer ? 'DISPATCHED' : 'POSTED',
@@ -447,6 +484,8 @@ final class PostingService
             'document_date' => $document->date->toDateString(),
             'created_by' => $by->id,
             'client_request_id' => $this->requestId($document),
+            'draft_id' => $document->draftId,
+            'customer_branch_id' => $document->branchId,
             'dispatched_at' => $transfer ? now() : null,
             'dispatched_by' => $transfer ? $by->id : null,
             'posted_at' => $transfer ? null : now(),
@@ -466,6 +505,10 @@ final class PostingService
             $qty = $this->quantity($line->qty, $key);
             $qtyBase = $converter->toBase($qty, $line->unit);
 
+            if (self::tooLarge((string) $qty, $qtyBase)) {
+                throw self::tooLargeError($key);
+            }
+
             if (round($qtyBase, 4) != $qtyBase) {
                 throw new PostingRejected('stock.errors.not_exact', [], $key, 'qty');
             }
@@ -484,6 +527,8 @@ final class PostingService
                 'unit' => $product->units->firstWhere('unit.code', $line->unit)->unit_id,
                 'qty' => $qty,
                 'qty_base' => $qtyBase,
+                // Stock going out on a document dated back is what was here on that date.
+                'date' => $document->date,
             ];
 
             $type->postingDirection() === 'IN'
@@ -501,6 +546,40 @@ final class PostingService
         ], $by->id);
 
         return $transaction;
+    }
+
+    /**
+     * No two lines with the same key (CLAUDE.md rule 12, TypeUi::lineKey()):
+     * the later one is refused, naming the earlier line's number.
+     *
+     * @param  Collection<string, Product>  $products
+     *
+     * @throws DuplicateLine
+     */
+    private function assertNoDuplicateLines(TypeUi $type, Document $document, Collection $products): void
+    {
+        $seen = [];
+        $number = 0;
+
+        foreach ($document->lines as $key => $line) {
+            $number++;
+            $product = $products[$line->productId] ?? null;
+
+            if ($product === null) {
+                continue; // refused later, under its own row
+            }
+
+            $expiry = filled($line->expiry) ? trim((string) $line->expiry) : null;
+            $lineKey = $type->lineKey($product->id, $line->unit, $expiry, $product->track_expiry);
+
+            if (isset($seen[$lineKey])) {
+                [$message, $params] = $type->duplicateMessage($product->name(), $line->unit, $expiry, $product->track_expiry, $seen[$lineKey]['number']);
+
+                throw new DuplicateLine($message, $params, (string) $key, $seen[$lineKey]['key']);
+            }
+
+            $seen[$lineKey] = ['key' => (string) $key, 'number' => $number];
+        }
     }
 
     /**
@@ -571,16 +650,107 @@ final class PostingService
     }
 
     /**
-     * "Already received by Nour at 10:42": who got there first and when, in the
-     * warehouse's own time.
+     * Confirms a draft receipt / issue: its lines, grouped by warehouse, become
+     * one posted document of the draft's type per warehouse (in the order the
+     * warehouses first appear on the draft), each linked to the draft and its
+     * branch, dated today in that warehouse. All of them or none: when one line
+     * can't be posted (not enough stock, a serial gone...), nothing is.
+     *
+     * Anyone with the type's confirm permission who works in every warehouse of
+     * the draft may confirm it, its creator included.
+     *
+     * @return list<StockTransaction> the documents created, in that order
+     *
+     * @throws StockException with the draft line id as row
      */
-    private function alreadyProcessed(string $key, ?string $userId, ?string $at, string $warehouseId): AlreadyProcessed
+    public function confirmDraft(StockDraft $draft, User $by): array
     {
-        $timezone = DB::table('warehouse')->where('id', $warehouseId)->value('timezone') ?: config('app.timezone');
+        return $this->translateDatabaseErrors(fn () => DB::transaction(function () use ($draft, $by) {
+            // Lock the draft first: a second "Confirm", or an edit, waits here and then finds it confirmed.
+            $header = DB::table('stock_draft')->where('id', $draft->id)->lockForUpdate()->first();
+            $kind = DraftTypes::get($header->transaction_type);
 
+            if ($header->status !== 'DRAFT') {
+                throw $header->status === 'POSTED'
+                    ? $this->alreadyProcessed('drafts.errors.already_confirmed', $header->confirmed_by, $header->confirmed_at, null)
+                    : new AlreadyProcessed('drafts.errors.already_cancelled');
+            }
+
+            if (! $by->hasPermission($kind->confirmPermission()) || ! $by->canUseBranch($header->customer_branch_id, $header->customer_id)) {
+                throw new NotAllowed('drafts.errors.cannot_confirm');
+            }
+
+            $lines = DB::table('stock_draft_line as l')
+                ->join('unit as u', 'u.id', '=', 'l.unit_id')
+                ->where('l.draft_id', $header->id)
+                ->orderBy('l.line_no')
+                ->get(['l.*', 'u.code as unit_code']);
+
+            if ($lines->isEmpty()) {
+                throw new PostingRejected('transactions.form.add_a_line');
+            }
+
+            foreach ($lines->pluck('warehouse_id')->unique() as $warehouseId) {
+                if (! $by->canAccessWarehouse($warehouseId)) {
+                    throw new NotAllowed('drafts.errors.warehouse_not_allowed', [
+                        'warehouse' => (string) DB::table('warehouse')->where('id', $warehouseId)->value('name'),
+                    ]);
+                }
+            }
+
+            $created = [];
+
+            foreach ($lines->groupBy('warehouse_id') as $warehouseId => $group) {
+                $documentLines = [];
+
+                foreach ($group as $line) {
+                    $documentLines[(string) $line->id] = new DocumentLine(
+                        productId: $line->product_id,
+                        unit: $line->unit_code,
+                        qty: (string) (int) round((float) $line->qty_entered),
+                        expiry: $line->expiry_date,
+                        serials: json_decode((string) $line->serials, true) ?: [],
+                    );
+                }
+
+                $created[] = $this->postDocument($kind->type, new Document(
+                    type: $kind->type->code,
+                    warehouseId: (string) $warehouseId,
+                    customerId: $header->customer_id,
+                    date: $this->availability->today((string) $warehouseId),
+                    note: $header->reference_note,
+                    lines: $documentLines,
+                    draftId: $header->id,
+                    branchId: $header->customer_branch_id,
+                ), $by);
+            }
+
+            DB::table('stock_draft')->where('id', $header->id)->update([
+                'status' => 'POSTED',
+                'confirmed_by' => $by->id,
+                'confirmed_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            Audit::record('stock_draft', $header->id, 'CONFIRM',
+                ['doc_no' => $header->doc_no, 'status' => 'DRAFT'],
+                ['doc_no' => $header->doc_no, 'status' => 'POSTED', 'documents' => array_map(fn (StockTransaction $t) => $t->doc_no, $created)],
+                $by->id,
+            );
+
+            return $created;
+        }));
+    }
+
+    /**
+     * "Already received by Nour at 10:42": who got there first and when, in the
+     * company's time zone (Format::dateTime()).
+     */
+    private function alreadyProcessed(string $key, ?string $userId, ?string $at, ?string $warehouseId): AlreadyProcessed
+    {
         return new AlreadyProcessed($key, [
             'name' => (string) DB::table('app_user')->where('id', $userId)->value('full_name'),
-            'time' => $at === null ? '' : Format::dateTime(CarbonImmutable::parse($at)->setTimezone($timezone)),
+            'time' => $at === null ? '' : Format::dateTime(CarbonImmutable::parse($at)),
         ]);
     }
 
@@ -647,7 +817,7 @@ final class PostingService
 
             $prepared = $type->countsStock()
                 ? $this->prepareCount($product, $line, $warehouse->id, $document->customerId, $key, $seen)
-                : $this->prepareRemoval($type, $product, $line, $warehouse->id, $document->customerId, $key, $seen);
+                : $this->prepareRemoval($type, $product, $line, $warehouse->id, $document->customerId, $document->date, $key, $seen);
 
             if ($prepared !== null) {
                 $lines[$key] = $prepared;
@@ -669,7 +839,7 @@ final class PostingService
         $pending = $overLimit && ! $selfApproved;
 
         $transactionId = (string) DB::table('stock_transaction')->insertGetId([
-            'doc_no' => $this->numbers->next($type, CarbonImmutable::now($warehouse->timezone)->year),
+            'doc_no' => $this->numbers->next($type, CompanyTime::now()->year),
             'transaction_type' => $type->code,
             'status' => $pending ? 'PENDING_APPROVAL' : 'POSTED',
             'warehouse_id' => $warehouse->id,
@@ -729,14 +899,19 @@ final class PostingService
      * there must be enough in stock now, expired stock included when the type
      * uses them. An expiry date chosen on the line is kept on it (and must have
      * enough on its own); otherwise dates are chosen (FEFO) when it is posted.
+     * Dated before today, only what was here on that date counts.
      *
      * @param  array<string, mixed>  $seen  quantities and serials taken by earlier lines
      * @return array<string, mixed>
      */
-    private function prepareRemoval(TypeUi $type, Product $product, DocumentLine $line, string $warehouseId, string $customerId, string $key, array &$seen): array
+    private function prepareRemoval(TypeUi $type, Product $product, DocumentLine $line, string $warehouseId, string $customerId, CarbonImmutable $date, string $key, array &$seen): array
     {
         $qty = $this->quantity($line->qty, $key);
         $qtyBase = $product->converter()->toBase($qty, $line->unit);
+
+        if (self::tooLarge((string) $qty, $qtyBase)) {
+            throw self::tooLargeError($key);
+        }
 
         if (round($qtyBase, 4) != $qtyBase) {
             throw new PostingRejected('stock.errors.not_exact', [], $key, 'qty');
@@ -750,8 +925,9 @@ final class PostingService
 
         if ($product->track_serial) {
             $seenSerials = $seen['serials'] ?? [];
+            $picked = $this->serials($line, $qtyBase, $seenSerials, $key);
 
-            foreach ($this->serials($line, $qtyBase, $seenSerials, $key) as $serial) {
+            foreach ($picked as $serial) {
                 $row = DB::table('serial_number')->where('product_id', $product->id)->where('serial_no', $serial)->first();
 
                 if ($row === null || $row->status !== 'IN_STOCK' || $row->warehouse_id !== $warehouseId) {
@@ -761,6 +937,7 @@ final class PostingService
                 $serialIds[] = $row->id;
             }
 
+            $this->checkSerialsOnDate($warehouseId, $product->id, $picked, $date, $key);
             $seen['serials'] = $seenSerials;
         }
 
@@ -770,24 +947,28 @@ final class PostingService
         $expiry = $product->track_expiry ? $this->chosenExpiry($line, $key) : null;
         $seenKey = 'qty|'.$product->id;
 
-        if ($expiry !== null) {
-            $lot = collect($this->availability->rows($warehouseId, $customerId, $product->id))->firstWhere('expiry', $expiry)
-                ?? throw new PostingRejected('transactions.form.errors.expiry_not_here', [], $key, 'expiry');
+        $lot = $expiry === null ? null : (collect($this->availability->rows($warehouseId, $customerId, $product->id))->firstWhere('expiry', $expiry)
+            ?? throw new PostingRejected('transactions.form.errors.expiry_not_here', [], $key, 'expiry'));
 
+        if ($lot !== null) {
             if ($lot['expired'] && ! $type->usesExpired()) {
                 throw new PostingRejected('stock.errors.expiry_expired', ['date' => Format::date(CarbonImmutable::parse($expiry))], $key, 'expiry');
             }
 
             $seenKey .= '|'.$expiry;
-            $available = $lot['qty'];
-        } else {
-            $available = $this->availability->quantity($warehouseId, $customerId, $product->id, excludeExpired: ! $type->usesExpired());
         }
 
         $taken = $seen[$seenKey] ?? 0.0;
 
-        if ($available - $taken < $qtyBase - 1e-9) {
-            throw Availability::notEnough($product, $warehouseId, max($available - $taken, 0), $qtyBase, row: $key);
+        // Now, and (dated back) on the document's date.
+        foreach ($this->availability->isBackdated($warehouseId, $date) ? [null, $date] : [null] as $on) {
+            $available = $lot !== null
+                ? (float) (collect($this->availability->rows($warehouseId, $customerId, $product->id, $on))->firstWhere('expiry', $expiry)['qty'] ?? 0)
+                : $this->availability->quantity($warehouseId, $customerId, $product->id, excludeExpired: ! $type->usesExpired(), date: $on);
+
+            if ($available - $taken < $qtyBase - 1e-9) {
+                throw Availability::notEnough($product, $warehouseId, max($available - $taken, 0), $qtyBase, row: $key, date: $on);
+            }
         }
 
         $seen[$seenKey] = $taken + $qtyBase;
@@ -867,6 +1048,10 @@ final class PostingService
 
             $counted = $converter->toBase($text, $line->unit);
 
+            if (self::tooLarge($text, $counted)) {
+                throw self::tooLargeError($key);
+            }
+
             if (round($counted, 4) != $counted) {
                 throw new PostingRejected('stock.errors.not_exact', [], $key, 'qty');
             }
@@ -913,6 +1098,8 @@ final class PostingService
     {
         $lines = DB::table('stock_transaction_line')->where('transaction_id', $header->id)->orderBy('line_no')->get();
         $products = Product::withoutGlobalScopes()->with(['baseUnit', 'units.unit'])->findMany($lines->pluck('product_id')->unique())->keyBy('id');
+        // Damage dated back: only what was here on that date can go out.
+        $date = CarbonImmutable::parse($header->document_date);
 
         foreach ($lines as $line) {
             $product = $products[$line->product_id];
@@ -935,10 +1122,10 @@ final class PostingService
                 $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, $line->expiry_date, $line->direction, (float) $line->qty_base);
             } elseif ($product->track_expiry && $line->expiry_date !== null) {
                 // The expiry date the user chose when saving.
-                $this->availability->takeExpiry($product, $header->warehouse_id, $header->customer_id, $line->expiry_date, (float) $line->qty_base, $type->usesExpired(), $key);
+                $this->availability->takeExpiry($product, $header->warehouse_id, $header->customer_id, $line->expiry_date, (float) $line->qty_base, $type->usesExpired(), $key, $date);
                 $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, $line->expiry_date, 'OUT', (float) $line->qty_base);
             } elseif ($product->track_expiry) {
-                $allocations = $this->availability->allocate($product, $header->warehouse_id, $header->customer_id, (float) $line->qty_base, $type->usesExpired(), $key);
+                $allocations = $this->availability->allocate($product, $header->warehouse_id, $header->customer_id, (float) $line->qty_base, $type->usesExpired(), $key, $date);
 
                 if (count($allocations) === 1) {
                     DB::table('stock_transaction_line')->where('id', $line->id)->update(['expiry_date' => $allocations[0]['expiry']]);
@@ -954,9 +1141,17 @@ final class PostingService
                     throw Availability::notEnough($product, $header->warehouse_id, $available, (float) $line->qty_base, row: $key);
                 }
 
+                $then = $this->availability->usable($available, $header->warehouse_id, $header->customer_id, $product->id, null, $date);
+
+                if ($then < (float) $line->qty_base - 1e-9) {
+                    throw Availability::notEnough($product, $header->warehouse_id, $then, (float) $line->qty_base, row: $key, date: $date);
+                }
+
                 if ($gone !== null) {
                     throw new SerialProblem('stock.errors.serial_not_in_stock', ['serial' => $gone->serial_no], $gone->serial_no, $key);
                 }
+
+                $this->checkSerialsOnDate($header->warehouse_id, $product->id, $serials->pluck('serial_no')->all(), $date, $key);
 
                 $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, null, 'OUT', (float) $line->qty_base);
             }
@@ -1038,7 +1233,8 @@ final class PostingService
      * first (FEFO), possibly from several dates (one movement per date); serial
      * items take exactly the serials picked, which must be in stock here. For a
      * transfer ($inTransit) the stock is recorded in in_transit_balance and its
-     * serials are In transit, not issued.
+     * serials are In transit, not issued. Dated back, only what was here on
+     * the document's date can go out.
      *
      * @param  array<string, mixed>  $context
      * @param  list<string>  $serials
@@ -1046,13 +1242,14 @@ final class PostingService
     private function postOut(array $context, Product $product, ?string $expiry, array $serials, bool $useExpired, string $key, bool $inTransit = false): void
     {
         $needed = $context['qty_base'];
+        $date = $context['date'];
 
         if ($product->track_expiry) {
             if ($expiry !== null) {
-                $this->availability->takeExpiry($product, $context['warehouse'], $context['customer'], $expiry, $needed, $useExpired, $key);
+                $this->availability->takeExpiry($product, $context['warehouse'], $context['customer'], $expiry, $needed, $useExpired, $key, $date);
                 $allocations = [['expiry' => $expiry, 'qty' => $needed]];
             } else {
-                $allocations = $this->availability->allocate($product, $context['warehouse'], $context['customer'], $needed, $useExpired, $key);
+                $allocations = $this->availability->allocate($product, $context['warehouse'], $context['customer'], $needed, $useExpired, $key, $date);
             }
 
             $lineId = $this->insertLine($context, $product, count($allocations) === 1 ? $allocations[0]['expiry'] : null);
@@ -1074,6 +1271,12 @@ final class PostingService
             throw Availability::notEnough($product, $context['warehouse'], $available, $needed, row: $key);
         }
 
+        $then = $this->availability->usable($available, $context['warehouse'], $context['customer'], $product->id, null, $date);
+
+        if ($then < $needed - 1e-9) {
+            throw Availability::notEnough($product, $context['warehouse'], $then, $needed, row: $key, date: $date);
+        }
+
         $serialIds = [];
         foreach ($serials as $serial) {
             $row = DB::table('serial_number')->where('product_id', $product->id)->where('serial_no', $serial)->lockForUpdate()->first();
@@ -1085,6 +1288,8 @@ final class PostingService
             $serialIds[] = $row->id;
         }
 
+        $this->checkSerialsOnDate($context['warehouse'], $product->id, $serials, $date, $key);
+
         $lineId = $this->insertLine($context, $product, null);
         $this->move($context['transaction'], $lineId, $context['warehouse'], $context['customer'], $product->id, null, 'OUT', $needed);
 
@@ -1095,6 +1300,21 @@ final class PostingService
         foreach ($serialIds as $serialId) {
             DB::table('serial_number')->where('id', $serialId)->update(['warehouse_id' => null, 'status' => $inTransit ? 'IN_TRANSIT' : 'ISSUED', 'updated_at' => now()]);
             DB::table('stock_transaction_line_serial')->insert(['line_id' => $lineId, 'serial_id' => $serialId]);
+        }
+    }
+
+    /**
+     * Serials going out on a document dated back must have been here on that
+     * date: one that arrived (again) later is refused.
+     *
+     * @param  list<string>  $serials
+     */
+    private function checkSerialsOnDate(string $warehouseId, string $productId, array $serials, CarbonImmutable $date, ?string $key): void
+    {
+        $late = array_values(array_diff($serials, $this->availability->serialsOnDate($warehouseId, $productId, $serials, $date)));
+
+        if ($late !== []) {
+            throw new SerialProblem('stock.errors.serial_not_on_date', ['serial' => $late[0], 'date' => Format::date($date)], $late[0], $key);
         }
     }
 
@@ -1196,6 +1416,10 @@ final class PostingService
 
         if ((float) $text <= 0) {
             throw new PostingRejected('transactions.form.errors.more_than_zero', [], $key, 'qty');
+        }
+
+        if (self::tooLarge($text)) {
+            throw self::tooLargeError($key);
         }
 
         return (float) $text;

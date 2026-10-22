@@ -29,6 +29,7 @@ return [
 
     'errors' => [
         'not_enough' => 'Seulement :qty de :item disponible à :warehouse.',
+        'not_enough_on_date' => 'Le :date, seulement :qty de :item était disponible à :warehouse. Le stock arrivé plus tard ne peut pas sortir à cette date.',
         'not_enough_plain' => 'Stock insuffisant : seulement :qty (unités de base) disponible.',
         'not_enough_with_expired' => 'Seulement :qty de :item disponible non périmé à :warehouse (:expired de plus est périmé).',
         'only_expired' => 'Le reste de :item à :warehouse (:qty) est périmé. Le stock périmé ne peut pas sortir.',
@@ -42,6 +43,7 @@ return [
         'serial_twice' => 'Le numéro de série :serial est saisi deux fois.',
         'serial_in_stock' => 'Le numéro de série :serial est déjà en stock.',
         'serial_not_in_stock' => 'Le numéro de série :serial n’est pas en stock dans cet entrepôt.',
+        'serial_not_on_date' => 'Le numéro de série :serial est arrivé dans cet entrepôt après le :date ; il ne peut pas sortir à cette date.',
         'expiry_expired' => 'Le stock qui expire le :date est périmé. Le stock périmé ne peut pas sortir ainsi.',
         'cannot_cancel_status' => 'Seuls les documents terminés peuvent être annulés.',
         'already_used' => 'Une partie de ce stock est déjà sortie : :item reçu :received, il ne reste que :left. Il ne peut pas être annulé.',

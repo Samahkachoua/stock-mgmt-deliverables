@@ -48,6 +48,11 @@ return [
             'body' => ':name can no longer be chosen for new transactions. You can turn it back on later.',
             'button' => 'Deactivate customer',
         ],
+        'customer_branch' => [
+            'title' => 'Deactivate branch :name?',
+            'body' => ':name can no longer be chosen on new drafts. You can turn it back on later.',
+            'button' => 'Deactivate branch',
+        ],
         'item' => [
             'title' => 'Deactivate item :name?',
             'body' => ':name can no longer be chosen on new transactions. You can turn it back on later.',

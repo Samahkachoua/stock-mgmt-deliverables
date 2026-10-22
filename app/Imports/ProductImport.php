@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\Items\ItemWriter;
+use App\Support\StorageStatuses;
 use Illuminate\Support\Collection;
 
 /**
@@ -48,6 +49,7 @@ final class ProductImport extends ImportType
             new Column('base_unit', required: true),
             new Column('tracks_expiry'),
             new Column('tracks_serial'),
+            new Column('storage_status'),
             new Column('approval_limit'),
         ];
 
@@ -64,6 +66,7 @@ final class ProductImport extends ImportType
         return [
             __('imports.codes.customers') => Customer::where('active', true)->orderBy('code')->pluck('name', 'code')->all(),
             __('imports.codes.units') => Unit::orderBy('code')->get()->mapWithKeys(fn (Unit $unit) => [$unit->code => $unit->label()])->all(),
+            __('imports.codes.storage_statuses') => StorageStatuses::options(plain: true),
             __('imports.codes.yes_no') => ['Y' => __('imports.codes.yes'), 'N' => __('imports.codes.no')],
         ];
     }
@@ -72,6 +75,7 @@ final class ProductImport extends ImportType
     {
         $customers = Customer::query()->get(['id', 'code', 'name', 'active'])->keyBy(fn (Customer $c) => mb_strtoupper($c->code));
         $units = Unit::all()->keyBy(fn (Unit $u) => mb_strtoupper($u->code));
+        $storageStatuses = StorageStatuses::all();
 
         // Item codes already used, per customer of the file.
         $customerIds = $rows->map(fn ($row) => $customers[mb_strtoupper(trim($row->payload['values']['customer_code'] ?? ''))]->id ?? null)->filter()->unique();
@@ -153,6 +157,11 @@ final class ProductImport extends ImportType
                 $check->error('items.errors.serial_and_expiry');
             }
 
+            // Storage status: optional, one of the codes.
+            if (($v['storage_status'] ?? '') !== '' && ! isset($storageStatuses[self::storageCode($v['storage_status'])])) {
+                $this->unknown($check, 'storage_status', $v['storage_status'], collect(array_keys($storageStatuses)));
+            }
+
             // Approval limit
             if (($v['approval_limit'] ?? '') !== '' && (($limit = Values::number($v['approval_limit'])) === null || (float) $limit < 0)) {
                 $check->error('imports.errors.limit', ['value' => $v['approval_limit']]);
@@ -194,6 +203,7 @@ final class ProductImport extends ImportType
                 'base_unit_id' => $units[mb_strtoupper($v['base_unit'])],
                 'track_expiry' => (bool) Values::flag($v['tracks_expiry'] ?? ''),
                 'track_serial' => $serial,
+                'storage_status' => ($v['storage_status'] ?? '') === '' ? null : self::storageCode($v['storage_status']),
                 'approval_threshold_qty' => ($v['approval_limit'] ?? '') === '' ? null : Values::number($v['approval_limit']),
                 'active' => true,
             ], $alternates, $user->id);
@@ -202,6 +212,14 @@ final class ProductImport extends ImportType
         }
 
         return ['items' => $created];
+    }
+
+    /**
+     * "deep frozen" / "Deep-Frozen" → DEEP_FROZEN.
+     */
+    private static function storageCode(string $value): string
+    {
+        return str_replace([' ', '-'], '_', mb_strtoupper($value));
     }
 
     /**

@@ -22,7 +22,7 @@ it('seeds one user per role, with the operator in Beirut Main only', function ()
 
     expect($users['operator@example.test']->warehouses->pluck('code')->all())->toBe(['BEY'])
         ->and($users['admin@example.test']->warehouses)->toHaveCount(4)
-        ->and($users['customer@example.test']->is_customer_user)->toBeTrue()
+        ->and($users['customer@example.test']->isCustomerUser())->toBeTrue()
         ->and($users['customer@example.test']->customer_id)->toBe(Customer::where('code', 'ACME')->value('id'));
 });
 

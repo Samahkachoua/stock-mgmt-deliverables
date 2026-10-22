@@ -1,6 +1,6 @@
 {{--
-    Search plus optional Customer / Status / Date from + Date to / Direction filters
-    for a Livewire list. Binds to the component's `search`, `customer`, `status`,
+    Search plus optional Warehouse / Customer / Branch / Status / Date from + Date to / Direction filters
+    for a Livewire list. Binds to the component's `search`, `warehouse`, `customer`, `branch`, `status`,
     `dateFrom`, `dateTo` and `direction` properties and calls `resetFilters()`.
     Leave a filter's prop out to hide it.
     <x-filters-bar :customers="[id => name]" :statuses="[code => label]" dates :date-error="$dateError" :search-placeholder="..." />
@@ -13,7 +13,9 @@
     "Apply" and "Clear filters".
 --}}
 @props([
+    'warehouses' => null,
     'customers' => null,
+    'branches' => null,
     'statuses' => null,
     'dates' => false,
     'dateError' => false,
@@ -26,13 +28,17 @@
     $control = 'h-control w-full appearance-none rounded-lg border border-control bg-card text-body text-fg focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20';
     $select = fn (string $id, string $icon, string $label, array $options) => compact('id', 'icon', 'label', 'options');
     $before = array_filter([
+        // Always set (the user's default warehouse, or all): not counted as an active filter.
+        $warehouses === null ? null : $select('warehouse', 'keyboard_arrow_down', __('transactions.filters.warehouse'), $warehouses),
         $customers === null ? null : $select('customer', 'keyboard_arrow_down', __('transactions.filters.customer'), ['' => __('transactions.filters.all_customers')] + $customers),
+        $branches === null ? null : $select('branch', 'keyboard_arrow_down', __('drafts.filters.branch'), ['' => __('drafts.filters.all_branches')] + $branches),
         $statuses === null ? null : $select('status', 'keyboard_arrow_down', __('transactions.filters.status'), ['' => $allStatuses ?? __('transactions.filters.all_statuses')] + $statuses),
     ]);
     $after = array_filter([
         $directions === null ? null : $select('direction', 'swap_horiz', __('transfers.direction.label'), $directions),
     ]);
     $models = [...array_column($before, 'id'), ...($dates ? ['dateFrom', 'dateTo'] : []), ...array_column($after, 'id')];
+    $counted = array_values(array_diff($models, ['warehouse']));
     $button = 'flex h-control shrink-0 items-center justify-center gap-2 rounded-lg border border-control bg-card px-3 text-body font-semibold text-fg hover:bg-card-hover';
 @endphp
 
@@ -42,7 +48,7 @@
     data-filters-bar
     x-data="{
         panel: false,
-        models: @js($models),
+        models: @js($counted),
         get active() {
             return this.models.filter((model) => (this.$wire[model] ?? '') !== '').length;
         },

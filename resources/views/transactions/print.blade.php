@@ -6,9 +6,8 @@
     :title="$document['reference']"
     :heading="$ui->label('singular')"
     :reference="$document['reference']"
-    :status="$document['status']"
 >
-    <x-transaction-summary :rows="\App\Support\Transactions\Documents::summary($ui, $document)" class="avoid-break" />
+    <x-transaction-summary :rows="\App\Support\Transactions\Documents::summary($ui, $document, print: true)" compact class="avoid-break" />
 
-    <x-lines-table :type="$ui" :lines="$document['lines']" />
+    <x-print-lines-table :type="$ui" :lines="$document['lines']" />
 </x-layouts.print>

@@ -2,10 +2,11 @@
 
 namespace App\Livewire;
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Models\Customer;
+use App\Models\User;
 use App\Services\Stock\ItemCatalog;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Modelable;
 use Livewire\Attributes\Reactive;
@@ -16,7 +17,7 @@ use Livewire\Component;
  * <livewire:item-picker wire:model.live="lines.r1.item" :customer="$customerId" input-id="..." />
  * The value is the product id. Search (code, or name in any language) is
  * debounced and shows at most MAX_RESULTS matches, with what is in stock in the
- * current warehouse.
+ * `warehouse` given (the form's or a draft line's), else the user's default warehouse.
  */
 class ItemPicker extends Component
 {
@@ -32,6 +33,10 @@ class ItemPicker extends Component
 
     #[Reactive]
     public bool $invalid = false;
+
+    /** Warehouse whose stock is shown (the form's, or a draft line's); '' = the user's default warehouse. */
+    #[Reactive]
+    public string $warehouse = '';
 
     /** id for the search input / chosen-item button, so labels and focus can target it. */
     public string $inputId = '';
@@ -106,6 +111,11 @@ class ItemPicker extends Component
 
     private function warehouseId(): ?string
     {
-        return session(EnsureCurrentWarehouse::SESSION_KEY);
+        // Only a warehouse of the user's own (user_warehouse) shows its stock.
+        $user = Auth::user();
+
+        return $this->warehouse !== '' && $user instanceof User && $user->canAccessWarehouse($this->warehouse)
+            ? $this->warehouse
+            : ($user instanceof User ? $user->defaultWarehouseId() : null);
     }
 }

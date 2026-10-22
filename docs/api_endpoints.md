@@ -115,11 +115,13 @@ customer login, to its own customer).
 | GET | `/reports/stock-on-hand?search=&customer=&warehouse=&expiring=1` | Stock on hand per item, customer and warehouse, with larger-unit breakdown, stock arriving in transit and nearest expiry (`stock.view`; shown as the Stock page, `/stock`) |
 | GET | `/reports/stock-card?customer=&item=&warehouse=&from=&to=` | Every movement of one item in one warehouse, with opening balance, balance after each movement and closing balance |
 | GET | `/reports/expiry?search=&warehouse=&customer=&status=all\|expired\|expiring&days=30` | Stock expired or expiring within `days`, per expiry date |
+| GET | `/reports/dormant-stock?search=&warehouse=&customer=&days=90` | Items in stock whose last movement in that warehouse is more than `days` old, longest idle first |
 | GET | `/reports/damage?search=&from=&to=&reason=&warehouse=&customer=` | Completed damage lines by period, reason and warehouse |
 | GET | `/reports/adjustments?search=&from=&to=&reason=&warehouse=&customer=&direction=IN\|OUT` | Completed adjustment lines: in system, counted, difference; gains and losses counted apart |
 | GET | `/reports/transfers-in-transit?search=&warehouse=&direction=incoming\|outgoing&customer=` | Stock dispatched and not yet received, with days on the way |
 | GET | `/reports/transfer-shortages?search=&from=&to=&reason=&warehouse=&customer=` | Transfer lines received short, with the reason (`/transfer/shortages` redirects here) |
 | GET | `/reports/audit-log?search=&from=&to=&entity=&action=` | Who did what and when, before → after (`audit.view` only; stock documents limited to the user's warehouses) |
+| GET | `/dashboard` | Owner dashboard (`dashboard.view`, ADMIN by default): filters warehouse, customer, date from/to (kept in the session); figures for pending approvals, transfers in transit (late after 7 days), expired/expiring within 30 days, damage and adjustment lines; activity by type and workload (items handled) by warehouse over the dates; the first 5 rows of Expiry and Dormant stock. Each figure is the row count of the report it opens, with the same filters |
 | GET | `/reports/{name}/export?format=xlsx\|pdf&<same filters>` | Export of any of the above: Excel (numbers as numbers), or PDF (always light, DejaVu Sans, right to left in Arabic). `422` when a required filter is missing (stock card without an item) |
 | GET | `/stock/{productId}/{warehouseId}` | One item's stock in one warehouse: per expiry date, serials in stock, last 20 movements with balance after (`stock.view`) |
 

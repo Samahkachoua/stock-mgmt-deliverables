@@ -84,7 +84,7 @@
         </aside>
 
         <div class="flex min-h-screen min-w-0 flex-col md:ps-rail xl:ps-sidebar print:ps-0">
-            {{-- Phone: menu button, page title, warehouse; theme and language are in the user menu. --}}
+            {{-- Phone: menu button, page title, user menu (with theme and language). No warehouse here: pages that need one have their own field or filter. --}}
             <header class="sticky top-0 z-30 flex h-topbar items-center gap-2 border-b border-default bg-card px-3 md:justify-between md:gap-3 md:px-4 xl:px-page print:hidden">
                 <button
                     type="button"
@@ -99,9 +99,7 @@
                 </button>
                 <p class="min-w-0 flex-1 truncate text-lead font-semibold text-fg md:hidden" aria-hidden="true">{{ $title }}</p>
 
-                <livewire:warehouse-switcher />
-
-                <div class="flex shrink-0 items-center gap-2 xl:gap-4">
+                <div class="ms-auto flex shrink-0 items-center gap-2 xl:gap-4">
                     <div class="hidden items-center gap-2 md:flex xl:gap-4">
                         <livewire:theme-switcher />
                         <x-language-switch />

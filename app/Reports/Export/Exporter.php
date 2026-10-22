@@ -2,11 +2,11 @@
 
 namespace App\Reports\Export;
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Models\User;
 use App\Reports\Report;
 use App\Services\Stock\Availability;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use Mpdf\Mpdf;
@@ -120,13 +120,14 @@ final class Exporter
     }
 
     /**
-     * Now in the current warehouse's time zone, like the dates in the rows.
+     * Now in the time zone of the user's default warehouse, like the dates in the rows.
      */
     private function now(): CarbonImmutable
     {
-        $warehouse = (string) session(EnsureCurrentWarehouse::SESSION_KEY);
+        $user = Auth::user();
+        $warehouse = $user instanceof User ? $user->defaultWarehouseId() : null;
 
-        return $warehouse !== '' ? CarbonImmutable::now(app(Availability::class)->today($warehouse)->getTimezone()) : CarbonImmutable::now();
+        return $warehouse !== null ? CarbonImmutable::now(app(Availability::class)->today($warehouse)->getTimezone()) : CarbonImmutable::now();
     }
 
     private function rtl(): bool

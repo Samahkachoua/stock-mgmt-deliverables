@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Support\CompanyTime;
 use App\Support\DateRange;
 use App\Support\ListState;
 use App\Support\Notify;
@@ -96,13 +97,13 @@ class ItemMovements extends Component
      */
     private function movements(Warehouse $warehouse, DateRange $dates): Collection
     {
-        $start = $dates->start($warehouse->timezone);
+        $start = $dates->start(CompanyTime::zone());
         $opening = $start === null ? 0.0 : (float) $this->history()
             ->where('stock_movement.created_at', '<', $start)
             ->selectRaw("coalesce(sum(case when direction = 'IN' then qty_base else -qty_base end), 0) as qty")
             ->value('qty');
 
-        $rows = $dates->whereInstant($this->history(), 'stock_movement.created_at', $warehouse->timezone)
+        $rows = $dates->whereInstant($this->history(), 'stock_movement.created_at', CompanyTime::zone())
             ->join('stock_transaction as t', 't.id', '=', 'stock_movement.transaction_id')
             ->join('warehouse as wf', 'wf.id', '=', 't.warehouse_id')
             ->leftJoin('warehouse as wt', 'wt.id', '=', 't.to_warehouse_id')
@@ -112,11 +113,11 @@ class ItemMovements extends Component
             ->limit(ItemStockController::MOVEMENTS)
             ->get();
 
-        return collect($rows->all())->map(function (StockMovement $movement) use ($warehouse) {
+        return collect($rows->all())->map(function (StockMovement $movement) {
             $type = TransactionTypes::all()[$movement->getAttribute('transaction_type')] ?? null;
 
             return [
-                'at' => CarbonImmutable::parse($movement->getAttribute('created_at'))->setTimezone($warehouse->timezone),
+                'at' => CarbonImmutable::parse($movement->getAttribute('created_at'))->setTimezone(CompanyTime::zone()),
                 'type' => (string) $movement->getAttribute('transaction_type'),
                 'reference' => (string) $movement->getAttribute('doc_no'),
                 'link' => $type?->route('show', $movement->getAttribute('doc_no')),

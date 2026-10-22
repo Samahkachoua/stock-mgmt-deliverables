@@ -4,6 +4,8 @@ namespace App\Reports;
 
 use App\Models\StockBalance;
 use App\Models\User;
+use App\Support\CompanyTime;
+use App\Support\Days;
 use App\Support\Format;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -73,7 +75,7 @@ final class ExpiryReport extends Report
             ->when($filters['status'] === 'all', fn ($query) => $query->where('stock_balance.expiry_date', '<=', $until))
             ->select([
                 'stock_balance.product_id', 'stock_balance.qty_base',
-                'stock_balance.expiry_date', 'c.name as customer_name', 'w.name as warehouse_name', 'w.timezone',
+                'stock_balance.expiry_date', 'c.name as customer_name', 'w.name as warehouse_name',
             ])
             ->orderBy('stock_balance.expiry_date')
             ->orderBy('p.name_en')
@@ -83,7 +85,7 @@ final class ExpiryReport extends Report
     public function row(object $row, array $filters): array
     {
         $product = $this->product($row->product_id);
-        $left = (int) CarbonImmutable::now($row->timezone)->startOfDay()->diffInDays(CarbonImmutable::parse($row->expiry_date), false);
+        $left = Days::until($row->expiry_date, CompanyTime::zone());
 
         return [
             'item' => ['text' => $product->name(), 'strong' => true],
@@ -94,7 +96,7 @@ final class ExpiryReport extends Report
             'days_left' => ['text' => Format::qty($left), 'value' => $left, 'tone' => $left < 0 ? 'rejected' : 'pending'],
             'qty' => $this->qtyCell($row->qty_base, $row->product_id) + ['strong' => true],
             'breakdown' => $this->breakdown($row->qty_base, $row->product_id),
-            'status' => $this->expiryCell($row->expiry_date, (string) $row->timezone, (int) $filters['days']),
+            'status' => $this->expiryCell($row->expiry_date, (int) $filters['days']),
         ];
     }
 }

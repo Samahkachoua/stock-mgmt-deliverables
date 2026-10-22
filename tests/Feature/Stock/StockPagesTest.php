@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Livewire\Transactions\CancelTransaction;
 use App\Livewire\Transactions\TransactionList;
 use App\Models\Customer;
@@ -30,7 +29,6 @@ it('lists the documents of the current warehouse with their totals', function ()
     $elsewhere = $this->stock->post('IN', [$this->stock->line('BEANS', 1)], $this->stock->user->fresh(), $other);
 
     $this->actingAs($this->stock->user)
-        ->withSession([EnsureCurrentWarehouse::SESSION_KEY => $this->stock->warehouse->id])
         ->get(route('receive'))
         ->assertOk()
         ->assertSee($receipt->doc_no)
@@ -39,8 +37,9 @@ it('lists the documents of the current warehouse with their totals', function ()
         ->assertSee('Acme Foods')
         ->assertDontSee($elsewhere->doc_no);
 
-    $this->actingAs($this->stock->user->fresh())
-        ->withSession([EnsureCurrentWarehouse::SESSION_KEY => $other->id])
+    // A new session: the list remembers the warehouse chosen in this one.
+    $this->flushSession();
+    $this->actingAs(startIn($this->stock->user->fresh(), $other))
         ->get(route('receive'))
         ->assertSee($elsewhere->doc_no)
         ->assertDontSee($receipt->doc_no);
@@ -55,7 +54,6 @@ it('filters real documents by reference, customer, status and date', function ()
         $this->stock->user,
     );
 
-    session([EnsureCurrentWarehouse::SESSION_KEY => $this->stock->warehouse->id]);
     $list = Livewire::actingAs($this->stock->user)->test(TransactionList::class, ['type' => 'IN']);
 
     // No dates: everything; "Date from" leaves the older document out.
@@ -89,7 +87,7 @@ it('shows a customer portal user only their own customer’s documents', functio
     );
 
     $portal = userWithRole('CUSTOMER', $this->stock->warehouse);
-    $portal->forceFill(['is_customer_user' => true, 'customer_id' => $this->stock->customer->id])->save();
+    $portal->forceFill(['customer_id' => $this->stock->customer->id])->save();
 
     $this->actingAs($portal)->get(route('receive'))->assertSee($mine->doc_no)->assertDontSee($theirs->doc_no);
     $this->actingAs($portal)->get(route('receive.show', $mine->doc_no))->assertOk();

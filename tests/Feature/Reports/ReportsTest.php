@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Livewire\Reports\ReportPage;
 use App\Livewire\Stock\StockPage;
 use App\Models\User;
@@ -31,7 +30,7 @@ afterEach(function () {
  */
 function reportPage(User $user, Warehouse $current, string $report, array $filters = []): Testable
 {
-    session([EnsureCurrentWarehouse::SESSION_KEY => $current->id]);
+    startIn($user, $current);
     session()->forget('list_state');
 
     $component = Livewire::actingAs($user)
@@ -153,7 +152,7 @@ it('ignores a warehouse the user is not assigned to', function () {
 
 it('shows an item’s stock per expiry date, serials and last movements with the balance after each', function () {
     $d = $this->data;
-    $this->actingAs($d->admin)->withSession([EnsureCurrentWarehouse::SESSION_KEY => $d->beirut->id]);
+    $this->actingAs($d->admin);
 
     $this->get(route('stock.item', [$d->stock->id('YOGURT'), $d->beirut->id]))
         ->assertOk()
@@ -220,6 +219,9 @@ it('lists expired and soon-expiring stock, nearest first', function () {
 
     expect(column($both['rows'], 'expiry_date'))->toBe([Format::date(now()->subDays(2)), Format::date(now()->addDays(10))])
         ->and(array_column(array_column($both['rows'], 'qty'), 'value'))->toBe([2.0, 12.0])
+        // Whole calendar days in the warehouse's time zone: expired 2 days ago is -2, not -1.
+        ->and(array_column(array_column($both['rows'], 'days_left'), 'value'))->toBe([-2, 10])
+        ->and(array_column(array_column($both['rows'], 'status'), 'tone'))->toBe(['rejected', 'pending'])
         ->and(column(onScreen($d->admin, $d->beirut, 'expiry', ['status' => 'expired'])['rows'], 'expiry_date'))->toBe([Format::date(now()->subDays(2))])
         ->and(column(onScreen($d->admin, $d->beirut, 'expiry', ['status' => 'expiring'])['rows'], 'expiry_date'))->toBe([Format::date(now()->addDays(10))])
         ->and(onScreen($d->admin, $d->beirut, 'expiry', ['days' => '200'])['total'])->toBe(3)
@@ -401,25 +403,29 @@ it('opens home with large links, approvals waiting and transfers arriving, and n
     DB::table('approval_threshold')->insert(['scope' => 'GLOBAL', 'transaction_type' => 'DAMAGE', 'qty_base' => 1]);
     $d->stock->post('DAMAGE', [$d->stock->line('BEANS', 2)], $d->stock->requester(), reason: 'HANDLING');
 
-    $this->actingAs($d->beirutManager)->withSession([EnsureCurrentWarehouse::SESSION_KEY => $d->beirut->id])
+    $this->actingAs($d->beirutManager)
         ->get(route('home'))
         ->assertOk()
         ->assertSee('href="'.route('damage.create').'"', false)
-        ->assertSee(trans_choice('home.approvals', 1, ['type' => __('transactions.types.damage.title')]))
+        ->assertSee(__('transactions.types.damage.to_approve'))
+        // Something waiting stands out; nothing waiting is muted.
+        ->assertSeeInOrder(['data-waiting="idle"', __('transactions.types.adjustment.to_approve'), 'data-waiting="active"', __('transactions.types.damage.to_approve')], false)
+        ->assertDontSee('no approval needed')
         ->assertDontSee('<canvas', false);
 
-    $this->actingAs($d->tripoliOperator)->withSession([EnsureCurrentWarehouse::SESSION_KEY => $d->tripoli->id])
+    $this->actingAs($d->tripoliOperator)
         ->get(route('home'))
-        ->assertSee(trans_choice('home.arriving', 1))
+        ->assertSee(__('home.arriving'))
+        ->assertSee('data-waiting="active"', false)
         ->assertSee(route('transfer.incoming'), false)
-        ->assertDontSee(__('home.approvals', ['type' => '']))
+        ->assertDontSee(__('transactions.types.damage.to_approve'))
         ->assertDontSee('href="'.route('opening-balance.create').'"', false);
 });
 
 it('shows the Stock page, item details and reports in Arabic, right to left', function () {
     $d = $this->data;
     $d->admin->update(['preferred_lang' => 'ar']);
-    $this->actingAs($d->admin)->withSession([EnsureCurrentWarehouse::SESSION_KEY => $d->beirut->id]);
+    $this->actingAs($d->admin);
 
     foreach ([
         route('stock') => 'reports.stock_on_hand.title',

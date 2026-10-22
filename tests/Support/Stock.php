@@ -40,7 +40,7 @@ final class Stock
     public static function create(): self
     {
         $stock = new self(
-            Warehouse::factory()->create(['code' => 'BEY', 'name' => 'Beirut Main', 'timezone' => 'Asia/Beirut']),
+            Warehouse::factory()->create(['code' => 'BEY', 'name' => 'Beirut Main']),
             Customer::factory()->create(['code' => 'ACME', 'name' => 'Acme Foods']),
         );
 
@@ -86,11 +86,11 @@ final class Stock
     /**
      * Posts a document of $type with the given lines (keyed r1, r2, ...).
      * Damage and Adjustment need a $reason; they may end up waiting for approval,
-     * and are created by requester() unless $by is given.
+     * and are created by requester() unless $by is given. Dated today unless $date is given.
      *
      * @param  list<DocumentLine>  $lines
      */
-    public function post(string $type, array $lines, ?User $by = null, ?Warehouse $warehouse = null, ?string $reason = null): StockTransaction
+    public function post(string $type, array $lines, ?User $by = null, ?Warehouse $warehouse = null, ?string $reason = null, ?CarbonImmutable $date = null): StockTransaction
     {
         $keyed = [];
         foreach ($lines as $i => $line) {
@@ -98,7 +98,7 @@ final class Stock
         }
 
         return app(PostingService::class)->post(
-            new Document($type, ($warehouse ?? $this->warehouse)->id, $this->customer->id, CarbonImmutable::today(), null, $keyed, reason: $reason),
+            new Document($type, ($warehouse ?? $this->warehouse)->id, $this->customer->id, $date ?? CarbonImmutable::today(), null, $keyed, reason: $reason),
             $by ?? (TransactionTypes::get($type)->supportsApproval() ? $this->requester() : $this->user),
         );
     }

@@ -1,0 +1,104 @@
+<?php
+
+use App\Livewire\Transactions\TransactionList;
+use App\Models\Role;
+use App\Models\User;
+use App\Models\Warehouse;
+use App\Support\Permissions;
+use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
+use Tests\Support\Stock;
+
+/*
+ * Each list (and its details and print pages) has its own view permission;
+ * creating or approving a type opens them too, so saving never ends on a
+ * page the user may not open.
+ */
+
+/**
+ * An active user in $warehouse whose only role grants exactly $codes.
+ *
+ * @param  list<string>  $codes
+ */
+function userWithPermissions(Warehouse $warehouse, array $codes): User
+{
+    $role = Role::create(['code' => 'TEST_'.strtoupper(uniqid()), 'name' => 'Test '.uniqid()]);
+    DB::table('role_permission')->insert(DB::table('permission')->whereIn('code', $codes)->pluck('id')
+        ->map(fn ($id) => ['role_id' => $role->id, 'permission_id' => $id])->all());
+    Permissions::flush();
+
+    $user = User::factory()->create();
+    $user->roles()->attach($role->id);
+    $user->warehouses()->attach($warehouse->id);
+
+    return $user;
+}
+
+beforeEach(function () {
+    $this->stock = Stock::create();
+    $this->receipt = $this->stock->post('IN', [$this->stock->line('BEANS', 5)]);
+    $this->issue = $this->stock->post('OUT', [$this->stock->line('BEANS', 1)]);
+});
+
+it('opens only the lists the user may view', function () {
+    $viewer = userWithPermissions($this->stock->warehouse, ['stock.in.view']);
+
+    $this->actingAs($viewer);
+    $this->get(route('receive'))->assertOk();
+    $this->get(route('receive.show', $this->receipt->doc_no))->assertOk();
+    $this->get(route('receive.print', $this->receipt->doc_no))->assertOk();
+
+    $this->get(route('issue'))->assertForbidden();
+    $this->get(route('issue.show', $this->issue->doc_no))->assertForbidden();
+    $this->get(route('issue.print', $this->issue->doc_no))->assertForbidden();
+    $this->get(route('draft-receipts'))->assertForbidden();
+
+    // Viewing is not creating.
+    $this->get(route('receive.create'))->assertForbidden();
+    Livewire::actingAs($viewer)->test(TransactionList::class, ['type' => 'OUT'])->assertForbidden();
+});
+
+it('shows only the sidebar items of the lists the user may open', function () {
+    $html = $this->actingAs(userWithPermissions($this->stock->warehouse, ['stock.view', 'stock.in.view', 'draft.out.view']))
+        ->get(route('home'))
+        ->getContent();
+
+    expect($html)->toContain('href="'.route('receive').'"')
+        ->toContain('href="'.route('draft-issues').'"')
+        ->not->toContain('href="'.route('issue').'"')
+        ->not->toContain('href="'.route('transfer').'"')
+        ->not->toContain('href="'.route('draft-receipts').'"');
+});
+
+it('lets whoever may create, approve or receive a type open its list too', function (array $codes, string $route) {
+    $this->actingAs(userWithPermissions($this->stock->warehouse, $codes))
+        ->get(route($route))
+        ->assertOk();
+})->with([
+    'create an issue' => [['stock.out.create'], 'issue'],
+    'approve damage' => [['stock.damage.approve'], 'damage'],
+    'receive transfers' => [['stock.transfer.receive'], 'transfer'],
+    'confirm draft receipts' => [['draft.in.confirm'], 'draft-receipts'],
+]);
+
+it('opens a draft list to view without creating', function () {
+    $this->actingAs(userWithPermissions($this->stock->warehouse, ['draft.in.view']));
+
+    $this->get(route('draft-receipts'))->assertOk()->assertDontSee(route('draft-receipts.create'), false);
+    $this->get(route('draft-receipts.create'))->assertForbidden();
+});
+
+it('closes a list once its view permission is taken away', function () {
+    $operator = userWithRole('OPERATOR', $this->stock->warehouse);
+    $this->actingAs($operator)->get(route('adjustment'))->assertOk();
+
+    // Operators create adjustments, so they still see them; Opening Balance they only viewed.
+    DB::table('role_permission')
+        ->where('role_id', Role::where('code', 'OPERATOR')->value('id'))
+        ->whereIn('permission_id', DB::table('permission')->whereIn('code', ['stock.opening.view', 'stock.adjustment.view'])->pluck('id'))
+        ->delete();
+    Permissions::flush();
+
+    $this->actingAs(User::find($operator->id))->get(route('opening-balance'))->assertForbidden();
+    $this->actingAs(User::find($operator->id))->get(route('adjustment'))->assertOk();
+});

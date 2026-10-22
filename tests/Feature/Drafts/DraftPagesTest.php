@@ -1,0 +1,345 @@
+<?php
+
+use App\Livewire\Drafts\DraftForm;
+use App\Livewire\Drafts\DraftList;
+use App\Livewire\Drafts\DraftPage;
+use App\Livewire\Settings\Branches;
+use App\Livewire\Settings\Users;
+use App\Models\Customer;
+use App\Models\CustomerBranch;
+use App\Models\StockDraft;
+use App\Models\Warehouse;
+use App\Services\Stock\DraftInput;
+use App\Services\Stock\DraftLineInput;
+use App\Services\Stock\DraftService;
+use App\Services\Stock\Exceptions\DuplicateLine;
+use App\Support\Format;
+use App\Support\Permissions;
+use App\Support\StorageStatuses;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
+use Livewire\Features\SupportTesting\Testable;
+use Livewire\Livewire;
+use Tests\Support\Stock;
+
+beforeEach(function () {
+    $this->stock = Stock::create();
+    $this->depot = Warehouse::factory()->create(['code' => 'DPX', 'name' => 'Depot X']);
+    $this->stock->user->warehouses()->attach($this->depot->id);
+    // Pages start in Beirut Main, the user's default warehouse.
+    startIn($this->stock->user, $this->stock->warehouse);
+    $this->branch = CustomerBranch::create(['customer_id' => $this->stock->customer->id, 'code' => 'DT', 'name' => 'Downtown']);
+});
+
+/**
+ * A saved draft of $type with BEANS lines: [warehouse, qty] each.
+ *
+ * @param  list<array{0: Warehouse, 1: int}>  $lines
+ */
+function savedDraft(object $test, string $type, array $lines): StockDraft
+{
+    $keyed = [];
+    foreach ($lines as $i => [$warehouse, $qty]) {
+        $keyed['r'.($i + 1)] = new DraftLineInput($warehouse->id, $test->stock->id('BEANS'), 'PC', $qty);
+    }
+
+    return app(DraftService::class)->save(
+        new DraftInput($type, $test->stock->customer->id, $test->branch->id, CarbonImmutable::today(), null, $keyed),
+        $test->stock->user,
+    );
+}
+
+function draftForm(object $test, string $type = 'IN', ?string $reference = null): Testable
+{
+    return Livewire::actingAs($test->stock->user)->test(DraftForm::class, array_filter(['type' => $type, 'reference' => $reference]));
+}
+
+it('saves a new draft receipt with lines in two warehouses, touching no stock', function () {
+    $form = draftForm($this)
+        ->call('chooseCustomer', $this->stock->customer->id)
+        // The only branch is chosen already.
+        ->assertSet('branchId', $this->branch->id);
+
+    [$first] = array_keys($form->get('lines'));
+    // The user's default warehouse is pre-selected.
+    $form->assertSet("lines.$first.warehouse", $this->stock->warehouse->id)
+        ->set("lines.$first.item", $this->stock->id('BEANS'))
+        ->set("lines.$first.qty", '2')
+        ->set("lines.$first.unit", 'BOX');
+
+    [, $second] = array_keys($form->get('lines'));
+    // A new row starts in the previous row's warehouse.
+    $form->assertSet("lines.$second.warehouse", $this->stock->warehouse->id)
+        ->set("lines.$second.warehouse", $this->depot->id)
+        ->set("lines.$second.item", $this->stock->id('BEANS'))
+        ->set("lines.$second.qty", '5')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $draft = StockDraft::withoutGlobalScopes()->firstOrFail();
+
+    $form->assertRedirect(route('draft-receipts.show', $draft->doc_no));
+
+    expect(DB::table('stock_draft_line')->where('draft_id', $draft->id)->orderBy('line_no')->pluck('qty_base')->map(fn ($q) => (float) $q)->all())->toBe([24.0, 5.0])
+        ->and(DB::table('stock_movement')->count())->toBe(0);
+});
+
+it('refuses more than 999,999 on a draft line, in the form and on save', function () {
+    $form = draftForm($this, 'IN')->call('chooseCustomer', $this->stock->customer->id);
+    [$row] = array_keys($form->get('lines'));
+
+    $form->set("lines.$row.item", $this->stock->id('BEANS'))->set("lines.$row.qty", '1000000');
+    expect($form->html())->toContain(e(__('transactions.form.errors.too_large', ['max' => '999,999'])));
+    $form->call('save');
+
+    expect(StockDraft::withoutGlobalScopes()->count())->toBe(0);
+});
+
+it('limits a draft issue row to what is in stock in its own warehouse', function () {
+    $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);
+
+    $form = draftForm($this, 'OUT')->call('chooseCustomer', $this->stock->customer->id);
+    [$row] = array_keys($form->get('lines'));
+
+    $form->set("lines.$row.item", $this->stock->id('BEANS'))->set("lines.$row.qty", '8');
+    expect($form->html())->toContain('Available');
+
+    // Nothing of it in Depot X.
+    $form->set("lines.$row.warehouse", $this->depot->id)->set("lines.$row.qty", '8');
+    expect($form->html())->toContain('Only 0 Piece available.');
+    $form->call('save');
+
+    expect(StockDraft::withoutGlobalScopes()->count())->toBe(0);
+});
+
+it('edits a draft, and lets a confirmer change a quantity and confirm in one step', function () {
+    $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);
+    $this->stock->post('IN', [$this->stock->line('BEANS', 10)], warehouse: $this->depot);
+    $draft = savedDraft($this, 'OUT', [[$this->stock->warehouse, 4], [$this->depot, 6]]);
+
+    $form = draftForm($this, 'OUT', $draft->doc_no)->assertSee(__('drafts.actions.save_and_confirm'));
+    [$first] = array_keys($form->get('lines'));
+
+    $form->set("lines.$first.qty", '3')->call('saveAndConfirm')->assertHasNoErrors();
+
+    expect($draft->fresh()->status)->toBe('POSTED')
+        ->and(DB::table('stock_transaction')->where('draft_id', $draft->id)->count())->toBe(2)
+        ->and($this->stock->balance('BEANS'))->toBe(7.0)
+        ->and($this->stock->balance('BEANS', warehouse: $this->depot))->toBe(4.0);
+});
+
+it('offers no "Save and confirm" to whoever may not confirm', function () {
+    $draft = savedDraft($this, 'IN', [[$this->stock->warehouse, 1]]);
+
+    Livewire::actingAs(userWithRole('OPERATOR', $this->stock->warehouse))
+        ->test(DraftForm::class, ['type' => 'IN', 'reference' => $draft->doc_no])
+        ->assertDontSee(__('drafts.actions.save_and_confirm'))
+        ->call('saveAndConfirm')
+        ->assertForbidden();
+});
+
+it('confirms a draft from its details page and lists the documents created', function () {
+    $draft = savedDraft($this, 'IN', [[$this->stock->warehouse, 8], [$this->depot, 4]]);
+
+    Livewire::actingAs($this->stock->user)
+        ->test(DraftPage::class, ['type' => 'IN', 'reference' => $draft->doc_no])
+        ->assertSee('Beirut Main')->assertSee('Depot X')
+        ->call('confirmDraft')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('draft-receipts.show', $draft->doc_no));
+
+    $receipts = DB::table('stock_transaction')->where('draft_id', $draft->id)->orderBy('id')->pluck('doc_no')->all();
+
+    Livewire::actingAs($this->stock->user)
+        ->test(DraftPage::class, ['type' => 'IN', 'reference' => $draft->doc_no])
+        ->assertSee($receipts[0])->assertSee($receipts[1])
+        ->assertDontSee(__('drafts.actions.edit'));
+
+    // The receipt names its branch and links back to the draft.
+    $this->actingAs($this->stock->user)
+        ->get(route('receive.show', $receipts[0]))
+        ->assertOk()
+        ->assertSee('Downtown')
+        ->assertSee(route('draft-receipts.show', $draft->doc_no), false);
+
+    expect($receipts)->toHaveCount(2)
+        ->and($this->stock->balance('BEANS'))->toBe(8.0);
+});
+
+it('refuses a draft that repeats an item and unit for the same warehouse (rule 12)', function () {
+    expect(fn () => savedDraft($this, 'IN', [[$this->stock->warehouse, 3], [$this->depot, 4], [$this->stock->warehouse, 5]]))
+        ->toThrow(DuplicateLine::class, __('transactions.form.duplicate.unit', ['item' => 'Canned Beans', 'unit' => Format::unit('PC'), 'row' => '1']))
+        ->and(StockDraft::count())->toBe(0);
+
+    // The same item and unit for two warehouses: two documents, one line each.
+    expect(savedDraft($this, 'IN', [[$this->stock->warehouse, 3], [$this->depot, 4]])->exists)->toBeTrue();
+});
+
+it('shows why a confirmation failed under the line concerned', function () {
+    $this->stock->post('IN', [$this->stock->line('BEANS', 5)]);
+    $draft = savedDraft($this, 'OUT', [[$this->stock->warehouse, 5]]);
+    $this->stock->post('OUT', [$this->stock->line('BEANS', 2)]);
+    $line = DB::table('stock_draft_line')->where('draft_id', $draft->id)->value('id');
+
+    Livewire::actingAs($this->stock->user)
+        ->test(DraftPage::class, ['type' => 'OUT', 'reference' => $draft->doc_no])
+        ->call('confirmDraft')
+        ->assertNoRedirect()
+        ->assertSet('lineErrors', fn (array $errors) => isset($errors[$line]))
+        ->assertSee('Only 3 Piece');
+
+    expect($draft->fresh()->status)->toBe('DRAFT');
+});
+
+it('cancels a draft after asking, with a reason', function () {
+    $draft = savedDraft($this, 'IN', [[$this->stock->warehouse, 1]]);
+
+    Livewire::actingAs($this->stock->user)
+        ->test(DraftPage::class, ['type' => 'IN', 'reference' => $draft->doc_no])
+        ->call('askCancel')
+        ->assertSet('confirm.action', 'cancel')
+        ->call('runConfirmed')
+        ->assertHasErrors('confirmReason')
+        ->set('confirmReason', 'Order withdrawn')
+        ->call('runConfirmed');
+
+    expect($draft->fresh()->status)->toBe('CANCELLED');
+});
+
+it('lists drafts the user may see, and opens list, details and print pages', function () {
+    $draft = savedDraft($this, 'IN', [[$this->stock->warehouse, 1]]);
+
+    Livewire::actingAs($this->stock->user)->test(DraftList::class, ['type' => 'IN'])
+        ->call('loadRows')
+        ->assertSee($draft->doc_no)
+        ->assertSee('Downtown');
+
+    Livewire::actingAs(userWithRole('OPERATOR', $this->depot))->test(DraftList::class, ['type' => 'IN'])
+        ->call('loadRows')
+        ->assertDontSee($draft->doc_no);
+
+    $this->actingAs($this->stock->user);
+    $this->get(route('draft-receipts'))->assertOk();
+    $this->get(route('draft-receipts.create'))->assertOk();
+    $this->get(route('draft-receipts.show', $draft->doc_no))->assertOk()->assertSee($draft->doc_no);
+    $this->get(route('draft-receipts.print', $draft->doc_no))->assertOk()->assertSee('Downtown');
+    $this->get(route('home'))->assertSee(route('draft-receipts'), false);
+});
+
+it('offers New Draft Receipt / Issue on Home to whoever may create them, above the document they become', function () {
+    // OPERATOR creates both drafts and the documents: each draft sits just above its document.
+    $operator = userWithRole('OPERATOR', $this->stock->warehouse);
+    $labels = $this->actingAs($operator)->get(route('home'))->viewData('create')->map(fn ($kind) => $kind->label('new'))->all();
+
+    expect(array_slice($labels, 0, 4))->toBe([
+        __('drafts.types.receipt.new'), __('transactions.types.receive.new'),
+        __('drafts.types.issue.new'), __('transactions.types.issue.new'),
+    ]);
+    $this->get(route('home'))
+        ->assertSee(route('draft-receipts.create'), false)
+        ->assertSee(route('draft-issues.create'), false);
+
+    // A role with only draft receipts gets that one, and no draft issue.
+    $role = DB::table('role')->insertGetId(['code' => 'BRANCH', 'name' => 'Branch clerk', 'is_system' => false], 'id');
+    DB::table('role_permission')->insert(['role_id' => $role, 'permission_id' => DB::table('permission')->where('code', 'draft.in.create')->value('id')]);
+    Permissions::flush();
+    $clerk = userWithWarehouses($this->stock->warehouse);
+    DB::table('user_role')->where('user_id', $clerk->id)->delete();
+    DB::table('user_role')->insert(['user_id' => $clerk->id, 'role_id' => $role]);
+
+    $this->actingAs($clerk->fresh())->get(route('home'))
+        ->assertSee(route('draft-receipts.create'), false)
+        ->assertDontSee(route('draft-issues.create'), false)
+        ->assertDontSee(__('home.nothing_to_create'));
+
+    // AUDITOR creates nothing.
+    $this->actingAs(userWithRole('AUDITOR', $this->stock->warehouse))->get(route('home'))
+        ->assertDontSee(route('draft-receipts.create'), false)
+        ->assertSee(__('home.nothing_to_create'));
+});
+
+it('is closed to users without the draft permissions', function () {
+    $this->actingAs(userWithRole('AUDITOR', $this->stock->warehouse))
+        ->get(route('draft-issues'))
+        ->assertForbidden();
+});
+
+it('keeps a customer user on their own customer and branches', function () {
+    $uptown = CustomerBranch::create(['customer_id' => $this->stock->customer->id, 'code' => 'UP', 'name' => 'Uptown']);
+    $someoneElse = Customer::factory()->create(['name' => 'Someone Else']);
+    $portal = userWithRole('CUSTOMER', $this->stock->warehouse);
+    $portal->forceFill(['customer_id' => $this->stock->customer->id])->save();
+    $portal->branches()->attach($uptown->id);
+
+    Livewire::actingAs($portal->fresh())
+        ->test(DraftForm::class, ['type' => 'OUT'])
+        ->assertSet('customerId', $this->stock->customer->id)
+        ->assertSet('branchId', $uptown->id)
+        ->assertDontSee('Someone Else')
+        ->assertDontSee('Downtown')
+        ->call('chooseCustomer', $someoneElse->id)
+        ->assertSet('customerId', $this->stock->customer->id);
+});
+
+it('adds branches in Settings, each code once per customer', function () {
+    $other = Customer::factory()->create();
+
+    Livewire::actingAs(userWithRole('MANAGER'))
+        ->test(Branches::class)
+        ->call('add')
+        ->set('form.customer_id', $this->stock->customer->id)
+        ->set('form.name', 'Harbour')
+        ->set('form.code', 'hb')
+        ->call('save')
+        ->assertHasNoErrors()
+        ->call('add')
+        ->set('form.customer_id', $this->stock->customer->id)
+        ->set('form.code', 'DT')
+        ->assertHasErrors(['form.code' => 'unique'])
+        ->set('form.customer_id', $other->id)
+        ->set('form.name', 'Downtown')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(CustomerBranch::where('code', 'HB')->value('customer_id'))->toBe($this->stock->customer->id)
+        ->and(CustomerBranch::where('code', 'DT')->count())->toBe(2);
+});
+
+it('links a user to a customer and some of its branches in Settings', function () {
+    $user = userWithRole('CUSTOMER', $this->stock->warehouse);
+
+    Livewire::actingAs(userWithRole('ADMIN'))
+        ->test(Users::class)
+        ->call('edit', $user->id)
+        ->set('customerId', $this->stock->customer->id)
+        ->set('branchIds', [$this->branch->id])
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $user = $user->fresh();
+
+    expect($user->isCustomerUser())->toBeTrue()
+        ->and($user->branchIds())->toBe([$this->branch->id]);
+
+    // Back to staff: no customer, no branches.
+    Livewire::actingAs(userWithRole('ADMIN'))
+        ->test(Users::class)
+        ->call('edit', $user->id)
+        ->set('customerId', '')
+        ->assertSet('branchIds', [])
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($user->fresh()->isCustomerUser())->toBeFalse()
+        ->and(DB::table('user_customer_branch')->where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('prints each item’s storage status on a draft', function () {
+    $this->stock->items['BEANS']->update(['storage_status' => 'AMBIENT']);
+    $draft = savedDraft($this, 'IN', [[$this->stock->warehouse, 1]]);
+
+    $this->actingAs($this->stock->user)
+        ->get(route('draft-receipts.print', $draft->doc_no))
+        ->assertOk()
+        ->assertSee(StorageStatuses::label('AMBIENT'));
+});

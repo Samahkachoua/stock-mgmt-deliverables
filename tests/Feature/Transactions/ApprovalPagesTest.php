@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Livewire\Transactions\CancelTransaction;
 use App\Livewire\Transactions\DecideApproval;
 use App\Livewire\Transactions\TransactionForm;
@@ -19,7 +18,6 @@ beforeEach(function () {
     $this->operator = userWithRole('OPERATOR', $this->stock->warehouse);
     $this->manager = userWithRole('MANAGER', $this->stock->warehouse);
     $this->stock->post('IN', [$this->stock->line('BEANS', 3, 'BOX'), $this->stock->line('PHONE', 2, serials: ['SN-1', 'SN-2'])]);
-    session([EnsureCurrentWarehouse::SESSION_KEY => $this->stock->warehouse->id]);
 });
 
 afterEach(function () {
@@ -110,15 +108,17 @@ it('saves a count: lines that match are left out, 0 is a count', function () {
         ->and($this->stock->balance('BEANS'))->toBe(0.0);
 });
 
-it('refuses to count the same item twice', function () {
+it('refuses to count the same item twice, in any unit', function () {
     $form = approvalForm($this->stock, $this->operator, 'ADJUSTMENT', 'STOCK_COUNT_VARIANCE');
     [$first] = array_keys($form->get('lines'));
     $form->set("lines.$first.item", $this->stock->id('BEANS'))->set("lines.$first.qty", '30');
     $second = array_keys($form->get('lines'))[1];
-    $form->set("lines.$second.item", $this->stock->id('BEANS'))->set("lines.$second.qty", '31');
+    $form->set("lines.$second.item", $this->stock->id('BEANS'));
 
-    $form->assertSee(__('transactions.form.errors.counted_twice'));
-    expect(countSaveDisabled($form))->toBeTrue();
+    // Rule 12: the second row is cleared, the toast says where the item is counted.
+    $form->assertSet("lines.$second.item", null)
+        ->assertDispatched('toast', toast: ['type' => 'warning', 'message' => __('transactions.form.duplicate.count', ['item' => 'Canned Beans', 'row' => '1']), 'url' => null, 'link' => null])
+        ->assertDispatched('focus-field', id: 'line-'.$first.'-qty');
 });
 
 it('counts serial items by unticking the pieces not found', function () {

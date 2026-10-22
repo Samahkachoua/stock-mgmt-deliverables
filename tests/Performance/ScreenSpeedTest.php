@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Livewire\Reports\ReportPage;
 use App\Livewire\Transactions\TransactionForm;
 use App\Models\Product;
@@ -76,7 +75,7 @@ function listState(string $key, array $properties, int $page = 1): array
 }
 
 it('opens every heavy screen in under 2 seconds', function (string $screen, string $route, array $parameters, array $state) {
-    $this->actingAs($this->user)->withSession([EnsureCurrentWarehouse::SESSION_KEY => $this->warehouse->id] + $state);
+    $this->actingAs($this->user)->withSession($state);
     $url = route($route, $parameters);
 
     [$seconds, $slowest] = timed(fn () => $this->get($url)->assertOk());
@@ -95,7 +94,7 @@ it('opens every heavy screen in under 2 seconds', function (string $screen, stri
 ]);
 
 it('opens the stock card and item details of the busiest item in under 2 seconds', function () {
-    $this->actingAs($this->user)->withSession([EnsureCurrentWarehouse::SESSION_KEY => $this->warehouse->id]);
+    $this->actingAs($this->user);
     $busiest = DB::table('stock_movement')->where('warehouse_id', $this->warehouse->id)
         ->groupBy('product_id', 'customer_id')->orderByRaw('count(*) desc')->select('product_id', 'customer_id')->first();
 
@@ -117,7 +116,6 @@ it('opens the stock card and item details of the busiest item in under 2 seconds
 });
 
 it('fills the Issue form quickly: customer, item, availability', function () {
-    session([EnsureCurrentWarehouse::SESSION_KEY => $this->warehouse->id]);
     $product = Product::where('sku', 'like', 'PERF-%')->where('track_expiry', true)->firstOrFail();
 
     [$seconds, $slowest] = timed(function () use ($product) {

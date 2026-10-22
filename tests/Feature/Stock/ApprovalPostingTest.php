@@ -6,11 +6,14 @@ use App\Models\StockTransaction;
 use App\Services\Stock\ApprovalThresholds;
 use App\Services\Stock\DocumentLine;
 use App\Services\Stock\Exceptions\AlreadyProcessed;
+use App\Services\Stock\Exceptions\DuplicateLine;
 use App\Services\Stock\Exceptions\InsufficientStock;
 use App\Services\Stock\Exceptions\PostingRejected;
 use App\Services\Stock\Exceptions\SelfApproval;
 use App\Services\Stock\Exceptions\StaleCount;
 use App\Services\Stock\PostingService;
+use App\Support\Format;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -161,7 +164,7 @@ it('posts the stock when another person approves', function () {
         ->and($this->stock->balance('BEANS'))->toBe(24.0)
         ->and($approval->decision)->toBe('APPROVED')
         ->and($approval->decided_by)->toBe($this->manager->id)
-        ->and(DB::table('audit_log')->where('entity_id', $damage->id)->pluck('action')->all())->toBe(['SUBMIT', 'APPROVE']);
+        ->and(DB::table('audit_log')->where('entity', 'stock_transaction')->where('entity_id', $damage->id)->pluck('action')->all())->toBe(['SUBMIT', 'APPROVE']);
 });
 
 it('keeps the expiry date chosen on a damage line while it waits, and takes it from that date when approved', function () {
@@ -267,7 +270,7 @@ it('posts an approver’s own document over the limit at once, without a second 
         // No approval request is opened (nobody else has to decide)...
         ->and(DB::table('approval')->whereIn('transaction_id', [$damage->id, $count->id])->count())->toBe(0)
         // ...and the audit log says it was the creator's own approval.
-        ->and(json_decode((string) DB::table('audit_log')->where('entity_id', $damage->id)->where('action', 'POST')->value('after_data'), true))
+        ->and(json_decode((string) DB::table('audit_log')->where('entity', 'stock_transaction')->where('entity_id', $damage->id)->where('action', 'POST')->value('after_data'), true))
         ->toMatchArray(['status' => 'POSTED', 'self_approved' => true])
         ->and(Stock::ledgerMismatches())->toBe([]);
 
@@ -415,7 +418,7 @@ it('counts an expiry item per expiry date, and the same date only once', functio
         ->toThrow(PostingRejected::class, __('transactions.form.errors.expiry_choose'));
 
     expect(fn () => countStock($this->stock, [$this->stock->line('YOGURT', '5', expiry: $this->expiry['month']), $this->stock->line('YOGURT', '4', expiry: $this->expiry['month'])]))
-        ->toThrow(PostingRejected::class, __('transactions.form.errors.counted_twice'));
+        ->toThrow(DuplicateLine::class, __('transactions.form.duplicate.count_expiry', ['item' => 'Yogurt', 'expiry' => Format::date(CarbonImmutable::parse($this->expiry['month'])), 'row' => '1']));
 
     countStock($this->stock, [$this->stock->line('YOGURT', '5', expiry: $this->expiry['month']), $this->stock->line('YOGURT', '8', expiry: $this->expiry['two_months'])]);
 

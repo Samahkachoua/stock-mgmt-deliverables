@@ -40,7 +40,7 @@ class ListPresetController extends Controller
 
     /**
      * "Incoming" from Home: the list of a dispatch/receive type (Transfer)
-     * showing what is on its way to the current warehouse.
+     * showing what is on its way to any of the user's warehouses (what Home counts).
      */
     public function incoming(Request $request): RedirectResponse
     {
@@ -48,7 +48,7 @@ class ListPresetController extends Controller
         $type = TransactionTypes::get((string) $request->route('type'));
         abort_unless($type->dispatchReceive(), 404);
 
-        ListState::put($type->slug(), ['direction' => 'incoming']);
+        ListState::put($type->slug(), ['direction' => 'incoming', 'warehouse' => 'all']);
 
         return redirect()->to($type->route());
     }

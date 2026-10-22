@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
 use App\Livewire\Reports\ReportPage;
 use App\Livewire\Stock\StockPage;
 use App\Reports\Reports;
@@ -21,7 +20,7 @@ it('opens every report and exports it in both formats', function (string $key) {
     $data = $this->data;
     $filters = $key === 'stock-card' ? ['customer' => $data->acme->id, 'item' => $data->stock->id('BEANS'), 'warehouse' => $data->beirut->id] : [];
 
-    $this->actingAs($data->admin)->withSession([EnsureCurrentWarehouse::SESSION_KEY => $data->beirut->id]);
+    $this->actingAs($data->admin);
 
     $this->get($key === 'stock-on-hand' ? route('stock') : route('reports.show', $key))
         ->assertOk()

@@ -9,6 +9,7 @@ use App\Models\StockTransaction;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Reports\StockOnHandReport;
+use App\Support\CompanyTime;
 use App\Support\Format;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -33,7 +34,7 @@ class ItemStockController extends Controller
 
         $product->load(['baseUnit', 'units.unit', 'customer']);
         $converter = $product->converter();
-        $today = CarbonImmutable::now($warehouse->timezone)->startOfDay();
+        $today = CompanyTime::today();
 
         $expiries = StockBalance::query()
             ->where('product_id', $product->id)

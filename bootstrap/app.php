@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
+use App\Http\Middleware\EnsureHasWarehouse;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use App\Support\ErrorReference;
@@ -24,8 +24,13 @@ return Application::configure(basePath: dirname(__DIR__))
             $middleware->trustProxies(at: env('TRUSTED_PROXIES') === '*' ? '*' : explode(',', (string) env('TRUSTED_PROXIES')));
         }
 
+        // A page left open past the session lifetime still carries the old CSRF token,
+        // so signing out from it would show "The page expired". Signing out needs no
+        // token: the session cookie is SameSite=lax, so another site can't post it here.
+        $middleware->validateCsrfTokens(except: ['logout']);
+
         $middleware->alias([
-            'warehouse' => EnsureCurrentWarehouse::class,
+            'warehouse' => EnsureHasWarehouse::class,
         ]);
 
         $middleware->redirectGuestsTo(fn () => route('login'));

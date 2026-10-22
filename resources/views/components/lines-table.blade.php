@@ -62,6 +62,7 @@
                             <div class="flex flex-wrap items-center gap-2">
                                 <bdi class="font-semibold text-fg">{{ $line['name'] }}</bdi>
                                 <span dir="ltr" class="tabular rounded bg-card-hover px-1.5 py-0.5 text-small font-semibold tracking-wide text-muted">{{ $line['code'] }}</span>
+                                <x-storage-status :label="$line['storage'] ?? null" />
                             </div>
                             @foreach ($line['details'] ?? [] as $detail)
                                 {{-- e.g. which expiry dates an issue took (FEFO), or the serial numbers --}}

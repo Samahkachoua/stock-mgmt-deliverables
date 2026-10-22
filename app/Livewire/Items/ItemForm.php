@@ -13,6 +13,7 @@ use App\Services\Stock\UnitConverter;
 use App\Support\Audit;
 use App\Support\Format;
 use App\Support\Notify;
+use App\Support\StorageStatuses;
 use App\Support\Transactions\TransactionTypes;
 use Closure;
 use Illuminate\Contracts\View\View;
@@ -77,6 +78,9 @@ class ItemForm extends Component
     public bool $trackExpiry = false;
 
     public bool $trackSerial = false;
+
+    /** storage_status.code (Ambient, Chilled, …); '' = not set. */
+    public string $storageStatus = '';
 
     /** Approval limit for this item, in base units; empty = use the customer / general limit. */
     public string $threshold = '';
@@ -285,6 +289,7 @@ class ItemForm extends Component
             'base_unit_id' => $this->baseUnitId,
             'track_expiry' => $this->trackExpiry,
             'track_serial' => $this->trackSerial,
+            'storage_status' => $this->storageStatus !== '' ? $this->storageStatus : null,
             'approval_threshold_qty' => trim($this->threshold) === '' ? null : trim($this->threshold),
             'active' => $this->active,
         ], $this->filledUnits()));
@@ -318,6 +323,7 @@ class ItemForm extends Component
             'base_unit' => $this->baseUnitId,
             'units' => array_map(fn (array $row) => [$row['unit_id'], trim($row['factor'])], $this->filledUnits()),
             'tracking' => [$this->trackExpiry, $this->trackSerial],
+            'storage_status' => $this->storageStatus,
             'threshold' => trim($this->threshold),
             'active' => $this->active,
         ];
@@ -370,6 +376,7 @@ class ItemForm extends Component
                     $fail(__('items.errors.serial_and_expiry'));
                 }
             })],
+            'storageStatus' => ['nullable', 'string', Rule::in(array_keys(StorageStatuses::all()))],
             'threshold' => ['nullable', 'numeric', 'min:0', 'max:99999999999999', 'decimal:0,4'],
             'active' => ['boolean'],
         ];
@@ -391,6 +398,7 @@ class ItemForm extends Component
             'nameAr.max' => __('settings.errors.too_long', ['max' => 200]),
             'nameFr.max' => __('settings.errors.too_long', ['max' => 200]),
             'baseUnitId.*' => __('items.errors.base_unit_required'),
+            'storageStatus.*' => __('items.errors.storage_status'),
             'threshold.*' => __('items.errors.threshold'),
         ];
     }
@@ -538,6 +546,7 @@ class ItemForm extends Component
         $this->baseUnitId = $product->base_unit_id;
         $this->trackExpiry = $product->track_expiry;
         $this->trackSerial = $product->track_serial;
+        $this->storageStatus = (string) $product->storage_status;
         $this->threshold = $product->approval_threshold_qty === null ? '' : rtrim(rtrim($product->approval_threshold_qty, '0'), '.');
         $this->active = $product->active;
         $this->units = [];

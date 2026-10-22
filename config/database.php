@@ -96,6 +96,10 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
+            // The app runs in UTC and writes times without an offset: the session
+            // must read them as UTC too. The company time zone is only for display
+            // and "today" (App\Support\CompanyTime).
+            'timezone' => 'UTC',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
             // Ids are BIGINT; fetch every value as a string so ids from query rows
             // and from models (App\Models\Concerns\HasNumericKey) compare equal.

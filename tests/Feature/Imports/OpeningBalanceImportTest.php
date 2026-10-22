@@ -99,6 +99,7 @@ it('catches every kind of mistake in an opening balance', function (array $row, 
     'no quantity' => [['BEY', 'ACME', 'BEANS', '', '', ''], 'Quantity is missing.'],
     'zero quantity' => [['BEY', 'ACME', 'BEANS', '', 0, ''], 'Quantity must be a whole number above 0'],
     'decimal quantity' => [['BEY', 'ACME', 'BEANS', '', '1.5', ''], 'Quantity must be a whole number above 0 (found “1.5”)'],
+    'quantity over 999,999' => [['BEY', 'ACME', 'BEANS', '', 1000000, ''], 'Quantity is too large: at most 999,999 per row (found “1000000”)'],
     'expiry item without expiry' => [['BEY', 'ACME', 'YOGURT', '', 5, ''], 'Item YOGURT tracks expiry: enter the expiry date.'],
     'not a date' => [['BEY', 'ACME', 'YOGURT', '31/02/2027', 5, ''], 'Expiry date “31/02/2027” is not a date.'],
     'serial item without serial' => [['BEY', 'ACME', 'PHONE', '', 1, ''], 'Item PHONE has serial numbers: enter the serial number of this piece.'],
@@ -121,6 +122,12 @@ it('imports serial items one row per piece', function () {
     expect($this->stock->balance('PHONE'))->toBe(2.0)
         ->and($this->stock->balance('BEANS'))->toBe(5.0)
         ->and(DB::table('serial_number')->where('status', 'IN_STOCK')->where('warehouse_id', $this->stock->warehouse->id)->orderBy('serial_no')->pluck('serial_no')->all())->toBe(['SN-1', 'SN-2']);
+
+    // Rule 12: the two pieces are one line of the Opening Balance, with both serials.
+    $phone = DB::table('stock_transaction_line')->where('product_id', $this->stock->id('PHONE'))->get();
+    expect($phone)->toHaveCount(1)
+        ->and((float) $phone[0]->qty_base)->toBe(2.0)
+        ->and(DB::table('stock_transaction_line_serial')->where('line_id', $phone[0]->id)->count())->toBe(2);
 });
 
 it('refuses a serial that is twice in the file or already in stock', function () {
@@ -151,7 +158,9 @@ it('keeps an expiry item’s stock per expiry date: rows with the same date add 
     app(ImportEngine::class)->confirm($job, $this->manager);
 
     expect($this->stock->balance('YOGURT', '2027-03-31'))->toBe(10.0)
-        ->and($this->stock->balance('YOGURT', '2027-04-30'))->toBe(2.0);
+        ->and($this->stock->balance('YOGURT', '2027-04-30'))->toBe(2.0)
+        // Rule 12: rows of the same item, unit and date are one line (6 + 4), the other date another.
+        ->and(DB::table('stock_transaction_line')->where('product_id', $this->stock->id('YOGURT'))->orderBy('line_no')->pluck('qty_base')->map(fn ($q) => (float) $q)->all())->toBe([10.0, 2.0]);
 });
 
 it('warns when stock is added to what is already there, or has expired', function () {

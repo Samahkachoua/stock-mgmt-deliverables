@@ -48,6 +48,11 @@ return [
             'body' => ':name ne pourra plus être choisi pour de nouvelles opérations. Vous pourrez le réactiver plus tard.',
             'button' => 'Désactiver le client',
         ],
+        'customer_branch' => [
+            'title' => 'Désactiver l’agence :name ?',
+            'body' => ':name ne pourra plus être choisie sur les nouveaux brouillons. Vous pourrez la réactiver plus tard.',
+            'button' => 'Désactiver l’agence',
+        ],
         'item' => [
             'title' => 'Désactiver l’article :name ?',
             'body' => ':name ne pourra plus être choisi dans de nouvelles opérations. Vous pourrez le réactiver plus tard.',

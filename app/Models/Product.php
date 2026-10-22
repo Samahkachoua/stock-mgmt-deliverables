@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\DB;
  * @property string $base_unit_id
  * @property bool $track_expiry
  * @property bool $track_serial
+ * @property string|null $storage_status storage_status.code; null = not set
  * @property string|null $approval_threshold_qty
  * @property bool $active
  * @property-read Customer $customer
@@ -49,6 +50,7 @@ class Product extends Model
         'base_unit_id',
         'track_expiry',
         'track_serial',
+        'storage_status',
         'approval_threshold_qty',
         'active',
     ];

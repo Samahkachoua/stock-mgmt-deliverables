@@ -90,7 +90,7 @@ final class AuditLogReport extends Report
             ->where(fn ($query) => $query
                 ->where(fn ($query) => $query->where('a.entity', 'stock_transaction')->whereIn('a.entity_id', $visibleDocuments))
                 // Master data and users: not for a customer's own login.
-                ->when(! $user->is_customer_user, fn ($query) => $query->orWhere('a.entity', '<>', 'stock_transaction')))
+                ->when(! $user->isCustomerUser(), fn ($query) => $query->orWhere('a.entity', '<>', 'stock_transaction')))
             ->tap(fn ($query) => $this->dates($filters)->whereInstant($query, 'a.created_at', $timezone))
             ->when($filters['entity'] !== '', fn ($query) => $query->where('a.entity', $filters['entity']))
             ->when($filters['action'] !== '', fn ($query) => $query->where('a.action', $filters['action']))

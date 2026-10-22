@@ -4,7 +4,7 @@ namespace App\Reports;
 
 use App\Models\StockMovement;
 use App\Models\User;
-use App\Models\Warehouse;
+use App\Services\Stock\Availability;
 use App\Support\Format;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,13 +15,14 @@ use Illuminate\Database\Eloquent\Builder;
  * period) and the closing balance (at its end). From stock_movement (history).
  * Without a "Date from" the card starts at the first movement: opening balance 0.
  *
- * Days are days in the warehouse's own time zone.
+ * A movement is dated, filtered and ordered by its document's date (the date
+ * the user gave it, which may be in the past), not by when it was recorded;
+ * stock a transfer brings in by the day it was received, in the company's
+ * time zone (Availability::movementDay()). Movements of one day keep the order
+ * they were recorded in.
  */
 final class StockCardReport extends Report
 {
-    /** @var array<string, string> warehouse id => time zone */
-    private array $timezones = [];
-
     public function key(): string
     {
         return 'stock-card';
@@ -64,14 +65,17 @@ final class StockCardReport extends Report
     {
         $opening = $this->balanceBefore($filters);
 
+        $day = $this->day($filters);
+
         return $this->inPeriod($filters)
-            ->join('stock_transaction as t', 't.id', '=', 'stock_movement.transaction_id')
             ->select([
-                'stock_movement.id', 'stock_movement.product_id', 'stock_movement.direction', 'stock_movement.qty_base', 'stock_movement.created_at',
+                'stock_movement.id', 'stock_movement.product_id', 'stock_movement.direction', 'stock_movement.qty_base',
                 't.doc_no', 't.transaction_type', 'stock_movement.expiry_date',
             ])
+            ->selectRaw("$day as movement_day")
             // The balance after each movement: the opening balance plus every movement up to it.
-            ->selectRaw("? + sum(case when stock_movement.direction = 'IN' then stock_movement.qty_base else -stock_movement.qty_base end) over (order by stock_movement.seq) as balance", [$opening])
+            ->selectRaw("? + sum(case when stock_movement.direction = 'IN' then stock_movement.qty_base else -stock_movement.qty_base end) over (order by $day, stock_movement.seq) as balance", [$opening])
+            ->orderByRaw($day)
             ->orderBy('stock_movement.seq');
     }
 
@@ -81,7 +85,7 @@ final class StockCardReport extends Report
         $type = $row->transaction_type;
 
         return [
-            'date' => Format::dateTime(CarbonImmutable::parse($row->created_at)->setTimezone($this->timezone($filters))),
+            'date' => Format::date(CarbonImmutable::parse($row->movement_day)),
             'type' => ['text' => __('types.'.config("transactions.types.$type.token")), 'type' => $type],
             'reference' => $this->referenceCell($row->doc_no),
             'expiry_date' => ['text' => $row->expiry_date === null ? '' : Format::date(CarbonImmutable::parse($row->expiry_date))],
@@ -105,7 +109,7 @@ final class StockCardReport extends Report
         $this->loadProducts([$filters['item']]);
         $opening = $this->balanceBefore($filters);
         $totals = $this->inPeriod($filters)
-            ->selectRaw("coalesce(sum(case when direction = 'IN' then qty_base end), 0) as qty_in, coalesce(sum(case when direction = 'OUT' then qty_base end), 0) as qty_out")
+            ->selectRaw("coalesce(sum(case when stock_movement.direction = 'IN' then stock_movement.qty_base end), 0) as qty_in, coalesce(sum(case when stock_movement.direction = 'OUT' then stock_movement.qty_base end), 0) as qty_out")
             ->first();
         $in = (float) $totals?->getAttribute('qty_in');
         $out = (float) $totals?->getAttribute('qty_out');
@@ -121,7 +125,8 @@ final class StockCardReport extends Report
     }
 
     /**
-     * The item's movements in the warehouse (scoped: the user's warehouses, their customer).
+     * The item's movements in the warehouse (scoped: the user's warehouses, their
+     * customer), with their document as t.
      *
      * @param  array<string, string>  $filters
      * @return Builder<StockMovement>
@@ -129,19 +134,34 @@ final class StockCardReport extends Report
     private function movements(array $filters): Builder
     {
         return StockMovement::query()
+            ->join('stock_transaction as t', 't.id', '=', 'stock_movement.transaction_id')
             ->where('stock_movement.product_id', $filters['item'])
             ->where('stock_movement.warehouse_id', $filters['warehouse']);
     }
 
     /**
-     * The movements of the chosen days (days in the warehouse's time zone).
+     * The movements of the chosen days (their documents' dates).
      *
      * @param  array<string, string>  $filters
      * @return Builder<StockMovement>
      */
     private function inPeriod(array $filters): Builder
     {
-        return $this->dates($filters)->whereInstant($this->movements($filters), 'stock_movement.created_at', $this->timezone($filters));
+        $dates = $this->dates($filters);
+
+        return $this->movements($filters)
+            ->when($dates->from !== '', fn ($query) => $query->whereRaw($this->day($filters).' >= ?::date', [$dates->from]))
+            ->when($dates->to !== '', fn ($query) => $query->whereRaw($this->day($filters).' <= ?::date', [$dates->to]));
+    }
+
+    /**
+     * The day a movement counts on, in SQL (see the class comment).
+     *
+     * @param  array<string, string>  $filters
+     */
+    private function day(array $filters): string
+    {
+        return Availability::movementDay('stock_movement', 't');
     }
 
     /**
@@ -151,23 +171,15 @@ final class StockCardReport extends Report
      */
     private function balanceBefore(array $filters): float
     {
-        $start = $this->dates($filters)->start($this->timezone($filters));
+        $from = $this->dates($filters)->from;
 
-        if ($start === null) {
+        if ($from === '') {
             return 0.0;
         }
 
         return (float) $this->movements($filters)
-            ->where('stock_movement.created_at', '<', $start)
-            ->selectRaw("coalesce(sum(case when direction = 'IN' then qty_base else -qty_base end), 0) as qty")
+            ->whereRaw($this->day($filters).' < ?::date', [$from])
+            ->selectRaw("coalesce(sum(case when stock_movement.direction = 'IN' then stock_movement.qty_base else -stock_movement.qty_base end), 0) as qty")
             ->value('qty');
-    }
-
-    /**
-     * @param  array<string, string>  $filters
-     */
-    private function timezone(array $filters): string
-    {
-        return $this->timezones[$filters['warehouse']] ??= (string) (Warehouse::whereKey($filters['warehouse'])->value('timezone') ?: config('app.timezone'));
     }
 }

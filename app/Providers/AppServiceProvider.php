@@ -2,9 +2,10 @@
 
 namespace App\Providers;
 
-use App\Http\Middleware\EnsureCurrentWarehouse;
+use App\Http\Middleware\EnsureHasWarehouse;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Support\CompanyTime;
 use App\Support\Format;
 use App\Support\Notify;
 use App\Support\Permissions;
@@ -26,7 +27,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // The company time zone, read once per request.
+        $this->app->singleton(CompanyTime::class);
     }
 
     /**
@@ -42,7 +44,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Livewire requests from warehouse-scoped pages re-run the warehouse check.
         Livewire::addPersistentMiddleware([
-            EnsureCurrentWarehouse::class,
+            EnsureHasWarehouse::class,
         ]);
 
         $this->registerPermissionGates();
@@ -95,6 +97,20 @@ class AppServiceProvider extends ServiceProvider
 
         // Reports open for anyone who may see a report (the audit log needs audit.view only).
         Gate::define('reports.open', fn (User $user) => $user->hasPermission('report.view') || $user->hasPermission('audit.view'));
+
+        // Each type's list, details and print pages (documents.receive, documents.issue...):
+        // its view permission, or creating / approving it (no dead end after saving).
+        foreach (config('transactions.types') as $type) {
+            $codes = array_filter([$type['view'], $type['create'], $type['approve'] ?? null, ...($type['view_also'] ?? [])]);
+            Gate::define('documents.'.$type['slug'], fn (User $user) => collect($codes)->contains(fn (string $code) => $user->hasPermission($code)));
+        }
+
+        // Draft receipts / issues (drafts.in.open, drafts.out.open): their view
+        // permission, or creating / confirming them.
+        foreach (config('transactions.drafts') as $code => $draft) {
+            Gate::define('drafts.'.strtolower($code).'.open', fn (User $user) => $user->hasPermission($draft['view'])
+                || $user->hasPermission($draft['create']) || $user->hasPermission($draft['confirm']));
+        }
 
         // Settings opens for anyone who may open at least one of its tabs
         // (config/ui.php `settings_tabs`); each tab checks its own permission.

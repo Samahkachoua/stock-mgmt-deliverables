@@ -6,7 +6,7 @@ use App\Models\Scopes\CustomerScope;
 
 /**
  * Use on every model whose rows belong to a customer, so a customer user
- * (is_customer_user) only ever sees their own customer's rows. Bypass it only
+ * (a user with a customer_id) only ever sees their own customer's rows. Bypass it only
  * deliberately, with withoutGlobalScope(CustomerScope::class).
  *
  * Override customerColumn() when the customer is not in `customer_id`
