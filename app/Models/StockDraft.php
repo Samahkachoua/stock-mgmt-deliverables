@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * A draft receipt / draft issue: lines in one or more warehouses that touch no
+ * A draft receipt / order: lines in one or more warehouses that touch no
  * stock until the draft is confirmed (App\Services\Stock\PostingService::confirmDraft).
  * Who sees which drafts: CustomerScope and DraftScope.
  *

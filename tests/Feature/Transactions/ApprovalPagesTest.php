@@ -275,16 +275,16 @@ it('counts documents waiting for the user’s approval in the sidebar', function
     // The manager's own document can't be approved by them, so it isn't counted.
     $this->stock->post('DAMAGE', [$this->stock->line('BEANS', 10)], $this->manager, reason: 'TRANSPORT');
 
-    $this->actingAs($this->manager)->get(route('issue'))
+    $this->actingAs($this->manager)->get(route('delivery-note'))
         ->assertSee(__('nav.pending_count', ['count' => '2']));
 
-    $this->actingAs($this->operator)->get(route('issue'))
+    $this->actingAs($this->operator)->get(route('delivery-note'))
         ->assertDontSee(__('nav.pending_count', ['count' => '2']))
         ->assertDontSee(__('nav.pending_count', ['count' => '3']));
 
     // Approving takes it off the count.
     app(PostingService::class)->approve(StockTransaction::query()->where('created_by', $this->operator->id)->firstOrFail(), $this->manager);
-    $this->actingAs($this->manager)->get(route('issue'))->assertSee(__('nav.pending_count', ['count' => '1']));
+    $this->actingAs($this->manager)->get(route('delivery-note'))->assertSee(__('nav.pending_count', ['count' => '1']));
 });
 
 it('lists pending documents first for approvers', function () {

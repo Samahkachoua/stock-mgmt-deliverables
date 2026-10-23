@@ -49,7 +49,7 @@ return [
         'added' => ':name was added. Give people access to it on the Users tab.',
         'updated' => ':name was saved.',
         'errors' => [
-            'has_stock' => 'This warehouse still has stock (or a transfer on its way). Move or issue it before taking the warehouse out of use.',
+            'has_stock' => 'This warehouse still has stock (or a transfer on its way). Move or deliver it before taking the warehouse out of use.',
             'code_required' => 'Enter a code.',
             'code_taken' => 'Another warehouse already uses this code.',
             'name_required' => 'Enter a name.',
@@ -142,7 +142,7 @@ return [
 
     'branches' => [
         'heading' => 'Branches',
-        'description' => 'The branches (shops, sites) of each customer. Draft receipts and issues say which branch the goods come from or go to.',
+        'description' => 'The branches (shops, sites) of each customer. Draft receipts and orders say which branch the goods come from or go to.',
         'add' => 'Add branch',
         'new_heading' => 'New branch',
         'edit_heading' => 'Edit :name',
@@ -232,6 +232,8 @@ return [
         'code_hint' => 'Capital letters, digits and _ only, e.g. SHIFT_LEAD.',
         'create' => 'Add role',
         'delete' => 'Delete',
+        'select_all' => 'All',
+        'select_all_for' => ':role: all',
         'save_hint' => 'Changes apply when you save.',
         'saved' => 'Roles saved.',
         'added' => ':name was added.',

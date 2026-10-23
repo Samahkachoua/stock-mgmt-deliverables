@@ -4,6 +4,10 @@
 Multi-warehouse stock management for a logistics (3PL) company. Stock is
 always owned by a customer, never by the company running the warehouses.
 
+Naming: the OUT type is shown as **Delivery note** (`DN-`) and a draft of it as
+**Order** (`ORD-`); older documents keep their `ISS-` / `DRI-` numbers. Codes
+stay direction-based (`OUT`, `stock.out.*`, `draft.out.*`).
+
 Reference material (read before large changes):
 - `database/sql/schema.sql` — source of truth for tables, constraints, posting functions
 - `docs/SRS.docx` — functional requirements (cite FR numbers in commits/PRs)
@@ -140,7 +144,7 @@ them so users get a clear, translated message instead of a raw DB error.
    dropdown for them. **Expiry-tracked products** require an expiry date on
    every Receive / Opening Balance line. There are **no batch/lot numbers**:
    stock is kept per expiry date (`expiry_date` on lines, movements, balances
-   and in-transit rows; there is no `batch` table). On Issue, Transfer and
+   and in-transit rows; there is no `batch` table). On Delivery note, Transfer and
    Damage the user picks the expiry date per line (the nearest is
    pre-selected; Damage may also pick expired stock) and `PostingService`
    takes stock only from that date. A line without a date (no UI path today)
@@ -149,7 +153,7 @@ them so users get a clear, translated message instead of a raw DB error.
     line stores what the user counted; the difference against the system
     balance (at save time) becomes an IN or OUT movement. Show the difference
     live in the form.
-11. **No backdated stock going out.** An Issue, Transfer or Damage dated
+11. **No backdated stock going out.** A Delivery note, Transfer or Damage dated
     before today may only take what was in the warehouse on that date and
     must leave every later day ≥ 0 (`Availability::onDate()`: a movement
     counts on its document date; transfer stock at the destination on the
@@ -158,7 +162,7 @@ them so users get a clear, translated message instead of a raw DB error.
     the chosen date; PostingService re-checks it on save and on approval.
 12. **No duplicate lines in a transaction.** A line's key (`line_key` in
     config/transactions.php, `TypeUi::lineKey()`):
-  - Receive, Opening Balance, Issue, Transfer, Damage: item + unit, plus the
+  - Receive, Opening Balance, Delivery note, Transfer, Damage: item + unit, plus the
     expiry date for expiry-tracked items (so one item can still be taken from
     two expiry dates with two rows, rule 9).
   - Adjustment: item + expiry date, in any unit (a count is compared with the
@@ -198,7 +202,7 @@ them so users get a clear, translated message instead of a raw DB error.
 
 ## Screen patterns (from the approved Stitch designs)
 Designs: `docs/design/stitch-exports/`. Every transaction type (Receive,
-Issue, Transfer, Adjustment, Damage, Opening Balance) uses the SAME three
+Delivery note, Transfer, Adjustment, Damage, Opening Balance) uses the SAME three
 pages, built from shared Blade/Livewire components — never a one-off layout
 per type. Only the colour, title and the type-specific columns differ.
 
@@ -225,7 +229,7 @@ per type. Only the colour, title and the type-specific columns differ.
    Type-specific columns:
    - Receive / Opening Balance: Expiry date, shown only on rows whose item
      tracks expiry; hint reads "In stock now", no maximum.
-   - Issue / Transfer / Damage: Expiry date dropdown (date · quantity,
+   - Delivery note / Transfer / Damage: Expiry date dropdown (date · quantity,
      nearest pre-selected), only on rows whose item tracks expiry; the
      "Available" hint and maximum are for that date. To take from two
      dates, add two rows.
@@ -334,11 +338,11 @@ One shared confirmation modal component; never the browser's `confirm()`.
 
 **The modal**
 - Title names the action and the record: "Delete unit Box?",
-  "Cancel issue ISS-2026-000123?"
+  "Cancel delivery note DN-2026-000123?"
 - One sentence on the consequence: "This returns 36 Piece of Canned Beans
   400g to Beirut Main stock and can't be undone."
 - Two buttons: "Keep it" (default focus, safe) and a red button with the
-  specific action: "Delete unit", "Cancel issue" — never a bare "Yes/OK".
+  specific action: "Delete unit", "Cancel delivery note" — never a bare "Yes/OK".
 - Cancelling a transaction and rejecting require a reason (required field
   inside the modal), saved to audit_log.
 - Esc and clicking outside close it without action; focus returns to the
@@ -354,7 +358,7 @@ One shared toast component + one notify helper; never ad-hoc alerts per page.
 
 **Success**
 - After every successful save/action, show a green toast with the result
-  and the reference: "Issue ISS-2026-000123 saved" + link "View".
+  and the reference: "Delivery note DN-2026-000123 saved" + link "View".
 - Sent for approval → amber toast: "Damage DMG-2026-000045 sent for manager approval".
 - Approve / Reject / Confirm receipt / Cancel each have their own message.
 - Survives the redirect (session flash), auto-closes after 10 s (`config('ui.toast_seconds')`), closable.
@@ -427,24 +431,24 @@ never ad-hoc spinners per page.
   `aria-busy="true"` on the region being reloaded.
 
 ## List state (filters, sorting, pagination) — never in the URL
-- List and report URLs stay clean (e.g. `/issues`). Filters, search, sorting,
+- List and report URLs stay clean (e.g. `/delivery-note`). Filters, search, sorting,
   page number and page size are NEVER put in the query string.
 - Livewire list components: no `#[Url]` attributes; use
   `WithPagination` together with `WithoutUrlPagination`.
 - State is kept per user and per list in the session
-  (e.g. `session('list_state.issues')`), restored on mount, so going to a
+  (e.g. `session('list_state.delivery-note')`), restored on mount, so going to a
   details page and back keeps the user's filters. Every list has a
   "Clear filters" link that resets it.
 - Exports (Excel/PDF) and Print use the component's current state through a
   Livewire action — never a link that rebuilds the filters as URL parameters.
-- Route parameters that identify a record (e.g. `/issues/{id}`) are fine;
+- Route parameters that identify a record (e.g. `/delivery-note/{id}`) are fine;
   this rule is about filter/sort/page state only.
 - Date filters are always two fields, "Date from" and "Date to", empty by
   default (no date filter), inclusive, interpreted in the company time zone.
 
 ## Printing
 - Every screen that can be printed has a dedicated print view
-  (e.g. `/issues/{id}/print`) using a separate `layouts.print` layout:
+  (e.g. `/delivery-note/{id}/print`) using a separate `layouts.print` layout:
   no sidebar, no top bar, no buttons, no dark theme.
 - Print layout: company name/logo, document title and reference, status,
   summary fields, lines table, totals, printed by/at, signature lines
@@ -464,11 +468,11 @@ never ad-hoc spinners per page.
   `App\Reports\Dashboard`, each figure = the row count of the report it
   opens). If a new field seems useful, ask before adding it.
 - The system suggests instead of asking: base unit pre-selected, nearest expiry
-  date pre-selected (changeable) for Issue/Transfer/Damage, today's date pre-filled.
+  date pre-selected (changeable) for Delivery note/Transfer/Damage, today's date pre-filled.
 - Prevent errors instead of reporting them: live availability hint and
   inline validation while typing; Save disabled until the form is valid.
 - Same colour per transaction type everywhere (one shared colour map):
-  Receive green, Issue orange, Transfer blue, Adjustment purple,
+  Receive green, Delivery note orange, Transfer blue, Adjustment purple,
   Damage red, Opening Balance slate. Status badges: Pending approval amber,
   In transit blue, Completed green, Rejected red, Cancelled grey.
 - Normal saves never ask for confirmation (except a final Adjustment/Damage

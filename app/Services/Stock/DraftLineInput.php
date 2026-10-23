@@ -9,7 +9,7 @@ final class DraftLineInput
 {
     /**
      * @param  string  $unit  unit code (e.g. BOX)
-     * @param  string|null  $expiry  Y-m-d: received (receipt) or chosen (issue), expiry items only
+     * @param  string|null  $expiry  Y-m-d: received (receipt) or chosen (order), expiry items only
      * @param  list<string>  $serials  serial numbers, for serial-numbered items
      */
     public function __construct(

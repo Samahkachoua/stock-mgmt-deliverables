@@ -53,15 +53,35 @@
                                 <th scope="col" wire:key="role-head-{{ $role->id }}" class="min-w-28 px-2 py-3 text-center">
                                     <span class="block text-body font-semibold text-fg">{{ $role->label() }}</span>
                                     <span class="block text-small font-normal text-muted">{{ trans_choice('settings.roles.user_count', $role->users_count) }}</span>
+                                    {{-- Ticks or clears every permission of this role in one go; ticked only when every permission is granted. Saved with the form, like the single boxes. --}}
+                                    <label
+                                        x-data="{
+                                            role: @js((string) $role->id),
+                                            ids: @js($allPermissionIds),
+                                            get granted() { return ($wire.grants[this.role] ?? []).map(String) },
+                                            get all() { return this.ids.every(id => this.granted.includes(id)) },
+                                            toggle(on) { $wire.set('grants.' + this.role, on ? [...this.ids] : [], false) },
+                                        }"
+                                        class="mt-1 inline-flex h-control cursor-pointer items-center gap-2 rounded-lg px-2 text-small font-semibold text-fg hover:bg-card-hover"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            :checked="all"
+                                            @change="toggle($event.target.checked)"
+                                            class="size-5 rounded border-control accent-brand"
+                                        >
+                                        <span aria-hidden="true">{{ __('settings.roles.select_all') }}</span>
+                                        <span class="sr-only">{{ __('settings.roles.select_all_for', ['role' => $role->label()]) }}</span>
+                                    </label>
                                     @unless ($role->is_system)
                                         <button
                                             type="button"
                                             wire:click="askDelete('{{ $role->id }}')"
-                                            class="mt-1 inline-flex h-control items-center gap-1 rounded-lg px-2 text-small font-semibold text-danger hover:bg-danger-soft"
+                                            title="{{ __('settings.roles.delete') }}"
+                                            class="mt-1 inline-grid size-control place-items-center rounded-lg text-danger hover:bg-danger-soft"
                                         >
                                             <x-busy-icon name="delete" target="askDelete('{{ $role->id }}')" class="size-4" />
-                                            {{ __('settings.roles.delete') }}
-                                            <span class="sr-only">{{ $role->label() }}</span>
+                                            <span class="sr-only">{{ __('settings.roles.delete') }} {{ $role->label() }}</span>
                                         </button>
                                         @error('delete.'.$role->id)
                                             <span class="mt-1 block text-small font-normal text-danger" role="alert">{{ $message }}</span>

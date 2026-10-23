@@ -168,7 +168,7 @@ it('shows an item’s stock per expiry date, serials and last movements with the
 
     $this->get(route('stock.item', [$d->stock->id('PHONE'), $d->beirut->id]))->assertSee('SN-1')->assertSee('SN-2');
 
-    // Newest first: the transfer out, the count, the damage, the issue, the receipt.
+    // Newest first: the transfer out, the count, the damage, the delivery note, the receipt.
     $this->get(route('stock.item', [$d->stock->id('BEANS'), $d->beirut->id]))
         ->assertSeeInOrder([$d->transferInTransit->doc_no, '-12 Piece', '28 Piece', '-2 Piece', '40 Piece', '-6 Piece', '42 Piece', '-12 Piece', '48 Piece', '+60 Piece', '60 Piece'])
         ->assertSee(route('transfer.show', $d->transferInTransit->doc_no), false);

@@ -33,12 +33,12 @@ use Illuminate\Support\Str;
  * The only code that changes stock (CLAUDE.md rule 1).
  *
  * post() saves a document of a type that posts at once (Opening Balance,
- * Receive, Issue: TypeUi::postsDirectly()) as POSTED and writes its movements;
+ * Receive, Delivery note: TypeUi::postsDirectly()) as POSTED and writes its movements;
  * dispatches a Transfer (receive() completes it); and saves a Damage /
  * Adjustment either POSTED or, at its approval limit, PENDING_APPROVAL with no
  * movements until approve() (or reject()) — unless its creator may approve
  * that type: then it is posted at once. cancel() reverses a posted
- * document. confirmDraft() turns a draft receipt / issue into one posted
+ * document. confirmDraft() turns a draft receipt / order into one posted
  * document per warehouse. Each runs in one DB::transaction: the
  * reference number, header, lines, serials, movements and audit entry are
  * saved together or not at all. Every movement goes through fn_post_movement,
@@ -106,7 +106,7 @@ final class PostingService
 
         $type = TransactionTypes::get($document->type);
 
-        // Opening Balance / Receive / Issue post at once; a Transfer is dispatched
+        // Opening Balance / Receive / Delivery note post at once; a Transfer is dispatched
         // here and posted at the destination by receive(); Damage / Adjustment post
         // at once or wait for approve() when a line reaches its approval limit.
         if (! $type->postsDirectly() && ! $type->dispatchReceive() && ! $type->supportsApproval()) {
@@ -152,9 +152,9 @@ final class PostingService
     }
 
     /**
-     * Reverses every movement of a posted Opening Balance / Receive / Issue and
+     * Reverses every movement of a posted Opening Balance / Receive / Delivery note and
      * marks it CANCELLED. A receipt can't be cancelled once part of its stock
-     * has gone out (StockAlreadyUsed); an issue puts the stock back.
+     * has gone out (StockAlreadyUsed); a delivery note puts the stock back.
      *
      * @throws StockException
      */
@@ -288,14 +288,22 @@ final class PostingService
                 ->get(['l.*', 'u.code as unit_code']);
             $products = Product::withoutGlobalScopes()->with(['baseUnit', 'units.unit'])->findMany($lines->pluck('product_id')->unique())->keyBy('id');
             $plan = [];
+            // The serials sent on every line, in one query (locked in id order).
+            $serialsByLine = DB::table('stock_transaction_line_serial as ls')
+                ->join('stock_transaction_line as l', 'l.id', '=', 'ls.line_id')
+                ->join('serial_number as s', 's.id', '=', 'ls.serial_id')
+                ->where('l.transaction_id', $header->id)
+                ->orderBy('s.id')
+                ->lockForUpdate()
+                ->get(['ls.line_id', 's.id', 's.serial_no'])
+                ->groupBy('line_id');
 
             // Check every line first; nothing is written until all are valid.
             foreach ($lines as $line) {
                 $entry = $received[$line->id] ?? throw new PostingRejected('transfers.errors.received_required', [], $line->id, 'received');
                 $product = $products[$line->product_id];
                 $sentBase = (float) $line->qty_base;
-                $sentSerials = DB::table('stock_transaction_line_serial as ls')->join('serial_number as s', 's.id', '=', 'ls.serial_id')
-                    ->where('ls.line_id', $line->id)->lockForUpdate()->pluck('s.serial_no', 's.id')->all();
+                $sentSerials = $serialsByLine->get($line->id, collect())->pluck('serial_no', 'id')->all();
 
                 $text = trim((string) $entry->qty);
                 if (! self::whole($text)) {
@@ -344,13 +352,18 @@ final class PostingService
                 $plan[] = compact('line', 'receivedBase', 'reason', 'sentSerials', 'arrivedSerials');
             }
 
+            // The expiry dates each line left the source with, nearest first (all lines in one query).
+            $sentByLine = DB::table('stock_movement')
+                ->whereIn('line_id', $lines->pluck('id'))
+                ->where('direction', 'OUT')
+                ->orderByRaw('expiry_date ASC NULLS LAST, seq ASC')
+                ->get(['line_id', 'expiry_date', 'qty_base'])
+                ->groupBy('line_id');
+            $arrivedIds = [];
+            $lostIds = [];
+
             foreach ($plan as ['line' => $line, 'receivedBase' => $receivedBase, 'reason' => $reason, 'sentSerials' => $sentSerials, 'arrivedSerials' => $arrivedSerials]) {
-                // The expiry dates this line left the source with, nearest first.
-                $sent = DB::table('stock_movement')
-                    ->where('line_id', $line->id)
-                    ->where('direction', 'OUT')
-                    ->orderByRaw('expiry_date ASC NULLS LAST, seq ASC')
-                    ->get(['expiry_date', 'qty_base']);
+                $sent = $sentByLine->get($line->id, collect());
 
                 $remaining = $receivedBase;
                 foreach ($sent as $movement) {
@@ -363,17 +376,23 @@ final class PostingService
                 }
 
                 foreach ($sentSerials as $serialId => $serialNo) {
-                    $arrived = in_array($serialNo, $arrivedSerials, true);
-
-                    // Serials that didn't arrive leave stock. serial_status has no "lost", so they are DAMAGED.
-                    DB::table('serial_number')->where('id', $serialId)->update([
-                        'warehouse_id' => $arrived ? $header->to_warehouse_id : null,
-                        'status' => $arrived ? 'IN_STOCK' : 'DAMAGED',
-                        'updated_at' => now(),
-                    ]);
+                    if (in_array($serialNo, $arrivedSerials, true)) {
+                        $arrivedIds[] = $serialId;
+                    } else {
+                        $lostIds[] = $serialId;
+                    }
                 }
 
                 DB::table('stock_transaction_line')->where('id', $line->id)->update(['qty_received' => $receivedBase, 'shortage_reason' => $reason]);
+            }
+
+            if ($arrivedIds !== []) {
+                DB::table('serial_number')->whereIn('id', $arrivedIds)->update(['warehouse_id' => $header->to_warehouse_id, 'status' => 'IN_STOCK', 'updated_at' => now()]);
+            }
+
+            // Serials that didn't arrive leave stock. serial_status has no "lost", so they are DAMAGED.
+            if ($lostIds !== []) {
+                DB::table('serial_number')->whereIn('id', $lostIds)->update(['warehouse_id' => null, 'status' => 'DAMAGED', 'updated_at' => now()]);
             }
 
             DB::table('in_transit_balance')->where('transaction_id', $header->id)->delete();
@@ -650,7 +669,7 @@ final class PostingService
     }
 
     /**
-     * Confirms a draft receipt / issue: its lines, grouped by warehouse, become
+     * Confirms a draft receipt / order: its lines, grouped by warehouse, become
      * one posted document of the draft's type per warehouse (in the order the
      * warehouses first appear on the draft), each linked to the draft and its
      * branch, dated today in that warehouse. All of them or none: when one line
@@ -869,9 +888,7 @@ final class PostingService
                 'direction' => $line['direction'],
             ], 'id');
 
-            foreach ($line['serial_ids'] as $serialId) {
-                DB::table('stock_transaction_line_serial')->insert(['line_id' => $lineId, 'serial_id' => $serialId]);
-            }
+            $this->linkSerials($lineId, $line['serial_ids']);
 
             $lineIds[$key] = $lineId;
         }
@@ -895,7 +912,7 @@ final class PostingService
     }
 
     /**
-     * A Damage line: like an Issue line (a quantity, or the serials picked), and
+     * A Damage line: like a Delivery note line (a quantity, or the serials picked), and
      * there must be enough in stock now, expired stock included when the type
      * uses them. An expiry date chosen on the line is kept on it (and must have
      * enough on its own); otherwise dates are chosen (FEFO) when it is posted.
@@ -927,8 +944,10 @@ final class PostingService
             $seenSerials = $seen['serials'] ?? [];
             $picked = $this->serials($line, $qtyBase, $seenSerials, $key);
 
+            $rows = $picked === [] ? collect() : DB::table('serial_number')->where('product_id', $product->id)->whereIn('serial_no', $picked)->get()->keyBy('serial_no');
+
             foreach ($picked as $serial) {
-                $row = DB::table('serial_number')->where('product_id', $product->id)->where('serial_no', $serial)->first();
+                $row = $rows->get($serial);
 
                 if ($row === null || $row->status !== 'IN_STOCK' || $row->warehouse_id !== $warehouseId) {
                     throw new SerialProblem('stock.errors.serial_not_in_stock', ['serial' => $serial], $serial, $key);
@@ -1084,7 +1103,7 @@ final class PostingService
      * Writes the movements of a saved Damage / Adjustment, against the stock as
      * it is now (balances locked FOR UPDATE).
      *
-     * Damage lines go out like an Issue: expiry items from the expiry date saved
+     * Damage lines go out like a Delivery note: expiry items from the expiry date saved
      * on the line, or else nearest expiry first (expired stock first when the
      * type uses it), serial items by
      * the serials on the line. Adjustment lines move their difference in their
@@ -1100,15 +1119,20 @@ final class PostingService
         $products = Product::withoutGlobalScopes()->with(['baseUnit', 'units.unit'])->findMany($lines->pluck('product_id')->unique())->keyBy('id');
         // Damage dated back: only what was here on that date can go out.
         $date = CarbonImmutable::parse($header->document_date);
+        // The serials of all lines, in one query (locked in id order).
+        $serialsByLine = DB::table('stock_transaction_line_serial as ls')
+            ->join('stock_transaction_line as l', 'l.id', '=', 'ls.line_id')
+            ->join('serial_number as s', 's.id', '=', 'ls.serial_id')
+            ->where('l.transaction_id', $header->id)
+            ->orderBy('s.id')
+            ->lockForUpdate()
+            ->get(['ls.line_id', 's.id', 's.serial_no', 's.status', 's.warehouse_id'])
+            ->groupBy('line_id');
 
         foreach ($lines as $line) {
             $product = $products[$line->product_id];
             $key = array_search($line->id, $lineIds, true) ?: null;
-            $serials = DB::table('stock_transaction_line_serial as ls')
-                ->join('serial_number as s', 's.id', '=', 'ls.serial_id')
-                ->where('ls.line_id', $line->id)
-                ->lockForUpdate()
-                ->get(['s.id', 's.serial_no', 's.status', 's.warehouse_id']);
+            $serials = $serialsByLine->get($line->id, collect());
             $gone = $serials->first(fn ($serial) => $serial->status !== 'IN_STOCK' || $serial->warehouse_id !== $header->warehouse_id);
 
             if ($line->direction !== null) {
@@ -1208,27 +1232,64 @@ final class PostingService
 
         $this->move($context['transaction'], $lineId, $context['warehouse'], $context['customer'], $product->id, $expiry, 'IN', $context['qty_base']);
 
-        foreach ($serials as $serial) {
-            $row = DB::table('serial_number')->where('product_id', $product->id)->where('serial_no', $serial)->lockForUpdate()->first();
+        if ($serials === []) {
+            return;
+        }
 
-            if ($row !== null && in_array($row->status, ['IN_STOCK', 'IN_TRANSIT'], true)) {
+        $known = $this->lockSerials($product->id, $serials);
+
+        foreach ($serials as $serial) {
+            if (isset($known[$serial]) && in_array($known[$serial]->status, ['IN_STOCK', 'IN_TRANSIT'], true)) {
                 throw new SerialProblem('stock.errors.serial_in_stock', ['serial' => $serial], $serial, $key);
             }
+        }
 
-            if ($row !== null) {
-                // Left before (issued / damaged) and comes back in.
-                DB::table('serial_number')->where('id', $row->id)->update(['warehouse_id' => $context['warehouse'], 'status' => 'IN_STOCK', 'updated_at' => now()]);
-                $serialId = $row->id;
-            } else {
-                $serialId = (string) DB::table('serial_number')->insertGetId(['product_id' => $product->id, 'serial_no' => $serial, 'warehouse_id' => $context['warehouse'], 'status' => 'IN_STOCK'], 'id');
-            }
+        // Left before (issued / damaged) and come back in.
+        if ($known !== []) {
+            DB::table('serial_number')->whereIn('id', array_column($known, 'id'))->update(['warehouse_id' => $context['warehouse'], 'status' => 'IN_STOCK', 'updated_at' => now()]);
+        }
 
-            DB::table('stock_transaction_line_serial')->insert(['line_id' => $lineId, 'serial_id' => $serialId]);
+        $new = array_values(array_filter($serials, fn (string $serial) => ! isset($known[$serial])));
+
+        if ($new !== []) {
+            DB::table('serial_number')->insert(array_map(fn (string $serial) => ['product_id' => $product->id, 'serial_no' => $serial, 'warehouse_id' => $context['warehouse'], 'status' => 'IN_STOCK'], $new));
+        }
+
+        $ids = DB::table('serial_number')->where('product_id', $product->id)->whereIn('serial_no', $serials)->pluck('id', 'serial_no');
+        $this->linkSerials($lineId, array_map(fn (string $serial) => (string) $ids[$serial], $serials));
+    }
+
+    /**
+     * Locks the existing rows of these serials of the item (in id order, so two
+     * postings never lock them in opposite orders), by serial number.
+     *
+     * @param  list<string>  $serials
+     * @return array<string, object{id: string, serial_no: string, status: string, warehouse_id: ?string}>
+     */
+    private function lockSerials(string $productId, array $serials): array
+    {
+        return DB::table('serial_number')
+            ->where('product_id', $productId)
+            ->whereIn('serial_no', $serials)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get(['id', 'serial_no', 'status', 'warehouse_id'])
+            ->keyBy('serial_no')
+            ->all();
+    }
+
+    /**
+     * @param  list<string>  $serialIds
+     */
+    private function linkSerials(string $lineId, array $serialIds): void
+    {
+        if ($serialIds !== []) {
+            DB::table('stock_transaction_line_serial')->insert(array_map(fn (string $id) => ['line_id' => $lineId, 'serial_id' => $id], $serialIds));
         }
     }
 
     /**
-     * Issue / transfer dispatch: takes stock out. Expiry items are taken from
+     * Delivery note / transfer dispatch: takes stock out. Expiry items are taken from
      * the expiry date chosen on the line or, when none is given, nearest expiry
      * first (FEFO), possibly from several dates (one movement per date); serial
      * items take exactly the serials picked, which must be in stock here. For a
@@ -1278,8 +1339,10 @@ final class PostingService
         }
 
         $serialIds = [];
+        $known = $serials === [] ? [] : $this->lockSerials($product->id, $serials);
+
         foreach ($serials as $serial) {
-            $row = DB::table('serial_number')->where('product_id', $product->id)->where('serial_no', $serial)->lockForUpdate()->first();
+            $row = $known[$serial] ?? null;
 
             if ($row === null || $row->status !== 'IN_STOCK' || $row->warehouse_id !== $context['warehouse']) {
                 throw new SerialProblem('stock.errors.serial_not_in_stock', ['serial' => $serial], $serial, $key);
@@ -1297,9 +1360,9 @@ final class PostingService
             $this->addInTransit($context['transaction'], $product->id, null, $needed);
         }
 
-        foreach ($serialIds as $serialId) {
-            DB::table('serial_number')->where('id', $serialId)->update(['warehouse_id' => null, 'status' => $inTransit ? 'IN_TRANSIT' : 'ISSUED', 'updated_at' => now()]);
-            DB::table('stock_transaction_line_serial')->insert(['line_id' => $lineId, 'serial_id' => $serialId]);
+        if ($serialIds !== []) {
+            DB::table('serial_number')->whereIn('id', $serialIds)->update(['warehouse_id' => null, 'status' => $inTransit ? 'IN_TRANSIT' : 'ISSUED', 'updated_at' => now()]);
+            $this->linkSerials($lineId, $serialIds);
         }
     }
 
@@ -1342,20 +1405,22 @@ final class PostingService
             ->lockForUpdate()
             ->get(['s.id', 's.serial_no', 's.status', 's.warehouse_id']);
 
+        $received = $type->postingDirection() === 'IN';
+
         foreach ($serials as $serial) {
-            if ($type->postingDirection() === 'IN') {
-                if ($serial->status !== 'IN_STOCK' || $serial->warehouse_id !== $header->warehouse_id) {
-                    throw new StockAlreadyUsed('stock.errors.serial_already_used', ['serial' => $serial->serial_no]);
-                }
-
-                DB::table('serial_number')->where('id', $serial->id)->update(['warehouse_id' => null, 'status' => 'ISSUED', 'updated_at' => now()]);
-            } else {
-                if ($serial->status !== 'ISSUED') {
-                    throw new StockAlreadyUsed('stock.errors.serial_back_in_stock', ['serial' => $serial->serial_no]);
-                }
-
-                DB::table('serial_number')->where('id', $serial->id)->update(['warehouse_id' => $header->warehouse_id, 'status' => 'IN_STOCK', 'updated_at' => now()]);
+            if ($received && ($serial->status !== 'IN_STOCK' || $serial->warehouse_id !== $header->warehouse_id)) {
+                throw new StockAlreadyUsed('stock.errors.serial_already_used', ['serial' => $serial->serial_no]);
             }
+
+            if (! $received && $serial->status !== 'ISSUED') {
+                throw new StockAlreadyUsed('stock.errors.serial_back_in_stock', ['serial' => $serial->serial_no]);
+            }
+        }
+
+        if ($serials->isNotEmpty()) {
+            DB::table('serial_number')->whereIn('id', $serials->pluck('id'))->update($received
+                ? ['warehouse_id' => null, 'status' => 'ISSUED', 'updated_at' => now()]
+                : ['warehouse_id' => $header->warehouse_id, 'status' => 'IN_STOCK', 'updated_at' => now()]);
         }
     }
 

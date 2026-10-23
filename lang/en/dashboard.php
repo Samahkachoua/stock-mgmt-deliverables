@@ -30,7 +30,7 @@ return [
 
     'activity' => [
         'title' => 'Activity by type',
-        'hint' => 'Receipts, issues, transfers… done over time.',
+        'hint' => 'Receipts, delivery notes, transfers… done over time.',
         'step' => [
             'day' => 'Per day',
             'month' => 'Per month',

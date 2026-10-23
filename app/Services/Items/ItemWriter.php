@@ -4,6 +4,7 @@ namespace App\Services\Items;
 
 use App\Models\Product;
 use App\Support\Audit;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Saves an item with its units and records it in the audit log: the one way
@@ -48,16 +49,23 @@ final class ItemWriter
      */
     public function snapshot(Product $product): array
     {
-        $product->load(['customer', 'baseUnit', 'units.unit']);
+        // Customer, base unit and every unit's code in one query (an import saves many items).
+        $codes = DB::table('product as p')
+            ->join('customer as c', 'c.id', '=', 'p.customer_id')
+            ->join('unit as b', 'b.id', '=', 'p.base_unit_id')
+            ->leftJoin('product_unit as pu', 'pu.product_id', '=', 'p.id')
+            ->leftJoin('unit as u', 'u.id', '=', 'pu.unit_id')
+            ->where('p.id', $product->id)
+            ->get(['c.code as customer', 'b.code as base_unit', 'u.code as unit', 'pu.factor_to_base']);
 
         return [
-            'customer' => $product->customer->code,
+            'customer' => $codes->first()->customer,
             'sku' => $product->sku,
             'name_en' => $product->name_en,
             'name_ar' => $product->name_ar,
             'name_fr' => $product->name_fr,
-            'base_unit' => $product->baseUnit->code,
-            'units' => $product->units->mapWithKeys(fn ($row) => [$row->unit->code => $row->factor_to_base])->sortKeys()->all(),
+            'base_unit' => $codes->first()->base_unit,
+            'units' => $codes->whereNotNull('unit')->mapWithKeys(fn ($row) => [$row->unit => (float) $row->factor_to_base])->sortKeys()->all(),
             'track_expiry' => $product->track_expiry,
             'track_serial' => $product->track_serial,
             'storage_status' => $product->storage_status,

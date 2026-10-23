@@ -71,10 +71,13 @@ class Roles extends Component
     {
         Gate::authorize('admin.users.manage');
 
+        // All permission ids at once ('exists' would query once per ticked box).
+        $codes = Permission::pluck('code', 'id');
+
         $this->validate([
             'grants' => ['array'],
             'grants.*' => ['array'],
-            'grants.*.*' => ['integer', 'exists:permission,id'],
+            'grants.*.*' => ['integer', Rule::in($codes->keys()->all())],
         ]);
 
         if (! $this->keepsOwnUserManagement()) {
@@ -83,11 +86,11 @@ class Roles extends Component
             return;
         }
 
-        $codes = Permission::pluck('code', 'id');
-
         DB::transaction(function () use ($codes) {
+            $current = $this->currentGrants();
+
             foreach ($this->roles as $role) {
-                $before = $this->currentGrants()[$role->id] ?? [];
+                $before = $current[$role->id] ?? [];
                 $after = array_values(array_unique($this->grants[$role->id] ?? []));
 
                 if (collect($before)->sort()->values()->all() === collect($after)->sort()->values()->all()) {
@@ -215,7 +218,9 @@ class Roles extends Component
 
     public function render(): View
     {
-        return view('livewire.settings.roles')->title(__('settings.tabs.roles'));
+        return view('livewire.settings.roles', [
+            'allPermissionIds' => $this->modules->flatten()->map(fn (Permission $permission) => (string) $permission->id)->values()->all(),
+        ])->title(__('settings.tabs.roles'));
     }
 
     /**

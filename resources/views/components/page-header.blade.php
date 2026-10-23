@@ -13,7 +13,7 @@
     'subtitle' => null,
     'back' => null,
     'backLabel' => null,
-    'ltr' => false, // titles that are references (ISS-2026-000123) stay left-to-right
+    'ltr' => false, // titles that are references (DN-2026-000123) stay left-to-right
 ])
 
 @php

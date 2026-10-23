@@ -1,7 +1,7 @@
 <?php
 
-// Draft receipts and draft issues: they change no stock until confirmed; confirming
-// creates one receipt / issue per warehouse of their lines.
+// Draft receipts and orders: they change no stock until confirmed; confirming
+// creates one receipt / delivery note per warehouse of their lines.
 return [
     'types' => [
         'receipt' => [
@@ -17,18 +17,18 @@ return [
             'empty_title' => 'No draft receipts yet',
             'empty_body' => 'Use “New Draft Receipt” to list stock that is on its way.',
         ],
-        'issue' => [
-            'title' => 'Draft issues',
-            'singular' => 'Draft issue',
-            'new' => 'New Draft Issue',
-            'subtitle' => 'Stock requested for a customer branch. Nothing changes in stock until a draft is confirmed.',
-            'form_subtitle' => 'List what should go out and the warehouse each item comes from. Stock changes only when the draft is confirmed.',
+        'order' => [
+            'title' => 'Orders',
+            'singular' => 'Order',
+            'new' => 'New Order',
+            'subtitle' => 'Stock requested for a customer branch. Nothing changes in stock until the order is confirmed.',
+            'form_subtitle' => 'List what should go out and the warehouse each item comes from. Stock changes only when the order is confirmed.',
             'branch' => 'To branch',
             'branch_hint' => 'The customer branch the goods go to.',
-            'confirm' => 'Confirm and issue',
-            'created_heading' => 'Issues created',
-            'empty_title' => 'No draft issues yet',
-            'empty_body' => 'Use “New Draft Issue” to list stock that should go out.',
+            'confirm' => 'Confirm and deliver',
+            'created_heading' => 'Delivery notes created',
+            'empty_title' => 'No orders yet',
+            'empty_body' => 'Use “New Order” to list stock that should go out.',
         ],
     ],
 
@@ -56,7 +56,7 @@ return [
         'confirmed_on' => 'Confirmed on',
         'cancel_reason' => 'Why it was cancelled',
         'not_in_stock_in' => '{1} Not in stock yet. Confirming creates 1 receipt.|[2,*] Not in stock yet. Confirming creates :count receipts, one per warehouse.',
-        'not_in_stock_out' => '{1} Still in stock. Confirming creates 1 issue.|[2,*] Still in stock. Confirming creates :count issues, one per warehouse.',
+        'not_in_stock_out' => '{1} Still in stock. Confirming creates 1 delivery note.|[2,*] Still in stock. Confirming creates :count delivery notes, one per warehouse.',
         'waiting_for_confirmation' => 'Waiting for someone who may confirm it.',
     ],
 
@@ -69,20 +69,20 @@ return [
         'row_warehouse' => 'Warehouse, row :row',
         'choose_warehouse' => 'Choose…',
         'notice_in' => '{1} Saving changes no stock. When confirmed, this becomes a receipt.|[2,*] Saving changes no stock. When confirmed, this becomes :count receipts, one per warehouse.',
-        'notice_out' => '{1} Saving changes no stock. When confirmed, this becomes an issue.|[2,*] Saving changes no stock. When confirmed, this becomes :count issues, one per warehouse.',
+        'notice_out' => '{1} Saving changes no stock. When confirmed, this becomes a delivery note.|[2,*] Saving changes no stock. When confirmed, this becomes :count delivery notes, one per warehouse.',
     ],
 
     'actions' => [
         'edit' => 'Edit',
-        'cancel' => 'Cancel draft',
-        'save' => 'Save draft',
+        'cancel' => 'Cancel :type',
+        'save' => 'Save :type',
         'save_and_confirm' => 'Save and confirm',
         'confirming' => 'Confirming…',
     ],
 
     'confirm_cancel' => [
         'title' => 'Cancel :type :reference?',
-        'body' => 'The draft can no longer be changed or confirmed. Stock is not affected.',
+        'body' => 'It can no longer be changed or confirmed. Stock is not affected.',
         'button' => 'Cancel :type',
         'reason' => 'Why is it cancelled?',
         'reason_placeholder' => 'e.g. The branch withdrew the order',
@@ -93,7 +93,7 @@ return [
         'updated' => ':type :reference saved',
         'confirmed' => ':type :reference confirmed — :documents',
         'documents_in' => '{1} 1 receipt created|[2,*] :count receipts created',
-        'documents_out' => '{1} 1 issue created|[2,*] :count issues created',
+        'documents_out' => '{1} 1 delivery note created|[2,*] :count delivery notes created',
         'cancelled' => ':type :reference cancelled',
     ],
 
@@ -103,14 +103,14 @@ return [
     ],
 
     'errors' => [
-        'already_confirmed' => 'This draft was already confirmed by :name at :time.',
-        'already_cancelled' => 'This draft was cancelled.',
-        'changed' => ':name changed this draft meanwhile. Open it again to see the changes.',
-        'cannot_create' => 'You don’t have permission to create this draft.',
-        'cannot_edit' => 'You don’t have permission to change this draft.',
-        'cannot_confirm' => 'You don’t have permission to confirm this draft.',
-        'cannot_cancel' => 'You don’t have permission to cancel this draft.',
-        'warehouse_not_allowed' => 'You don’t work in :warehouse, so you can’t confirm this draft.',
+        'already_confirmed' => 'This document was already confirmed by :name at :time.',
+        'already_cancelled' => 'This document was cancelled.',
+        'changed' => ':name changed this document meanwhile. Open it again to see the changes.',
+        'cannot_create' => 'You don’t have permission to create this document.',
+        'cannot_edit' => 'You don’t have permission to change this document.',
+        'cannot_confirm' => 'You don’t have permission to confirm this document.',
+        'cannot_cancel' => 'You don’t have permission to cancel this document.',
+        'warehouse_not_allowed' => 'You don’t work in :warehouse, so you can’t confirm this document.',
         'branch_required' => 'Choose a branch.',
         'branch_not_allowed' => 'You can’t use this branch.',
         'choose_warehouse' => 'Choose a warehouse.',

@@ -15,7 +15,7 @@
 |   slug           URL segment and route name prefix: <slug>, <slug>.create, <slug>.show
 |   token          colour token in config('ui.types') and lang/<locale>/types.php
 |   icon           resources/icons/<icon>.svg
-|   prefix         reference prefix shown on documents, e.g. ISS-2026-000123
+|   prefix         reference prefix shown on documents, e.g. DN-2026-000123
 |   view           permission to open the list, details and print pages (also
 |                  open to whoever may create or approve the type, see `view_also`)
 |   view_also      other permissions that also open them (e.g. receiving transfers)
@@ -29,7 +29,8 @@
 |                  those in stock, nearest pre-selected),
 |                  counted (In system | Counted | Difference instead of Quantity)
 |   list_columns   optional list page columns: total (Total quantity), reason
-|                  (the document's reason); default ['total']
+|                  (the document's reason), draft (the draft it was confirmed
+|                  from, e.g. the Order of a Delivery note); default ['total']
 |   hint           available = "Available: N" and quantity may not exceed it;
 |                  in_stock  = "In stock now: N" and no maximum
 |   reasons        reason codes (database enum values) for the `reason` field
@@ -54,23 +55,27 @@ return [
             'view' => 'stock.in.view',
             'create' => 'stock.in.create',
             'header_fields' => [],
+            // The Draft receipt it was confirmed from, if any.
+            'list_columns' => ['total', 'draft'],
             'line_columns' => ['expiry'],
             'hint' => 'in_stock',
             'line_key' => ['unit', 'expiry'],
             'lang' => 'receive',
         ],
         'OUT' => [
-            'slug' => 'issue',
-            'token' => 'issue',
+            'slug' => 'delivery-note',
+            'token' => 'delivery',
             'icon' => 'outbox',
-            'prefix' => 'ISS',
+            'prefix' => 'DN',
             'view' => 'stock.out.view',
             'create' => 'stock.out.create',
             'header_fields' => [],
+            // The Order it was confirmed from, if any.
+            'list_columns' => ['total', 'draft'],
             'line_columns' => ['expiry_pick'],
             'hint' => 'available',
             'line_key' => ['unit', 'expiry'],
-            'lang' => 'issue',
+            'lang' => 'delivery_note',
         ],
         'TRANSFER' => [
             'slug' => 'transfer',
@@ -140,7 +145,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Drafts: draft receipt / draft issue
+    | Drafts: draft receipt / order
     |--------------------------------------------------------------------------
     |
     | Keyed by the transaction_type.code that confirming a draft creates (one
@@ -169,14 +174,14 @@ return [
             'lang' => 'receipt',
         ],
         'OUT' => [
-            'slug' => 'draft-issues',
-            'token' => 'issue',
+            'slug' => 'orders',
+            'token' => 'delivery',
             'icon' => 'content_paste_go',
-            'prefix' => 'DRI',
+            'prefix' => 'ORD',
             'view' => 'draft.out.view',
             'create' => 'draft.out.create',
             'confirm' => 'draft.out.confirm',
-            'lang' => 'issue',
+            'lang' => 'order',
         ],
     ],
 

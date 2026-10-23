@@ -30,7 +30,7 @@ If the server isn't connected, use the files already in
   in `resources/views/components/` and `app/Livewire/`. Reuse first.
 
 ## 2. Shared components (build once, then reuse)
-The first time, extract these from the Issue screens; later screens only
+The first time, extract these from the Delivery note (Issue) screens; later screens only
 configure them:
 - `x-layouts.app` — sidebar, top bar (warehouse selector, theme switch,
   language switch, user menu)

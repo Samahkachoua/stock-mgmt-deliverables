@@ -64,9 +64,9 @@ it('starts forms on today in the company time zone, not in UTC', function () {
         ->and($form->html())->toContain('max="2026-10-22"');
 
     // Dated today there: not refused as "in the future", and not backdated either.
-    $issue = $stock->post('OUT', [$stock->line('BEANS', 4)], date: CarbonImmutable::parse('2026-10-22'));
-    expect($issue->status)->toBe('POSTED')
-        ->and(substr((string) $issue->getRawOriginal('document_date'), 0, 10))->toBe('2026-10-22');
+    $deliveryNote = $stock->post('OUT', [$stock->line('BEANS', 4)], date: CarbonImmutable::parse('2026-10-22'));
+    expect($deliveryNote->status)->toBe('POSTED')
+        ->and(substr((string) $deliveryNote->getRawOriginal('document_date'), 0, 10))->toBe('2026-10-22');
 });
 
 it('numbers documents by the year in the company time zone', function () {

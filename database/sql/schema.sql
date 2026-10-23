@@ -165,7 +165,7 @@ CREATE TABLE customer (
 ALTER TABLE app_user
     ADD CONSTRAINT fk_user_customer FOREIGN KEY (customer_id) REFERENCES customer(id);
 
--- A customer's branches (shops, sites). Shown on draft receipts / issues as
+-- A customer's branches (shops, sites). Shown on draft receipts / orders as
 -- where the goods come from or go to; they never affect stock.
 CREATE TABLE customer_branch (
     id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -398,7 +398,7 @@ CREATE TABLE stock_transaction (
     -- opens): the same form submitted twice creates one document. NULL for
     -- documents not created from a form (imports).
     client_request_id UUID,
-    -- Receipts / issues created by confirming a draft: the draft and its
+    -- Receipts / delivery notes created by confirming a draft: the draft and its
     -- branch (information only). FK to stock_draft added after that table.
     customer_branch_id BIGINT REFERENCES customer_branch(id),
     draft_id         BIGINT,
@@ -435,7 +435,7 @@ CREATE SEQUENCE doc_no_out_seq AS BIGINT START 1;
 CREATE SEQUENCE doc_no_transfer_seq AS BIGINT START 1;
 CREATE SEQUENCE doc_no_adjustment_seq AS BIGINT START 1;
 CREATE SEQUENCE doc_no_damage_seq AS BIGINT START 1;
--- Draft receipts (DRR-) and draft issues (DRI-), see stock_draft.
+-- Draft receipts (DRR-) and orders (ORD-; DRI- before the rename), see stock_draft.
 CREATE SEQUENCE doc_no_draft_in_seq AS BIGINT START 1;
 CREATE SEQUENCE doc_no_draft_out_seq AS BIGINT START 1;
 
@@ -483,7 +483,7 @@ CREATE TABLE stock_transaction_line_serial (   -- serials attached to a transact
 );
 
 -- ----------------------------------------------------------------------------
--- DRAFTS (draft receipt / draft issue)
+-- DRAFTS (draft receipt / order)
 -- ----------------------------------------------------------------------------
 -- A draft never touches stock. Its lines each name their own warehouse; it can
 -- be edited until it is confirmed. Confirming (App\Services\Stock\PostingService::
@@ -523,7 +523,7 @@ CREATE TABLE stock_draft_line (
     unit_id      BIGINT NOT NULL REFERENCES unit(id),
     qty_entered  NUMERIC(18,4) NOT NULL CHECK (qty_entered > 0),
     qty_base     NUMERIC(18,4) NOT NULL CHECK (qty_base > 0),
-    expiry_date  DATE,                                  -- typed (receipt) or picked (issue) for expiry items
+    expiry_date  DATE,                                  -- typed (receipt) or picked (order) for expiry items
     serials      JSONB NOT NULL DEFAULT '[]'::jsonb,    -- serial numbers, for serial-numbered items
     UNIQUE (draft_id, line_no)
 );
@@ -879,7 +879,7 @@ $$ LANGUAGE plpgsql;
 INSERT INTO transaction_type (code, name, requires_destination_warehouse, requires_dispatch_receive, supports_approval_threshold, display_order, posting_direction, uses_expired) VALUES
     ('OPENING_BALANCE', 'Opening Balance', FALSE, FALSE, FALSE, 1, 'IN',  FALSE),
     ('IN',              'Receiving (IN)',  FALSE, FALSE, FALSE, 2, 'IN',  FALSE),
-    ('OUT',             'Issuing (OUT)',   FALSE, FALSE, FALSE, 3, 'OUT', FALSE),
+    ('OUT',             'Delivery note (OUT)', FALSE, FALSE, FALSE, 3, 'OUT', FALSE),
     ('TRANSFER',        'Transfer',        TRUE,  TRUE,  FALSE, 4, NULL,  FALSE),
     ('DAMAGE',          'Damage',          FALSE, FALSE, TRUE,  5, 'OUT', TRUE),
     ('ADJUSTMENT',      'Adjustment',      FALSE, FALSE, TRUE,  6, NULL,  FALSE);
@@ -937,17 +937,17 @@ INSERT INTO permission (code, description, module) VALUES
     ('transaction.cancel', 'Cancel stock documents', 'STOCK'),
     ('draft.in.create', 'Create and edit draft receipts', 'STOCK'),
     ('draft.in.confirm', 'Confirm draft receipts (creates the receipts)', 'STOCK'),
-    ('draft.out.create', 'Create and edit draft issues', 'STOCK'),
-    ('draft.out.confirm', 'Confirm draft issues (creates the issues)', 'STOCK'),
+    ('draft.out.create', 'Create and edit orders', 'STOCK'),
+    ('draft.out.confirm', 'Confirm orders (creates the delivery notes)', 'STOCK'),
     -- List, details and print pages of each type (creating / approving it opens them too).
     ('stock.in.view', 'View receipts', 'STOCK'),
-    ('stock.out.view', 'View issues', 'STOCK'),
+    ('stock.out.view', 'View delivery notes', 'STOCK'),
     ('stock.transfer.view', 'View transfers', 'STOCK'),
     ('stock.adjustment.view', 'View adjustments', 'STOCK'),
     ('stock.damage.view', 'View damage documents', 'STOCK'),
     ('stock.opening.view', 'View opening balances', 'STOCK'),
     ('draft.in.view', 'View draft receipts', 'STOCK'),
-    ('draft.out.view', 'View draft issues', 'STOCK'),
+    ('draft.out.view', 'View orders', 'STOCK'),
     -- The owner dashboard (/dashboard). Only ADMIN at first (it gets every permission).
     ('dashboard.view', 'View the owner dashboard', 'REPORT');
 

@@ -5,12 +5,13 @@ use App\Models\User;
 use App\Models\Warehouse;
 use App\Support\Transactions\Statuses;
 use App\Support\Transactions\TransactionTypes;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\Support\Stock;
 
 dataset('types', fn () => [
     'Receive' => ['IN', 'receive'],
-    'Issue' => ['OUT', 'issue'],
+    'Delivery note' => ['OUT', 'delivery-note'],
     'Transfer' => ['TRANSFER', 'transfer'],
     'Adjustment' => ['ADJUSTMENT', 'adjustment'],
     'Damage' => ['DAMAGE', 'damage'],
@@ -182,13 +183,30 @@ it('reads behaviour from the transaction_type table', function () {
 it('hides the New button without the create permission', function () {
     $operator = userWithRole('OPERATOR');
 
-    $this->actingAs($operator)->get(route('issue'))->assertSee('href="'.route('issue.create').'"', false);
+    $this->actingAs($operator)->get(route('delivery-note'))->assertSee('href="'.route('delivery-note.create').'"', false);
     $this->actingAs($operator)->get(route('opening-balance'))
         ->assertOk()
         ->assertDontSee('href="'.route('opening-balance.create').'"', false);
     $this->actingAs($operator)->get(route('opening-balance.create'))->assertForbidden();
 });
 
+it('numbers new delivery notes DN- and still opens and finds those numbered ISS- before the rename', function () {
+    $stock = Stock::create();
+    $stock->post('IN', [$stock->line('BEANS', 3, 'BOX')]);
+    $old = $stock->post('OUT', [$stock->line('BEANS', 1)]);
+    DB::table('stock_transaction')->where('id', $old->id)->update(['doc_no' => 'ISS-2026-000007']);
+    $new = $stock->post('OUT', [$stock->line('BEANS', 2)]);
+
+    expect($new->doc_no)->toStartWith('DN-');
+
+    $this->actingAs($stock->user)->get(route('delivery-note.show', 'ISS-2026-000007'))->assertOk()->assertSee('ISS-2026-000007');
+
+    Livewire::actingAs($stock->user)->test(TransactionList::class, ['type' => 'OUT'])
+        ->set('search', 'ISS-2026')
+        ->assertSee('ISS-2026-000007')
+        ->assertDontSee($new->doc_no);
+});
+
 it('returns 404 for an unknown reference', function () {
-    $this->actingAs(userWithRole('ADMIN'))->get(route('issue.show', 'ISS-2026-999999'))->assertNotFound();
+    $this->actingAs(userWithRole('ADMIN'))->get(route('delivery-note.show', 'DN-2026-999999'))->assertNotFound();
 });

@@ -90,7 +90,7 @@ class Availability
      * What may go out on a document dated $date, per expiry date ('' for items
      * without expiry): what was here at the end of that day, but never more than
      * the lowest stock of any later day, so no later day goes below zero.
-     * Example: nothing until 21 Oct, 10 received on 21 Oct: an Issue dated 1 Oct
+     * Example: nothing until 21 Oct, 10 received on 21 Oct: a Delivery note dated 1 Oct
      * may take nothing.
      *
      * A movement counts on its document's date; stock a transfer brings in
@@ -100,32 +100,49 @@ class Availability
      */
     public function onDate(string $warehouseId, string $customerId, string $productId, CarbonInterface $date): array
     {
+        return $this->onDateForItems($warehouseId, $customerId, [$productId], $date)[$productId] ?? [];
+    }
+
+    /**
+     * onDate() for several items in one query, by product id (an item with no
+     * movements here is left out).
+     *
+     * @param  list<string>  $productIds
+     * @return array<string, array<string, float>>
+     */
+    public function onDateForItems(string $warehouseId, string $customerId, array $productIds, CarbonInterface $date): array
+    {
+        if ($productIds === []) {
+            return [];
+        }
+
         $movementDay = self::movementDay();
+        $placeholders = implode(', ', array_fill(0, count($productIds), '?'));
 
         $rows = DB::select(<<<SQL
             WITH daily AS (
-                SELECT m.expiry_date, {$movementDay} AS day,
+                SELECT m.product_id, m.expiry_date, {$movementDay} AS day,
                        SUM(CASE WHEN m.direction = 'IN' THEN m.qty_base ELSE -m.qty_base END) AS delta
                 FROM stock_movement m
                 JOIN stock_transaction t ON t.id = m.transaction_id
-                WHERE m.warehouse_id = ? AND m.customer_id = ? AND m.product_id = ?
-                GROUP BY 1, 2
+                WHERE m.warehouse_id = ? AND m.customer_id = ? AND m.product_id IN ({$placeholders})
+                GROUP BY 1, 2, 3
             ), running AS (
-                SELECT expiry_date, day, SUM(delta) OVER (PARTITION BY expiry_date ORDER BY day) AS balance
+                SELECT product_id, expiry_date, day, SUM(delta) OVER (PARTITION BY product_id, expiry_date ORDER BY day) AS balance
                 FROM daily
             )
-            SELECT expiry_date,
+            SELECT product_id, expiry_date,
                    COALESCE((array_agg(balance ORDER BY day DESC) FILTER (WHERE day <= ?::date))[1], 0) AS on_day,
                    MIN(balance) FILTER (WHERE day > ?::date) AS later
             FROM running
-            GROUP BY expiry_date
-        SQL, [$warehouseId, $customerId, $productId, $date->toDateString(), $date->toDateString()]);
+            GROUP BY product_id, expiry_date
+        SQL, [$warehouseId, $customerId, ...$productIds, $date->toDateString(), $date->toDateString()]);
 
         $quantities = [];
 
         foreach ($rows as $row) {
             $qty = $row->later === null ? (float) $row->on_day : min((float) $row->on_day, (float) $row->later);
-            $quantities[$row->expiry_date ?? ''] = max(round($qty, 4), 0.0);
+            $quantities[(string) $row->product_id][$row->expiry_date ?? ''] = max(round($qty, 4), 0.0);
         }
 
         return $quantities;

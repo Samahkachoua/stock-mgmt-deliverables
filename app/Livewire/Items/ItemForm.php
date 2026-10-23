@@ -216,7 +216,7 @@ class ItemForm extends Component
     }
 
     /**
-     * "Canned Beans 400g is used on 3 documents (Receipt, Issue) …", or null
+     * "Canned Beans 400g is used on 3 documents (Receipt, Delivery note) …", or null
      * when nothing uses the item. Every warehouse counts, not only the user's.
      */
     private function whyNotDeletable(Product $product): ?string

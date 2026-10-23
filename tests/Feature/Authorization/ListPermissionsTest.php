@@ -37,7 +37,7 @@ function userWithPermissions(Warehouse $warehouse, array $codes): User
 beforeEach(function () {
     $this->stock = Stock::create();
     $this->receipt = $this->stock->post('IN', [$this->stock->line('BEANS', 5)]);
-    $this->issue = $this->stock->post('OUT', [$this->stock->line('BEANS', 1)]);
+    $this->deliveryNote = $this->stock->post('OUT', [$this->stock->line('BEANS', 1)]);
 });
 
 it('opens only the lists the user may view', function () {
@@ -48,9 +48,9 @@ it('opens only the lists the user may view', function () {
     $this->get(route('receive.show', $this->receipt->doc_no))->assertOk();
     $this->get(route('receive.print', $this->receipt->doc_no))->assertOk();
 
-    $this->get(route('issue'))->assertForbidden();
-    $this->get(route('issue.show', $this->issue->doc_no))->assertForbidden();
-    $this->get(route('issue.print', $this->issue->doc_no))->assertForbidden();
+    $this->get(route('delivery-note'))->assertForbidden();
+    $this->get(route('delivery-note.show', $this->deliveryNote->doc_no))->assertForbidden();
+    $this->get(route('delivery-note.print', $this->deliveryNote->doc_no))->assertForbidden();
     $this->get(route('draft-receipts'))->assertForbidden();
 
     // Viewing is not creating.
@@ -64,8 +64,8 @@ it('shows only the sidebar items of the lists the user may open', function () {
         ->getContent();
 
     expect($html)->toContain('href="'.route('receive').'"')
-        ->toContain('href="'.route('draft-issues').'"')
-        ->not->toContain('href="'.route('issue').'"')
+        ->toContain('href="'.route('orders').'"')
+        ->not->toContain('href="'.route('delivery-note').'"')
         ->not->toContain('href="'.route('transfer').'"')
         ->not->toContain('href="'.route('draft-receipts').'"');
 });
@@ -75,7 +75,7 @@ it('lets whoever may create, approve or receive a type open its list too', funct
         ->get(route($route))
         ->assertOk();
 })->with([
-    'create an issue' => [['stock.out.create'], 'issue'],
+    'create a delivery note' => [['stock.out.create'], 'delivery-note'],
     'approve damage' => [['stock.damage.approve'], 'damage'],
     'receive transfers' => [['stock.transfer.receive'], 'transfer'],
     'confirm draft receipts' => [['draft.in.confirm'], 'draft-receipts'],

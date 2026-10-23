@@ -5,7 +5,7 @@ namespace App\Services\Stock;
 use Carbon\CarbonImmutable;
 
 /**
- * A draft receipt / issue as the form submits it (App\Services\Stock\DraftService).
+ * A draft receipt / order as the form submits it (App\Services\Stock\DraftService).
  */
 final class DraftInput
 {

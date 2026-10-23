@@ -67,7 +67,7 @@ class ResponsiveTest extends DuskTestCase
             self::$itemId = $stock->id('BEANS');
             self::$reference = $receipt->doc_no;
 
-            // A draft issue with lines in both warehouses.
+            // A order with lines in both warehouses.
             $branch = CustomerBranch::create(['customer_id' => $stock->customer->id, 'code' => 'DT', 'name' => 'Downtown']);
             $stock->post('IN', [$stock->line('BEANS', 10)], warehouse: $tripoli);
             self::$draft = app(DraftService::class)->save(new DraftInput('OUT', $stock->customer->id, $branch->id, CarbonImmutable::today(), 'PO 77', [
@@ -98,7 +98,7 @@ class ResponsiveTest extends DuskTestCase
     {
         $pages = ['home' => '/', 'dashboard' => '/dashboard'];
 
-        foreach (['receive', 'issue', 'transfer', 'adjustment', 'damage', 'opening-balance'] as $slug) {
+        foreach (['receive', 'delivery-note', 'transfer', 'adjustment', 'damage', 'opening-balance'] as $slug) {
             $pages[$slug.' list'] = '/'.$slug;
             $pages[$slug.' form'] = '/'.$slug.'/new';
         }
@@ -107,9 +107,9 @@ class ResponsiveTest extends DuskTestCase
             'receive details' => '/receive/'.self::$reference,
             'draft receipts' => '/draft-receipts',
             'draft receipt form' => '/draft-receipts/new',
-            'draft issues' => '/draft-issues',
-            'draft issue details' => '/draft-issues/'.self::$draft,
-            'draft issue edit' => '/draft-issues/'.self::$draft.'/edit',
+            'orders' => '/orders',
+            'order details' => '/orders/'.self::$draft,
+            'order edit' => '/orders/'.self::$draft.'/edit',
             'branches' => '/settings/branches',
             'stock' => '/stock',
             'item stock' => '/stock/'.self::$itemId.'/'.self::$warehouseId,
@@ -254,7 +254,7 @@ class ResponsiveTest extends DuskTestCase
                 $this->assertTrue($open['labels']);
 
                 // It closes on navigation.
-                $browser->click('[data-sidebar] a[href$="/issue"]')->waitForLocation('/issue')->pause(350);
+                $browser->click('[data-sidebar] a[href$="/delivery-note"]')->waitForLocation('/delivery-note')->pause(350);
                 $this->assertFalse($sidebar()['onScreen']);
 
                 // Theme and language are in the user menu.
@@ -385,7 +385,7 @@ class ResponsiveTest extends DuskTestCase
     public function test_dates_in_the_wrong_order_are_reported_at_once(): void
     {
         $this->browse(function (Browser $browser) {
-            $this->open($browser->loginAs(self::$userId), 'desktop', '/issue');
+            $this->open($browser->loginAs(self::$userId), 'desktop', '/delivery-note');
 
             // Typed the way a user does: the pickers fire `change`.
             $set = fn (string $id, string $day) => $browser->script("const input = document.getElementById('$id'); input.value = '$day'; input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true }));");

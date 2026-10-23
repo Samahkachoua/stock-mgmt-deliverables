@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  * their units and what is in stock in one warehouse (read from stock_balance,
  * never written here).
  *
- * With $excludeExpired (types that skip expired stock, e.g. Issue), `available`
+ * With $excludeExpired (types that skip expired stock, e.g. Delivery note), `available`
  * counts only stock that has not expired; `expired` says how much has.
  * `expiries` is the stock of an expiry item per expiry date, nearest first.
  *
@@ -56,18 +56,36 @@ final class ItemCatalog
      */
     public static function item(string $customerId, ?string $productId, ?string $warehouseId, bool $excludeExpired = false, ?CarbonInterface $date = null): ?array
     {
-        if ($productId === null || ! Ids::valid($productId) || ! Ids::valid($customerId)) {
+        if ($productId === null) {
             return null;
         }
 
+        return self::items($customerId, [$productId], $warehouseId, $excludeExpired, $date)[$productId] ?? null;
+    }
+
+    /**
+     * Several active items of the customer at once (the rows of a form), by id;
+     * ids that are not one of them are left out. Same queries as one item.
+     *
+     * @param  list<string>  $productIds
+     * @return array<string, CatalogItem>
+     */
+    public static function items(string $customerId, array $productIds, ?string $warehouseId, bool $excludeExpired = false, ?CarbonInterface $date = null): array
+    {
+        $productIds = array_values(array_unique(array_filter($productIds, fn ($id) => Ids::valid($id))));
+
+        if ($productIds === [] || ! Ids::valid($customerId)) {
+            return [];
+        }
+
         $products = Product::query()
-            ->whereKey($productId)
+            ->whereKey($productIds)
             ->where('customer_id', $customerId)
             ->where('active', true)
             ->with(['baseUnit', 'units.unit'])
             ->get();
 
-        return self::describe($products, $customerId, $warehouseId, $excludeExpired, $date)[0] ?? null;
+        return array_column(self::describe($products, $customerId, $warehouseId, $excludeExpired, $date), null, 'id');
     }
 
     /**
@@ -92,6 +110,11 @@ final class ItemCatalog
             ->get(['product_id', 'qty_base', 'expiry_date'])
             ->groupBy('product_id');
 
+        // Dated back: what each item had on that day, all items in one query.
+        $onDate = $warehouseId !== null && app(Availability::class)->isBackdated($warehouseId, $date)
+            ? app(Availability::class)->onDateForItems($warehouseId, $customerId, $products->modelKeys(), $date)
+            : null;
+
         $items = [];
 
         foreach ($products as $product) {
@@ -99,9 +122,7 @@ final class ItemCatalog
             $available = 0.0;
             $expired = 0.0;
             $expiries = [];
-            $then = $warehouseId !== null && app(Availability::class)->isBackdated($warehouseId, $date)
-                ? app(Availability::class)->onDate($warehouseId, $customerId, $product->id, $date)
-                : null;
+            $then = $onDate === null ? null : ($onDate[$product->id] ?? []);
 
             foreach ($balances->get($product->id, collect()) as $row) {
                 $isExpired = $row->expiry_date !== null && $row->expiry_date < $today;

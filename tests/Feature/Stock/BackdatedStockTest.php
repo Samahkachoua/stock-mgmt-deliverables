@@ -14,7 +14,7 @@ use Livewire\Livewire;
 use Tests\Support\Stock;
 
 /*
- * Stock going out (Issue, Transfer, Damage) on a document dated before today
+ * Stock going out (Delivery note, Transfer, Damage) on a document dated before today
  * can only take what was in the warehouse on that date, and must leave every
  * later day at zero or more.
  */
@@ -34,7 +34,7 @@ function documentCount(): int
     return DB::table('stock_transaction')->count();
 }
 
-it('refuses an issue dated before the stock arrived, and says what there was on that date', function () {
+it('refuses a delivery note dated before the stock arrived, and says what there was on that date', function () {
     // Nothing until yesterday, then 10 received.
     $this->stock->post('IN', [$this->stock->line('BEANS', 10)], date: ($this->daysAgo)(1));
     $before = documentCount();
@@ -124,13 +124,13 @@ it('counts stock a transfer brings in from the day it was received, not the day 
     $line = DB::table('stock_transaction_line')->where('transaction_id', $transfer->id)->value('id');
     app(PostingService::class)->receive($transfer, [$line => new ReceivedLine(10)], $user);
 
-    $issue = fn (CarbonImmutable $date) => app(PostingService::class)->post(
+    $deliveryNote = fn (CarbonImmutable $date) => app(PostingService::class)->post(
         new Document('OUT', $tripoli->id, $this->stock->customer->id, $date, null, ['r1' => $this->stock->line('BEANS', 4)]),
         $user,
     );
 
-    expect(fn () => $issue(($this->daysAgo)(3)))->toThrow(InsufficientStock::class)
-        ->and($issue($this->today)->status)->toBe('POSTED')
+    expect(fn () => $deliveryNote(($this->daysAgo)(3)))->toThrow(InsufficientStock::class)
+        ->and($deliveryNote($this->today)->status)->toBe('POSTED')
         ->and($this->stock->balance('BEANS', warehouse: $tripoli))->toBe(6.0);
 });
 

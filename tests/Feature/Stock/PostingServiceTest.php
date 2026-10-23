@@ -60,12 +60,12 @@ it('numbers documents per type: PREFIX-YYYY-000123, one sequence each', function
     $first = $this->stock->post('IN', [$this->stock->line('BEANS', 1)]);
     $second = $this->stock->post('IN', [$this->stock->line('BEANS', 1)]);
     $opening = $this->stock->post('OPENING_BALANCE', [$this->stock->line('BEANS', 1)]);
-    $issue = $this->stock->post('OUT', [$this->stock->line('BEANS', 1)]);
+    $deliveryNote = $this->stock->post('OUT', [$this->stock->line('BEANS', 1)]);
     $year = now('Asia/Beirut')->year;
 
     expect($first->doc_no)->toMatch("/^REC-$year-\\d{6}$/")
         ->and($opening->doc_no)->toMatch("/^OPB-$year-\\d{6}$/")
-        ->and($issue->doc_no)->toMatch("/^ISS-$year-\\d{6}$/")
+        ->and($deliveryNote->doc_no)->toMatch("/^DN-$year-\\d{6}$/")
         ->and((int) substr($second->doc_no, -6))->toBe((int) substr($first->doc_no, -6) + 1);
 });
 
@@ -112,10 +112,10 @@ it('requires a valid expiry date for expiry-tracked items', function (?string $e
 
 it('takes stock out and keeps balances right', function () {
     $this->stock->post('IN', [$this->stock->line('BEANS', 2, 'BOX')]);
-    $issue = $this->stock->post('OUT', [$this->stock->line('BEANS', 10)]);
+    $deliveryNote = $this->stock->post('OUT', [$this->stock->line('BEANS', 10)]);
 
     expect($this->stock->balance('BEANS'))->toBe(14.0)
-        ->and(DB::table('stock_movement')->where('transaction_id', $issue->id)->value('direction'))->toBe('OUT');
+        ->and(DB::table('stock_movement')->where('transaction_id', $deliveryNote->id)->value('direction'))->toBe('OUT');
 });
 
 it('refuses to issue more than is available, and saves nothing', function () {
@@ -175,13 +175,13 @@ it('issues the nearest expiry first, across expiry dates, and skips expired stoc
         $this->stock->line('YOGURT', 10, expiry: $gone),
     ]);
 
-    $issue = $this->stock->post('OUT', [$this->stock->line('YOGURT', 15)]);
+    $deliveryNote = $this->stock->post('OUT', [$this->stock->line('YOGURT', 15)]);
 
-    $taken = DB::table('stock_movement')->where('transaction_id', $issue->id)->orderBy('expiry_date')
+    $taken = DB::table('stock_movement')->where('transaction_id', $deliveryNote->id)->orderBy('expiry_date')
         ->pluck('qty_base', 'expiry_date')->map(fn ($qty) => (float) $qty)->all();
 
     expect($taken)->toBe([$soon => 10.0, $late => 5.0])
-        ->and(DB::table('stock_transaction_line')->where('transaction_id', $issue->id)->count())->toBe(1)
+        ->and(DB::table('stock_transaction_line')->where('transaction_id', $deliveryNote->id)->count())->toBe(1)
         ->and($this->stock->balance('YOGURT', $gone))->toBe(10.0);
 });
 
@@ -225,11 +225,11 @@ it('issues from the expiry date chosen on the line, not the nearest expiry', fun
         $this->stock->line('YOGURT', 10, expiry: $late),
     ]);
 
-    $issue = $this->stock->post('OUT', [$this->stock->line('YOGURT', 4, expiry: $late)]);
+    $deliveryNote = $this->stock->post('OUT', [$this->stock->line('YOGURT', 4, expiry: $late)]);
 
     expect($this->stock->balance('YOGURT', $soon))->toBe(10.0)
         ->and($this->stock->balance('YOGURT', $late))->toBe(6.0)
-        ->and(DB::table('stock_transaction_line')->where('transaction_id', $issue->id)->value('expiry_date'))->toBe($late);
+        ->and(DB::table('stock_transaction_line')->where('transaction_id', $deliveryNote->id)->value('expiry_date'))->toBe($late);
 });
 
 it('refuses more than the chosen expiry date holds, even when the item has more, and saves nothing', function () {
@@ -280,11 +280,11 @@ it('registers one serial per piece and issues only serials in stock here', funct
 
     expect(DB::table('serial_number')->where('status', 'IN_STOCK')->where('warehouse_id', $this->stock->warehouse->id)->count())->toBe(2);
 
-    $issue = $this->stock->post('OUT', [$this->stock->line('PHONE', 1, serials: ['SN-2'])]);
+    $deliveryNote = $this->stock->post('OUT', [$this->stock->line('PHONE', 1, serials: ['SN-2'])]);
 
     expect(DB::table('serial_number')->where('serial_no', 'SN-2')->first())
         ->status->toBe('ISSUED')->warehouse_id->toBeNull()
-        ->and(DB::table('stock_transaction_line_serial')->join('stock_transaction_line as l', 'l.id', '=', 'line_id')->where('l.transaction_id', $issue->id)->count())->toBe(1)
+        ->and(DB::table('stock_transaction_line_serial')->join('stock_transaction_line as l', 'l.id', '=', 'line_id')->where('l.transaction_id', $deliveryNote->id)->count())->toBe(1)
         ->and($this->stock->balance('PHONE'))->toBe(1.0);
 });
 
@@ -356,16 +356,16 @@ it('cancels a receipt by reversing exactly what it posted', function () {
         ->and(DB::table('audit_log')->where('entity_id', $receipt->id)->orderBy('id')->pluck('action')->all())->toBe(['POST', 'CANCEL']);
 });
 
-it('cancels an issue by putting the stock back into the same expiry dates and serials', function () {
+it('cancels a delivery note by putting the stock back into the same expiry dates and serials', function () {
     [$soon, $late] = [now()->addDays(5)->toDateString(), now()->addDays(50)->toDateString()];
     $this->stock->post('IN', [
         $this->stock->line('YOGURT', 4, expiry: $soon),
         $this->stock->line('YOGURT', 10, expiry: $late),
         $this->stock->line('PHONE', 1, serials: ['SN-1']),
     ]);
-    $issue = $this->stock->post('OUT', [$this->stock->line('YOGURT', 6), $this->stock->line('PHONE', 1, serials: ['SN-1'])]);
+    $deliveryNote = $this->stock->post('OUT', [$this->stock->line('YOGURT', 6), $this->stock->line('PHONE', 1, serials: ['SN-1'])]);
 
-    app(PostingService::class)->cancel($issue, $this->stock->user, 'Entered by mistake');
+    app(PostingService::class)->cancel($deliveryNote, $this->stock->user, 'Entered by mistake');
 
     expect($this->stock->balance('YOGURT', $soon))->toBe(4.0)
         ->and($this->stock->balance('YOGURT', $late))->toBe(10.0)

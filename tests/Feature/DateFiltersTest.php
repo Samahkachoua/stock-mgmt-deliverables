@@ -156,7 +156,7 @@ it('shows the two date fields, translated, with nothing chosen', function () {
 
     // Arabic: same order in the page, so "from" is on the right.
     $this->stock->user->update(['preferred_lang' => 'ar']);
-    $this->actingAs($this->stock->user->fresh())->get(route('issue'))
+    $this->actingAs($this->stock->user->fresh())->get(route('delivery-note'))
         ->assertOk()
         ->assertSee('dir="rtl"', false)
         ->assertSeeInOrder([__('transactions.filters.date_from', [], 'ar'), __('transactions.filters.date_to', [], 'ar')]);
@@ -256,23 +256,23 @@ it('dates, filters and orders the stock card by the documents’ own dates, not 
 
 it('counts a day as it is in Beirut: 23:30 on the Date to day is included', function () {
     $receipt = $this->stock->post('IN', [$this->stock->line('BEANS', 60)]);
-    $issue = $this->stock->post('OUT', [$this->stock->line('BEANS', 12)]);
+    $deliveryNote = $this->stock->post('OUT', [$this->stock->line('BEANS', 12)]);
 
     // 13 Oct 23:30 in Beirut (20:30 UTC), and 14 Oct 00:30 in Beirut (still 13 Oct in UTC).
     DB::table('stock_movement')->where('transaction_id', $receipt->id)->update(['created_at' => '2026-10-13 20:30:00+00']);
-    DB::table('stock_movement')->where('transaction_id', $issue->id)->update(['created_at' => '2026-10-13 21:30:00+00']);
+    DB::table('stock_movement')->where('transaction_id', $deliveryNote->id)->update(['created_at' => '2026-10-13 21:30:00+00']);
     DB::table('audit_log')->where('entity', 'stock_transaction')->where('entity_id', $receipt->id)->update(['created_at' => '2026-10-13 20:30:00+00']);
-    DB::table('audit_log')->where('entity', 'stock_transaction')->where('entity_id', $issue->id)->update(['created_at' => '2026-10-13 21:30:00+00']);
+    DB::table('audit_log')->where('entity', 'stock_transaction')->where('entity_id', $deliveryNote->id)->update(['created_at' => '2026-10-13 21:30:00+00']);
 
     $filters = ['customer' => $this->stock->customer->id, 'item' => $this->stock->id('BEANS'), 'warehouse' => $this->stock->warehouse->id];
     $references = fn (Testable $page) => collect($page->viewData('rows')->items())->map(fn (array $row) => $row['cells']['reference']['text'])->all();
 
     // Stock card: by the documents' own dates (the recording time above doesn't matter).
     DB::table('stock_transaction')->where('id', $receipt->id)->update(['document_date' => '2026-10-13']);
-    DB::table('stock_transaction')->where('id', $issue->id)->update(['document_date' => '2026-10-14']);
+    DB::table('stock_transaction')->where('id', $deliveryNote->id)->update(['document_date' => '2026-10-14']);
 
     expect($references(datedReport($this->stock, 'stock-card', $filters + ['to' => '2026-10-13'])))->toBe([$receipt->doc_no])
-        ->and($references(datedReport($this->stock, 'stock-card', $filters + ['from' => '2026-10-14'])))->toBe([$issue->doc_no])
+        ->and($references(datedReport($this->stock, 'stock-card', $filters + ['from' => '2026-10-14'])))->toBe([$deliveryNote->doc_no])
         ->and($references(datedReport($this->stock, 'stock-card', $filters + ['from' => '2026-10-13', 'to' => '2026-10-13'])))->toBe([$receipt->doc_no]);
 
     // Audit log (event time).
@@ -280,20 +280,20 @@ it('counts a day as it is in Beirut: 23:30 on the Date to day is included', func
         ->map(fn (array $row) => collect($row['cells'])->map(fn ($cell) => is_array($cell) ? $cell['text'] : $cell)->implode(' '))
         ->implode(' | ');
 
-    expect($logged(['to' => '2026-10-13']))->toContain($receipt->doc_no)->not->toContain($issue->doc_no)
-        ->and($logged(['from' => '2026-10-14']))->toContain($issue->doc_no)->not->toContain($receipt->doc_no)
-        ->and($logged([]))->toContain($receipt->doc_no)->toContain($issue->doc_no);
+    expect($logged(['to' => '2026-10-13']))->toContain($receipt->doc_no)->not->toContain($deliveryNote->doc_no)
+        ->and($logged(['from' => '2026-10-14']))->toContain($deliveryNote->doc_no)->not->toContain($receipt->doc_no)
+        ->and($logged([]))->toContain($receipt->doc_no)->toContain($deliveryNote->doc_no);
 
     // Item stock details: the same days, and the balance carries over.
     $movements = Livewire::actingAs($this->stock->user)
         ->test(ItemMovements::class, ['product' => $this->stock->id('BEANS'), 'warehouse' => $this->stock->warehouse->id]);
-    $movements->assertSee($receipt->doc_no)->assertSee($issue->doc_no);
-    $movements->set('dateTo', '2026-10-13')->assertSee($receipt->doc_no)->assertDontSee($issue->doc_no);
-    $movements->set('dateTo', '')->set('dateFrom', '2026-10-14')->assertSee($issue->doc_no)->assertDontSee($receipt->doc_no)->assertSee('48 Piece');
+    $movements->assertSee($receipt->doc_no)->assertSee($deliveryNote->doc_no);
+    $movements->set('dateTo', '2026-10-13')->assertSee($receipt->doc_no)->assertDontSee($deliveryNote->doc_no);
+    $movements->set('dateTo', '')->set('dateFrom', '2026-10-14')->assertSee($deliveryNote->doc_no)->assertDontSee($receipt->doc_no)->assertSee('48 Piece');
 
     // Wrong way round: the error, no rows; Clear filters brings everything back.
-    $movements->set('dateTo', '2026-10-01')->assertSee(__('feedback.date_order'))->assertDontSee($issue->doc_no)
+    $movements->set('dateTo', '2026-10-01')->assertSee(__('feedback.date_order'))->assertDontSee($deliveryNote->doc_no)
         ->assertDispatched(Notify::EVENT);
-    $movements->call('resetFilters')->assertSee($receipt->doc_no)->assertSee($issue->doc_no);
+    $movements->call('resetFilters')->assertSee($receipt->doc_no)->assertSee($deliveryNote->doc_no);
     expect($movements->get('dateFrom'))->toBe('');
 });

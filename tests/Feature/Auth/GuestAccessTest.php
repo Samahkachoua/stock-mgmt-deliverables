@@ -3,7 +3,7 @@
 it('redirects guests to the sign in page', function (string $route) {
     $this->get(route($route))->assertRedirect(route('login'));
 })->with([
-    'home', 'receive', 'issue', 'transfer', 'adjustment', 'damage',
+    'home', 'receive', 'delivery-note', 'transfer', 'adjustment', 'damage',
     'opening-balance', 'stock', 'items', 'settings',
 ]);
 

@@ -18,8 +18,8 @@ use Tests\Support\Stock;
 
 /*
  * Two separate processes, each with its own database connection, confirm the
- * same draft issue at the same moment. Exactly one may: the draft becomes one
- * issue, and stock goes out once.
+ * same order at the same moment. Exactly one may: the draft becomes one
+ * delivery note, and stock goes out once.
  *
  * This test commits real rows, so it can't run inside RefreshDatabase's
  * transaction (tests/Pest.php gives this folder no database trait). It cleans

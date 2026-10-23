@@ -12,6 +12,8 @@
         'items' => ['label' => __('transactions.list.items'), 'align' => 'end', 'priority' => 2, 'card' => 'hide'],
         ...($ui->hasListColumn('total') ? ['total' => ['label' => __('transactions.list.total'), 'align' => 'end']] : []),
         ...($ui->hasListColumn('reason') ? ['reason' => ['label' => __('transactions.list.reason')]] : []),
+        // The draft it was confirmed from (the Order of a Delivery note).
+        ...($ui->hasListColumn('draft') ? ['draft' => ['label' => \App\Support\Drafts\DraftTypes::get($ui->code)->label('singular')]] : []),
         'status' => ['label' => __('transactions.list.status'), 'card' => 'badge'],
         'created_by' => ['label' => __('transactions.list.created_by'), 'priority' => 2, 'card' => 'hide'],
     ];
@@ -87,6 +89,15 @@
                     <x-data-table.cell col="reason" class="text-fg">
                         @if ($row['reason'])
                             {{ __('transactions.reasons.'.$row['reason']) }}
+                        @else
+                            <span aria-hidden="true">&mdash;</span>
+                        @endif
+                    </x-data-table.cell>
+                @endif
+                @if ($ui->hasListColumn('draft'))
+                    <x-data-table.cell col="draft" class="whitespace-nowrap text-fg">
+                        @if ($row['draft'])
+                            <span dir="ltr" class="tabular">{{ $row['draft'] }}</span>
                         @else
                             <span aria-hidden="true">&mdash;</span>
                         @endif

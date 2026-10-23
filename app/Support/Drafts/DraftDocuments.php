@@ -195,7 +195,7 @@ final class DraftDocuments
     }
 
     /**
-     * The receipts / issues confirming the draft created, one per warehouse.
+     * The receipts / delivery notes confirming the draft created, one per warehouse.
      *
      * @return list<array{reference: string, type: string, warehouse: string, status: string}>
      */

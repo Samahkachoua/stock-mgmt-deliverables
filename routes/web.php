@@ -121,7 +121,7 @@ Route::middleware(['auth', 'warehouse'])->group(function () {
             ->middleware($view);
     }
 
-    // Draft receipts / issues: list, new, details, edit, print. They never touch
+    // Draft receipts / orders: list, new, details, edit, print. They never touch
     // stock until confirmed (on the details page, or "Save and confirm" on edit).
     foreach (config('transactions.drafts') as $code => $draft) {
         $slug = $draft['slug'];

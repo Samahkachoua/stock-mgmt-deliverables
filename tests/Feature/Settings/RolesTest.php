@@ -28,6 +28,17 @@ it('shows every role and permission grouped by module', function () {
             === collect(['draft.in.create', 'draft.in.view', 'draft.out.create', 'draft.out.view', 'stock.adjustment.view', 'stock.damage.view', 'stock.in.view', 'stock.opening.view', 'stock.out.view', 'stock.transfer.view', 'stock.view'])->map(fn (string $code) => permissionId($code))->sort()->values()->all());
 });
 
+it('offers an "all permissions" box under every role, listing every permission', function () {
+    $test = Livewire::actingAs(userWithRole('ADMIN'))->test(Roles::class);
+
+    $test->assertViewHas('allPermissionIds', fn (array $ids) => collect($ids)->sort()->values()->all()
+        === Permission::pluck('id')->map(fn ($id) => (string) $id)->sort()->values()->all());
+
+    foreach (Role::all() as $role) {
+        $test->assertSee(__('settings.roles.select_all_for', ['role' => $role->label()]));
+    }
+});
+
 it('saves the matrix and the change applies at once', function () {
     $operator = userWithRole('OPERATOR');
     expect(Gate::forUser($operator)->allows('report.view'))->toBeFalse();

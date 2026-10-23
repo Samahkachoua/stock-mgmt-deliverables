@@ -33,13 +33,13 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
- * New / edit form of a draft receipt or draft issue. Like the transaction form
+ * New / edit form of a draft receipt or order. Like the transaction form
  * (customer first, rows appended as quantities are filled, the empty last row
  * never saved), plus a Branch in the header and a Warehouse on every row: a
  * draft spans warehouses. Saving touches no stock.
  *
  * Receipt rows take what Receive takes (expiry date typed, serials typed);
- * issue rows what Issue takes, in the row's warehouse (expiry date picked,
+ * order rows what a Delivery note takes, in the row's warehouse (expiry date picked,
  * nearest first; serials picked; "Available" there and no more).
  *
  * Editing, a user who may confirm drafts also gets "Save and confirm": the
@@ -78,7 +78,7 @@ class DraftForm extends Component
 
     /**
      * Rows keyed by a stable key ("r1", "r2", ...). `serials`: typed (receipt);
-     * `picked`: chosen from stock in the row's warehouse (issue).
+     * `picked`: chosen from stock in the row's warehouse (order).
      *
      * @var array<string, array{warehouse: string, item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}>
      */
@@ -393,6 +393,7 @@ class DraftForm extends Component
         $warehouses = [];
         $lastKey = array_key_last($this->lines);
         $number = 0;
+        $this->loadItems();
 
         foreach ($this->lines as $key => $line) {
             $number++;
@@ -668,12 +669,43 @@ class DraftForm extends Component
             return null;
         }
 
-        return $this->items[$line['item'].'|'.$line['warehouse']] ??= ItemCatalog::item(
-            $this->customerId,
-            $line['item'],
-            $line['warehouse'],
-            excludeExpired: ! $this->kind()->receives(),
-        );
+        $key = $line['item'].'|'.$line['warehouse'];
+
+        if (! array_key_exists($key, $this->items)) {
+            $this->loadItems([$line]);
+        }
+
+        return $this->items[$key];
+    }
+
+    /**
+     * Loads the items of all rows (or of $lines) not loaded yet, one query per
+     * warehouse instead of one per row; unknown items are kept as null.
+     *
+     * @param  list<array{warehouse: string, item: ?string}>|null  $lines
+     */
+    private function loadItems(?array $lines = null): void
+    {
+        if ($this->customerId === '') {
+            return;
+        }
+
+        $missing = [];
+
+        foreach ($lines ?? $this->lines as $line) {
+            if ($line['item'] !== null && $line['item'] !== '' && array_key_exists($line['warehouse'], $this->warehouseOptions())
+                && ! array_key_exists($line['item'].'|'.$line['warehouse'], $this->items)) {
+                $missing[$line['warehouse']][$line['item']] = $line['item'];
+            }
+        }
+
+        foreach ($missing as $warehouse => $ids) {
+            $found = ItemCatalog::items($this->customerId, array_values($ids), (string) $warehouse, excludeExpired: ! $this->kind()->receives());
+
+            foreach ($ids as $id) {
+                $this->items[$id.'|'.$warehouse] = $found[$id] ?? null;
+            }
+        }
     }
 
     /**

@@ -16,7 +16,7 @@ use Tests\Support\Stock;
 
 /*
  * CLAUDE.md rule 12: no two lines with the same key in one document.
- *   Receive, Opening Balance, Issue, Transfer, Damage: item + unit (+ expiry date)
+ *   Receive, Opening Balance, Delivery note, Transfer, Damage: item + unit (+ expiry date)
  *   Adjustment (a count): item (+ expiry date), in any unit
  */
 

@@ -110,7 +110,7 @@ it('confirms 5 lines in 2 warehouses as 2 receipts linked to the draft', functio
         ->and($draft->fresh()->confirmed_by)->toBe($this->stock->user->id);
 });
 
-it('confirms a draft issue from the expiry dates picked on it', function () {
+it('confirms a order from the expiry dates picked on it', function () {
     $soon = now()->addDays(10)->toDateString();
     $later = now()->addDays(40)->toDateString();
     $this->stock->post('IN', [$this->stock->line('YOGURT', 6, expiry: $soon), $this->stock->line('YOGURT', 6, expiry: $later)]);
@@ -122,7 +122,7 @@ it('confirms a draft issue from the expiry dates picked on it', function () {
         ->and($this->stock->balance('YOGURT', $later))->toBe(2.0);
 });
 
-it('creates nothing when one warehouse of a draft issue is short, and says which line', function () {
+it('creates nothing when one warehouse of a order is short, and says which line', function () {
     $this->stock->post('IN', [$this->stock->line('BEANS', 20)]);
     $this->stock->post('IN', [$this->stock->line('BEANS', 20)], warehouse: $this->depot);
 
@@ -144,7 +144,7 @@ it('creates nothing when one warehouse of a draft issue is short, and says which
         ->and($this->stock->balance('BEANS'))->toBe(20.0);
 });
 
-it('refuses a draft issue for more than is in stock when saving', function () {
+it('refuses a order for more than is in stock when saving', function () {
     $this->stock->post('IN', [$this->stock->line('BEANS', 3)]);
 
     expect(fn () => $this->drafts->save(draftOf($this, 'OUT', [draftLine($this->stock, $this->stock->warehouse, 'BEANS', 4)]), $this->stock->user))
@@ -162,11 +162,11 @@ it('lets the confirmer change quantities and confirm in one step, or keeps nothi
         ->toThrow(InsufficientStock::class);
     expect((float) DB::table('stock_draft_line')->where('draft_id', $draft->id)->value('qty_base'))->toBe(4.0);
 
-    [$issue] = $this->drafts->confirm($draft, $this->stock->user, draftOf($this, 'OUT', [draftLine($this->stock, $this->stock->warehouse, 'BEANS', 3)], version: version($draft)));
+    [$deliveryNote] = $this->drafts->confirm($draft, $this->stock->user, draftOf($this, 'OUT', [draftLine($this->stock, $this->stock->warehouse, 'BEANS', 3)], version: version($draft)));
 
     $update = DB::table('audit_log')->where('entity', 'stock_draft')->where('action', 'UPDATE')->first();
 
-    expect((float) DB::table('stock_transaction_line')->where('transaction_id', $issue->id)->value('qty_base'))->toBe(3.0)
+    expect((float) DB::table('stock_transaction_line')->where('transaction_id', $deliveryNote->id)->value('qty_base'))->toBe(3.0)
         ->and($this->stock->balance('BEANS'))->toBe(7.0)
         ->and(json_decode($update->before_data, true)['lines'][0]['qty'])->toBe(4)
         ->and(json_decode($update->after_data, true)['lines'][0]['qty'])->toBe(3);

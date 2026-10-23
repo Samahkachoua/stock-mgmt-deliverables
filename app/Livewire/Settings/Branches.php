@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * Settings › Branches: a customer's branches (shops, sites), named on draft
- * receipts and issues. Taken out of use, never deleted; a branch stays with the
+ * receipts and orders. Taken out of use, never deleted; a branch stays with the
  * customer it was created for (drafts and documents point at both).
  *
  * @extends MasterDataPage<CustomerBranch>

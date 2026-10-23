@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /**
- * Reference numbers like ISS-2026-000123: the type's prefix, the year, and the
+ * Reference numbers like DN-2026-000123: the type's prefix, the year, and the
  * next value of that type's own sequence (one per type; see the
  * 2026_10_08 migration). Taken inside the posting transaction. The counter
  * does not restart each year, and a save that fails leaves a gap.

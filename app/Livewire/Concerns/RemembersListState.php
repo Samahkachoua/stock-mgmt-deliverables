@@ -17,7 +17,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 trait RemembersListState
 {
     /**
-     * Session key of this list, e.g. "issue" or "reports.stock-card".
+     * Session key of this list, e.g. "delivery-note" or "reports.stock-card".
      */
     abstract protected function listStateKey(): string;
 

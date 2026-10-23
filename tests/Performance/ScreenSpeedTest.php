@@ -83,10 +83,10 @@ it('opens every heavy screen in under 2 seconds', function (string $screen, stri
 
     expect($seconds)->toBeLessThan(LIMIT_SECONDS);
 })->with([
-    'Issue list, all dates' => ['Issue list, all dates', 'issue', [], listState('issue', [])],
+    'Delivery note list, all dates' => ['Delivery note list, all dates', 'delivery-note', [], listState('delivery-note', [])],
     'Receive list, page 30' => ['Receive list, page 30', 'receive', [], listState('receive', [], 30)],
     'Damage list' => ['Damage list', 'damage', [], listState('damage', [])],
-    'Issue form' => ['Issue form', 'issue.create', [], []],
+    'Delivery note form' => ['Delivery note form', 'delivery-note.create', [], []],
     'Stock page, this warehouse' => ['Stock page, this warehouse', 'stock', [], []],
     'Stock page, all warehouses' => ['Stock page, all warehouses', 'stock', [], listState('stock', ['filters' => ['warehouse' => 'all']])],
     'Damage report, a year' => ['Damage report, a year', 'reports.show', ['report' => 'damage'], listState('reports.damage', ['filters' => ['from' => '2025-01-01', 'warehouse' => 'all']])],
@@ -115,7 +115,7 @@ it('opens the stock card and item details of the busiest item in under 2 seconds
     reportSpeed('Stock card Excel export, a year', $seconds, $slowest);
 });
 
-it('fills the Issue form quickly: customer, item, availability', function () {
+it('fills the Delivery note form quickly: customer, item, availability', function () {
     $product = Product::where('sku', 'like', 'PERF-%')->where('track_expiry', true)->firstOrFail();
 
     [$seconds, $slowest] = timed(function () use ($product) {
@@ -123,7 +123,7 @@ it('fills the Issue form quickly: customer, item, availability', function () {
         [$row] = array_keys($form->get('lines'));
         $form->set("lines.$row.item", $product->id)->set("lines.$row.qty", '2');
     });
-    reportSpeed('Issue form: customer + item + qty', $seconds, $slowest);
+    reportSpeed('Delivery note form: customer + item + qty', $seconds, $slowest);
 
     expect($seconds)->toBeLessThan(LIMIT_SECONDS);
 });

@@ -588,6 +588,7 @@ class TransactionForm extends Component
         $selfApproves = $ui->approvePermission() !== null && Gate::allows($ui->approvePermission());
         $lastKey = array_key_last($this->lines);
         $number = 0;
+        $this->loadItems();
 
         foreach ($this->lines as $key => $line) {
             $number++;
@@ -842,7 +843,7 @@ class TransactionForm extends Component
 
     /**
      * One of the chosen customer's active items with its stock here (memoized per
-     * request). Types that skip expired stock (Issue) don't count expired stock.
+     * request). Types that skip expired stock (Delivery note) don't count expired stock.
      *
      * @return array<string, mixed>|null
      */
@@ -852,19 +853,43 @@ class TransactionForm extends Component
             return null;
         }
 
-        $ui = $this->ui();
+        if (! array_key_exists($productId, $this->items)) {
+            $this->loadItems([$productId]);
+        }
 
-        return $this->items[$productId] ??= ItemCatalog::item(
+        return $this->items[$productId];
+    }
+
+    /**
+     * Loads the items of all rows (or of $productIds) not loaded yet in one go,
+     * so checking the rows doesn't query per row; unknown ids are kept as null.
+     *
+     * @param  list<string>|null  $productIds
+     */
+    private function loadItems(?array $productIds = null): void
+    {
+        $missing = array_diff(array_unique(array_filter($productIds ?? array_column($this->lines, 'item'))), array_keys($this->items));
+
+        if ($missing === [] || $this->customerId === '') {
+            return;
+        }
+
+        $ui = $this->ui();
+        $found = ItemCatalog::items(
             $this->customerId,
-            $productId,
+            array_values($missing),
             $this->chosenWarehouse()?->id,
             excludeExpired: $ui->limitedByStock() && ! $ui->usesExpired(),
             date: $this->stockDate(),
         );
+
+        foreach ($missing as $id) {
+            $this->items[$id] = $found[$id] ?? null;
+        }
     }
 
     /**
-     * The document's date when stock goes out (Issue, Transfer, Damage) on a
+     * The document's date when stock goes out (Delivery note, Transfer, Damage) on a
      * day before today: only what was here on that day can go out (the
      * "Available" hint, expiry dates and serials offered). Null when dated today.
      */

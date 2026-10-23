@@ -1,11 +1,11 @@
 <?php
 
 /*
- * Child process for ConcurrentIssueTest: boots the app on its own database
+ * Child process for ConcurrentDeliveryNoteTest: boots the app on its own database
  * connection, waits at the start line (a shared advisory lock the test holds
  * exclusively), then tries to issue. Prints one line of JSON.
  *
- *   php issue-worker.php '{"barrier":123,"warehouse":"...","customer":"...","product":"...","user":"...","qty":10}'
+ *   php delivery-note-worker.php '{"barrier":123,"warehouse":"...","customer":"...","product":"...","user":"...","qty":10}'
  */
 
 use App\Models\User;

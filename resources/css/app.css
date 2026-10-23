@@ -18,7 +18,7 @@
 
 /*
  * Colour tokens. This file is the ONLY place colour values live; views use the
- * utilities generated below (bg-surface, text-muted, bg-type-issue, ...).
+ * utilities generated below (bg-surface, text-muted, bg-type-delivery, ...).
  * Light values come from docs/design/stitch-exports/logistics-inventory-operations/DESIGN.md.
  * Contrast (text >= 4.5:1, icons/control borders >= 3:1) is checked by tests/Unit/ThemeContrastTest.php.
  */
@@ -44,9 +44,9 @@
     --type-receive: #16a34a;
     --type-receive-strong: #15803d;
     --type-receive-soft: #dcfce7;
-    --type-issue: #ea580c;
-    --type-issue-strong: #c2410c;
-    --type-issue-soft: #ffedd5;
+    --type-delivery: #ea580c;
+    --type-delivery-strong: #c2410c;
+    --type-delivery-soft: #ffedd5;
     --type-transfer: #2563eb;
     --type-transfer-strong: #1d4ed8;
     --type-transfer-soft: #dbeafe;
@@ -110,9 +110,9 @@
     --type-receive: #4ade80;
     --type-receive-strong: #15803d;
     --type-receive-soft: #0f2e1d;
-    --type-issue: #fb923c;
-    --type-issue-strong: #c2410c;
-    --type-issue-soft: #3a1d0b;
+    --type-delivery: #fb923c;
+    --type-delivery-strong: #c2410c;
+    --type-delivery-soft: #3a1d0b;
     --type-transfer: #60a5fa;
     --type-transfer-strong: #1d4ed8;
     --type-transfer-soft: #13254a;
@@ -305,9 +305,9 @@ html.print-view tfoot > tr {
     --color-type-receive: var(--type-receive);
     --color-type-receive-strong: var(--type-receive-strong);
     --color-type-receive-soft: var(--type-receive-soft);
-    --color-type-issue: var(--type-issue);
-    --color-type-issue-strong: var(--type-issue-strong);
-    --color-type-issue-soft: var(--type-issue-soft);
+    --color-type-delivery: var(--type-delivery);
+    --color-type-delivery-strong: var(--type-delivery-strong);
+    --color-type-delivery-soft: var(--type-delivery-soft);
     --color-type-transfer: var(--type-transfer);
     --color-type-transfer-strong: var(--type-transfer-strong);
     --color-type-transfer-soft: var(--type-transfer-soft);

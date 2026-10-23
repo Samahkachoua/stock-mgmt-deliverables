@@ -31,7 +31,7 @@ return [
     // config/transactions.php).
     'types' => [
         'receive' => ['icon' => 'text-type-receive', 'soft' => 'bg-type-receive-soft', 'strong' => 'bg-type-receive-strong'],
-        'issue' => ['icon' => 'text-type-issue', 'soft' => 'bg-type-issue-soft', 'strong' => 'bg-type-issue-strong'],
+        'delivery' => ['icon' => 'text-type-delivery', 'soft' => 'bg-type-delivery-soft', 'strong' => 'bg-type-delivery-strong'],
         'transfer' => ['icon' => 'text-type-transfer', 'soft' => 'bg-type-transfer-soft', 'strong' => 'bg-type-transfer-strong'],
         'adjustment' => ['icon' => 'text-type-adjustment', 'soft' => 'bg-type-adjustment-soft', 'strong' => 'bg-type-adjustment-strong'],
         'damage' => ['icon' => 'text-type-damage', 'soft' => 'bg-type-damage-soft', 'strong' => 'bg-type-damage-strong'],
@@ -61,8 +61,8 @@ return [
         // confirm them (gates in AppServiceProvider).
         ['route' => 'draft-receipts', 'permission' => 'drafts.in.open', 'label' => 'drafts.types.receipt.title', 'icon' => 'assignment_returned', 'type' => 'receive'],
         ['route' => 'receive', 'permission' => 'documents.receive', 'label' => 'transactions.types.receive.title', 'icon' => 'move_to_inbox', 'type' => 'receive'],
-        ['route' => 'draft-issues', 'permission' => 'drafts.out.open', 'label' => 'drafts.types.issue.title', 'icon' => 'content_paste_go', 'type' => 'issue'],
-        ['route' => 'issue', 'permission' => 'documents.issue', 'label' => 'transactions.types.issue.title', 'icon' => 'outbox', 'type' => 'issue'],
+        ['route' => 'orders', 'permission' => 'drafts.out.open', 'label' => 'drafts.types.order.title', 'icon' => 'content_paste_go', 'type' => 'delivery'],
+        ['route' => 'delivery-note', 'permission' => 'documents.delivery-note', 'label' => 'transactions.types.delivery_note.title', 'icon' => 'outbox', 'type' => 'delivery'],
         ['route' => 'transfer', 'permission' => 'documents.transfer', 'label' => 'transactions.types.transfer.title', 'icon' => 'swap_horiz', 'type' => 'transfer'],
         ['route' => 'adjustment', 'permission' => 'documents.adjustment', 'label' => 'transactions.types.adjustment.title', 'icon' => 'tune', 'type' => 'adjustment'],
         ['route' => 'damage', 'permission' => 'documents.damage', 'label' => 'transactions.types.damage.title', 'icon' => 'report', 'type' => 'damage'],

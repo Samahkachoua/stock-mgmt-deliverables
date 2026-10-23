@@ -53,11 +53,11 @@
                         <button
                             type="button"
                             wire:click="askDelete('{{ $unit->id }}')"
-                            class="inline-flex h-control items-center gap-1.5 rounded-lg px-3 text-body font-semibold text-danger hover:bg-danger-soft"
+                            title="{{ __('settings.units.delete') }}"
+                            class="inline-grid size-control place-items-center rounded-lg text-danger hover:bg-danger-soft"
                         >
                             <x-busy-icon name="delete" target="askDelete('{{ $unit->id }}')" class="size-4" />
-                            {{ __('settings.units.delete') }}
-                            <span class="sr-only">{{ $unit->label() }}</span>
+                            <span class="sr-only">{{ __('settings.units.delete') }} {{ $unit->label() }}</span>
                         </button>
                         @error('delete.'.$unit->id)
                             <p class="mt-1 text-start text-body text-danger" role="alert">{{ $message }}</p>

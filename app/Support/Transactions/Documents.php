@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
  * Reads go through StockTransaction, so the warehouse scope (user_warehouse)
  * and the customer scope (customer portal users) always apply.
  *
- * @phpstan-type ListRow array{id: string, reference: string, date: CarbonImmutable, customer_id: string|null, customer: string, status: string, created_by: string, items: int, total: float|null, reason: string|null, from: string, to_warehouse: string|null, incoming: bool}
+ * @phpstan-type ListRow array{id: string, reference: string, date: CarbonImmutable, customer_id: string|null, customer: string, status: string, created_by: string, items: int, total: float|null, reason: string|null, draft: string|null, from: string, to_warehouse: string|null, incoming: bool}
  */
 final class Documents
 {
@@ -45,6 +45,7 @@ final class Documents
             ->join('app_user', 'app_user.id', '=', 'stock_transaction.created_by')
             ->join('warehouse as from_warehouse', 'from_warehouse.id', '=', 'stock_transaction.warehouse_id')
             ->leftJoin('warehouse as to_warehouse', 'to_warehouse.id', '=', 'stock_transaction.to_warehouse_id')
+            ->when($type->hasListColumn('draft'), fn ($query) => $query->leftJoin('stock_draft as draft', 'draft.id', '=', 'stock_transaction.draft_id'))
             ->where('stock_transaction.transaction_type', $type->code)
             ->where(fn ($query) => match ($type->dispatchReceive() ? ($filters['direction'] ?? '') : 'outgoing') {
                 'incoming' => $query->whereIn('stock_transaction.to_warehouse_id', $warehouseIds),
@@ -53,7 +54,8 @@ final class Documents
             })
             ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query
                 ->whereRaw('lower(stock_transaction.doc_no) like ?', [$like])
-                ->orWhereRaw('lower(customer.name) like ?', [$like])))
+                ->orWhereRaw('lower(customer.name) like ?', [$like])
+                ->when($type->hasListColumn('draft'), fn ($query) => $query->orWhereRaw('lower(draft.doc_no) like ?', [$like]))))
             ->when($filters['customer'] ?? '', fn ($query, string $customer) => $query->where('stock_transaction.customer_id', $customer))
             ->when($filters['status'] ?? '', fn ($query, string $status) => $query->where('stock_transaction.status', $status))
             // The document's own date (the Date column), both days included.
@@ -65,6 +67,7 @@ final class Documents
                 'from_warehouse.name as from_name',
                 'to_warehouse.name as to_name',
             ])
+            ->when($type->hasListColumn('draft'), fn ($query) => $query->addSelect('draft.doc_no as draft_reference'))
             ->selectSub(DB::table('stock_transaction_line')->selectRaw('count(*)')->whereColumn('transaction_id', 'stock_transaction.id'), 'line_count')
             ->when($type->hasListColumn('total'), fn ($query) => $query->selectSub(DB::table('stock_transaction_line')->selectRaw('coalesce(sum(qty_base), 0)')->whereColumn('transaction_id', 'stock_transaction.id'), 'total_base'))
             ->when($filters['pending_first'] ?? false, fn ($query) => $query->orderByRaw("(stock_transaction.status = 'PENDING_APPROVAL') DESC"))
@@ -83,6 +86,7 @@ final class Documents
             // Only for types whose list shows the column.
             'total' => $type->hasListColumn('total') ? (float) $row->getAttribute('total_base') : null,
             'reason' => $type->hasListColumn('reason') ? $row->reason_code : null,
+            'draft' => $type->hasListColumn('draft') && $row->getAttribute('draft_reference') !== null ? (string) $row->getAttribute('draft_reference') : null,
             'from' => (string) $row->getAttribute('from_name'),
             // Only transfers have a destination.
             'to_warehouse' => $row->getAttribute('to_name') === null ? null : (string) $row->getAttribute('to_name'),
@@ -202,7 +206,7 @@ final class Documents
 
         $products = Product::withoutGlobalScopes()->with(['baseUnit', 'units.unit'])->findMany($rows->pluck('product_id')->unique())->keyBy('id');
 
-        // Which expiry dates each line took stock from (an issue line may use several).
+        // Which expiry dates each line took stock from (a delivery note line may use several).
         $allocations = DB::table('stock_movement')
             ->where('transaction_id', $transactionId)
             ->whereIn('line_id', $rows->pluck('id'))

@@ -129,9 +129,9 @@ it('keeps each list’s state apart', function () {
     $stock = Stock::create();
 
     receiveList($stock)->set('search', 'only receipts');
-    $issues = Livewire::actingAs($stock->user)->test(TransactionList::class, ['type' => 'OUT']);
+    $deliveryNotes = Livewire::actingAs($stock->user)->test(TransactionList::class, ['type' => 'OUT']);
 
-    expect($issues->get('search'))->toBe('')
+    expect($deliveryNotes->get('search'))->toBe('')
         ->and(receiveList($stock)->get('search'))->toBe('only receipts');
 
     // Per user: someone else signing in within the same session starts clean.

@@ -84,7 +84,7 @@ final class TypeUi
     }
 
     /**
-     * Translated text for this type, e.g. label('title') → "Issues".
+     * Translated text for this type, e.g. label('title') → "Delivery notes".
      *
      * @param  array<string, mixed>  $replace
      */
@@ -133,7 +133,7 @@ final class TypeUi
 
     /**
      * Saving posts at once: one direction, no approval step, no dispatch/receive.
-     * Today that is Opening Balance, Receive and Issue (App\Services\Stock\PostingService).
+     * Today that is Opening Balance, Receive and Delivery note (App\Services\Stock\PostingService).
      */
     public function postsDirectly(): bool
     {
@@ -151,7 +151,7 @@ final class TypeUi
 
     /**
      * Whether a document of this type can be cancelled: posted Opening Balance /
-     * Receive / Issue, or a transfer In transit. Damage and Adjustment can't: a
+     * Receive / Delivery note, or a transfer In transit. Damage and Adjustment can't: a
      * wrong count is corrected by counting again.
      */
     public function cancellable(): bool
@@ -233,7 +233,7 @@ final class TypeUi
     }
 
     /**
-     * Optional list page columns: total (default) and reason.
+     * Optional list page columns: total (default), reason and draft.
      */
     public function hasListColumn(string $column): bool
     {

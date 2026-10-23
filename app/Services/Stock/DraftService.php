@@ -24,13 +24,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Draft receipts and draft issues: saving, editing and cancelling them, and
+ * Draft receipts and orders: saving, editing and cancelling them, and
  * confirming them (with or without last changes) through
  * PostingService::confirmDraft(), the only step that touches stock.
  *
  * A draft is checked like the document it becomes, line by line in each
  * line's own warehouse: items of the customer, units, whole quantities,
- * expiry dates, serial numbers, and for an issue enough stock now (stock is
+ * expiry dates, serial numbers, and for an order enough stock now (stock is
  * not reserved: confirming checks again, under locks). Each save runs in one
  * DB::transaction with its audit entry.
  *
@@ -435,7 +435,7 @@ final class DraftService
     }
 
     /**
-     * Draft issue: enough in stock now in the line's warehouse (of its expiry
+     * Order: enough in stock now in the line's warehouse (of its expiry
      * date, which must not have expired), after earlier lines of the same item.
      *
      * @param  array<string, mixed>  $seen

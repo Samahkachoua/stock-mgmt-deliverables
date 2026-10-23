@@ -58,8 +58,8 @@ afterEach(function () {
     DB::table('warehouse')->where('id', $this->warehouse->id)->delete();
 });
 
-it('lets exactly one of two simultaneous issues take the last 10 pieces', function () {
-    $results = Race::run(__DIR__.'/issue-worker.php', [
+it('lets exactly one of two simultaneous delivery notes take the last 10 pieces', function () {
+    $results = Race::run(__DIR__.'/delivery-note-worker.php', [
         'warehouse' => $this->warehouse->id, 'customer' => $this->customer->id,
         'product' => $this->product->id, 'user' => $this->user->id, 'qty' => 10,
     ]);

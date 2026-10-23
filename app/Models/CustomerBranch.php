@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * One of a customer's branches (shop, site). Draft receipts say which branch
- * the goods come from, draft issues which branch they go to; information only,
+ * the goods come from, orders which branch they go to; information only,
  * stock is never kept per branch.
  *
  * @property string $id

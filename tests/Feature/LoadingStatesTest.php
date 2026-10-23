@@ -31,9 +31,9 @@ function loadingList(Stock $stock): Testable
 }
 
 /**
- * A new Issue form of the fixture warehouse with one filled line.
+ * A new Delivery note form of the fixture warehouse with one filled line.
  */
-function issueForm(Stock $stock, string $qty): Testable
+function deliveryNoteForm(Stock $stock, string $qty): Testable
 {
 
     $form = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'OUT'])
@@ -49,10 +49,10 @@ it('creates one transaction when the same token is posted twice', function () {
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 10)]);
     $token = (string) Str::uuid();
-    $issue = fn () => new Document('OUT', $stock->warehouse->id, $stock->customer->id, CarbonImmutable::today(), null, ['r1' => $stock->line('BEANS', 4)], requestId: $token);
+    $deliveryNote = fn () => new Document('OUT', $stock->warehouse->id, $stock->customer->id, CarbonImmutable::today(), null, ['r1' => $stock->line('BEANS', 4)], requestId: $token);
 
-    $first = app(PostingService::class)->post($issue(), $stock->user);
-    $second = app(PostingService::class)->post($issue(), $stock->user);
+    $first = app(PostingService::class)->post($deliveryNote(), $stock->user);
+    $second = app(PostingService::class)->post($deliveryNote(), $stock->user);
 
     expect($second->id)->toBe($first->id)
         ->and(DB::table('stock_transaction')->where('transaction_type', 'OUT')->count())->toBe(1)
@@ -102,19 +102,19 @@ it('saves once when the same form is submitted twice', function () {
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 10)]);
 
-    $form = issueForm($stock, '4');
+    $form = deliveryNoteForm($stock, '4');
     $form->call('save')->assertHasNoErrors();
     $form->call('save')->assertHasNoErrors();
 
-    $issues = DB::table('stock_transaction')->where('transaction_type', 'OUT')->get();
+    $deliveryNotes = DB::table('stock_transaction')->where('transaction_type', 'OUT')->get();
 
-    expect($issues)->toHaveCount(1)
-        ->and($issues[0]->client_request_id)->toBe($form->get('requestId'))
+    expect($deliveryNotes)->toHaveCount(1)
+        ->and($deliveryNotes[0]->client_request_id)->toBe($form->get('requestId'))
         ->and($stock->balance('BEANS'))->toBe(6.0);
-    $form->assertRedirect(route('issue.show', $issues[0]->doc_no));
+    $form->assertRedirect(route('delivery-note.show', $deliveryNotes[0]->doc_no));
 
     // Another form is another document.
-    $other = issueForm($stock, '4');
+    $other = deliveryNoteForm($stock, '4');
     expect($other->get('requestId'))->not->toBe($form->get('requestId'));
     $other->call('save')->assertHasNoErrors();
 
@@ -127,7 +127,7 @@ it('saves once when the same form is submitted twice', function () {
 it('disables the submit button and shows “Saving…” while the form is being saved', function () {
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 10)]);
-    $html = issueForm($stock, '4')->html();
+    $html = deliveryNoteForm($stock, '4')->html();
 
     preg_match('/<button\s[^>]*type="submit"[^>]*>.*?<\/button>/s', $html, $button);
 
@@ -139,7 +139,7 @@ it('disables the submit button and shows “Saving…” while the form is being
         ->toContain('wire:loading.inline-flex')
         ->toContain('animate-spin')
         ->toContain(__('app.loading.saving'))
-        ->toContain(__('transactions.types.issue.save'));
+        ->toContain(__('transactions.types.delivery_note.save'));
 
     // The rest of the form is read-only while it is saved.
     expect($html)->toMatch('/<fieldset\s[^>]*wire:loading\.attr="disabled"[^>]*wire:target="save, runConfirmed"/');

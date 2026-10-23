@@ -61,9 +61,9 @@ it('prints every type of document on its own A4 page, without the app around it'
 
 it('prints in light colours even for a user who chose the dark theme', function () {
     $this->stock->user->update(['preferred_theme' => 'dark']);
-    $issue = printable($this->stock, $this->tripoli, 'OUT');
+    $deliveryNote = printable($this->stock, $this->tripoli, 'OUT');
 
-    $html = $this->actingAs($this->stock->user->fresh())->get(TransactionTypes::get('OUT')->route('print', $issue->doc_no))
+    $html = $this->actingAs($this->stock->user->fresh())->get(TransactionTypes::get('OUT')->route('print', $deliveryNote->doc_no))
         ->assertOk()
         ->getContent();
 
@@ -73,34 +73,34 @@ it('prints in light colours even for a user who chose the dark theme', function 
         ->not->toContain('applyTheme');
 
     // The normal page, by contrast, follows the user's choice.
-    $this->get(TransactionTypes::get('OUT')->route('show', $issue->doc_no))->assertSee('class="dark"', false);
+    $this->get(TransactionTypes::get('OUT')->route('show', $deliveryNote->doc_no))->assertSee('class="dark"', false);
 });
 
 it('prints right to left in Arabic, with references left to right', function () {
     $this->stock->user->update(['preferred_lang' => 'ar']);
-    $issue = printable($this->stock, $this->tripoli, 'OUT');
+    $deliveryNote = printable($this->stock, $this->tripoli, 'OUT');
 
-    $this->actingAs($this->stock->user->fresh())->get(TransactionTypes::get('OUT')->route('print', $issue->doc_no))
+    $this->actingAs($this->stock->user->fresh())->get(TransactionTypes::get('OUT')->route('print', $deliveryNote->doc_no))
         ->assertOk()
         ->assertSee('lang="ar" dir="rtl"', false)
         ->assertSee(__('print.prepared_by', [], 'ar'))
-        ->assertSee(__('transactions.types.issue.singular', [], 'ar'))
-        ->assertSee('<span dir="ltr" class="tabular text-lg font-semibold">'.$issue->doc_no.'</span>', false);
+        ->assertSee(__('transactions.types.delivery_note.singular', [], 'ar'))
+        ->assertSee('<span dir="ltr" class="tabular text-lg font-semibold">'.$deliveryNote->doc_no.'</span>', false);
 });
 
 it('does not print a document of a warehouse the user does not work in', function () {
-    $issue = printable($this->stock, $this->tripoli, 'OUT');
+    $deliveryNote = printable($this->stock, $this->tripoli, 'OUT');
     $outsider = userWithRole('ADMIN', $this->tripoli);
 
     $this->actingAs($outsider)
-        ->get(TransactionTypes::get('OUT')->route('print', $issue->doc_no))
+        ->get(TransactionTypes::get('OUT')->route('print', $deliveryNote->doc_no))
         ->assertNotFound();
 });
 
 it('hides the sidebar, top bar and actions when a normal page is printed', function () {
-    $issue = printable($this->stock, $this->tripoli, 'OUT');
+    $deliveryNote = printable($this->stock, $this->tripoli, 'OUT');
 
-    $html = $this->actingAs($this->stock->user)->get(TransactionTypes::get('OUT')->route('show', $issue->doc_no))->getContent();
+    $html = $this->actingAs($this->stock->user)->get(TransactionTypes::get('OUT')->route('show', $deliveryNote->doc_no))->getContent();
 
     expect($html)->toMatch('/<aside[^>]*\bprint:hidden\b/')
         ->toMatch('/<header[^>]*\bprint:hidden\b/')
@@ -110,9 +110,9 @@ it('hides the sidebar, top bar and actions when a normal page is printed', funct
 
 it('prints each item’s storage status under its name', function () {
     $this->stock->items['BEANS']->update(['storage_status' => 'CHILLED']);
-    $issue = printable($this->stock, $this->tripoli, 'OUT');
+    $deliveryNote = printable($this->stock, $this->tripoli, 'OUT');
 
-    $this->actingAs($this->stock->user)->get(TransactionTypes::get('OUT')->route('print', $issue->doc_no))
+    $this->actingAs($this->stock->user)->get(TransactionTypes::get('OUT')->route('print', $deliveryNote->doc_no))
         ->assertOk()
         ->assertSee(StorageStatuses::label('CHILLED'));
 });

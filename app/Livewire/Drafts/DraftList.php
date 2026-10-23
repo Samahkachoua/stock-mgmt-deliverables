@@ -24,7 +24,7 @@ use Livewire\WithoutUrlPagination;
 use Livewire\WithPagination;
 
 /**
- * The list of draft receipts / issues the user may see (DraftScope), newest
+ * The list of draft receipts / orders the user may see (DraftScope), newest
  * first; for those who may confirm them, drafts still to confirm come first.
  * Filters and page are kept in the session, never in the URL.
  *

@@ -142,7 +142,7 @@ return [
 
     'branches' => [
         'heading' => 'Agences',
-        'description' => 'Les agences (magasins, sites) de chaque client. Les brouillons de réception et de sortie indiquent l’agence d’où viennent ou où vont les marchandises.',
+        'description' => 'Les agences (magasins, sites) de chaque client. Les brouillons de réception et les commandes indiquent l’agence d’où viennent ou où vont les marchandises.',
         'add' => 'Ajouter une agence',
         'new_heading' => 'Nouvelle agence',
         'edit_heading' => 'Modifier :name',
@@ -232,6 +232,8 @@ return [
         'code_hint' => 'Majuscules, chiffres et _ uniquement, par ex. SHIFT_LEAD.',
         'create' => 'Ajouter le rôle',
         'delete' => 'Supprimer',
+        'select_all' => 'Toutes les permissions',
+        'select_all_for' => ':role : toutes les permissions',
         'save_hint' => 'Les changements s’appliquent à l’enregistrement.',
         'saved' => 'Rôles enregistrés.',
         'added' => ':name a été ajouté.',

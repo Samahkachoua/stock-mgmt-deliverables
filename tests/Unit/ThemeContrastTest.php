@@ -45,7 +45,7 @@ function contrastPairs(): array
         ['brand', 'card', 3.0],
     ];
 
-    foreach (['receive', 'issue', 'transfer', 'adjustment', 'damage', 'opening'] as $type) {
+    foreach (['receive', 'delivery', 'transfer', 'adjustment', 'damage', 'opening'] as $type) {
         $pairs[] = ["type-$type", 'card', 3.0];                 // sidebar / header icons
         $pairs[] = ['fg', "type-$type-soft", 4.5];              // active nav label
         $pairs[] = ['on-brand', "type-$type-strong", 4.5];      // filled type buttons

@@ -48,7 +48,7 @@ return [
         'cannot_cancel_status' => 'Seuls les documents terminés peuvent être annulés.',
         'already_used' => 'Une partie de ce stock est déjà sortie : :item reçu :received, il ne reste que :left. Il ne peut pas être annulé.',
         'serial_already_used' => 'Le numéro de série :serial est déjà sorti : cette réception ne peut pas être annulée.',
-        'serial_back_in_stock' => 'Le numéro de série :serial est déjà revenu en stock : cette sortie ne peut pas être annulée.',
+        'serial_back_in_stock' => 'Le numéro de série :serial est déjà revenu en stock : ce bon de livraison ne peut pas être annulé.',
         'nothing_to_adjust' => 'Tous les comptages correspondent au système : il n’y a rien à ajuster.',
         'count_changed' => 'Le stock de :item a changé depuis ce comptage refusez-le et recomptez.',
         'not_pending' => 'Ce document a déjà été approuvé ou refusé.',

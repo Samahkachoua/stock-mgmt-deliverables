@@ -380,7 +380,7 @@
                     </x-submit-button>
                 @endif
                 <x-submit-button target="save" :disabled="! $check['valid']" icon="edit" :variant="$canConfirm ? 'outline' : $kind->colours()['strong']" class="min-w-36 max-md:flex-1">
-                    {{ __('drafts.actions.save') }}
+                    {{ __('drafts.actions.save', ['type' => mb_strtolower($kind->label('singular'))]) }}
                 </x-submit-button>
             </div>
         </div>

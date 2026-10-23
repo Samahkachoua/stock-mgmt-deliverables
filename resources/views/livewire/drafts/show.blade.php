@@ -29,7 +29,7 @@
             @if ($canCancel)
                 <button type="button" wire:click="askCancel" class="flex h-control items-center gap-2 rounded-lg border border-control bg-card px-4 text-body font-semibold text-danger shadow-card hover:bg-danger-soft">
                     <x-busy-icon name="cancel" target="askCancel" />
-                    {{ __('drafts.actions.cancel') }}
+                    {{ __('drafts.actions.cancel', ['type' => mb_strtolower($kind->label('singular'))]) }}
                 </button>
             @endif
         </x-slot:actions>

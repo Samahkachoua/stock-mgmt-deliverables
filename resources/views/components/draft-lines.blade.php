@@ -1,6 +1,6 @@
 {{--
     Read-only lines of a draft, grouped by warehouse (each group becomes one
-    receipt / issue when the draft is confirmed). `line-errors`: draft line id =>
+    receipt / delivery note when the draft is confirmed). `line-errors`: draft line id =>
     why it can't be confirmed, shown under the item.
     <x-draft-lines :groups="$draft['groups']" :line-errors="$lineErrors" />
 --}}
@@ -40,7 +40,7 @@
             </thead>
             @foreach ($groups as $group)
                 <tbody class="divide-y divide-default border-t border-default">
-                    {{-- One receipt / issue per warehouse. --}}
+                    {{-- One receipt / delivery note per warehouse. --}}
                     <tr class="bg-surface">
                         <th scope="rowgroup" colspan="{{ $columns + 1 }}" class="px-edge py-2 text-start text-body font-semibold text-fg">
                             <span class="inline-flex items-center gap-2">

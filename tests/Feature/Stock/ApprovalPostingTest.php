@@ -202,7 +202,7 @@ it('refuses to approve a damage when its chosen expiry date no longer has enough
         ->and($this->stock->balance('YOGURT', $this->expiry['soon']))->toBe(10.0);
 });
 
-it('writes off chosen expired stock on a damage, which an issue may not take', function () {
+it('writes off chosen expired stock on a damage, which a delivery note may not take', function () {
     $this->stock->post('IN', [$this->stock->line('YOGURT', 6, expiry: $this->expiry['gone'])]);
 
     $damage = $this->stock->post('DAMAGE', [$this->stock->line('YOGURT', 6, expiry: $this->expiry['gone'])], reason: 'EXPIRED');

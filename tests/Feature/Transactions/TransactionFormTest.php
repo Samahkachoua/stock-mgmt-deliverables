@@ -127,10 +127,10 @@ it('ignores the empty last row', function () {
 
     $form->call('save')->assertHasNoErrors();
 
-    $issue = DB::table('stock_transaction')->where('transaction_type', 'OUT')->first();
-    $form->assertRedirect(route('issue.show', $issue->doc_no));
+    $deliveryNote = DB::table('stock_transaction')->where('transaction_type', 'OUT')->first();
+    $form->assertRedirect(route('delivery-note.show', $deliveryNote->doc_no));
 
-    expect(DB::table('stock_transaction_line')->where('transaction_id', $issue->id)->count())->toBe(1);
+    expect(DB::table('stock_transaction_line')->where('transaction_id', $deliveryNote->id)->count())->toBe(1);
 });
 
 it('keeps Save disabled while a row is invalid and explains why', function (string $qty, string $error, array $replace) {
@@ -220,7 +220,7 @@ it('asks for the expiry date (and no batch number) on receipts of expiry-tracked
     expect($form->html())->not->toContain("line-$other-expiry");
 });
 
-it('suggests the nearest expiry date on an issue, and checks the quantity against the date chosen', function () {
+it('suggests the nearest expiry date on a delivery note, and checks the quantity against the date chosen', function () {
     $form = form($this->catalog);
     [$row] = rowKeys($form);
     [$soon, $late] = [now()->addDays(14)->toDateString(), now()->addDays(40)->toDateString()];
@@ -410,23 +410,23 @@ it('shows the approval notice above the limit and changes the button', function 
         ->and($form->html())->toContain(e(__('transactions.form.send_for_approval')));
 });
 
-it('posts an issue through PostingService and opens it', function () {
+it('posts a delivery note through PostingService and opens it', function () {
     $form = form($this->catalog);
     [$row] = rowKeys($form);
     $form->set("lines.$row.item", $this->catalog->id('CB-400'))->set("lines.$row.unit", 'BOX')->set("lines.$row.qty", '2');
 
     $form->call('save')->assertHasNoErrors();
 
-    $issue = DB::table('stock_transaction')->first();
-    $form->assertRedirect(route('issue.show', $issue->doc_no));
+    $deliveryNote = DB::table('stock_transaction')->first();
+    $form->assertRedirect(route('delivery-note.show', $deliveryNote->doc_no));
 
-    expect($issue->status)->toBe('POSTED')
-        ->and(DB::table('stock_movement')->where('transaction_id', $issue->id)->value('qty_base'))->toEqual('24.0000')
+    expect($deliveryNote->status)->toBe('POSTED')
+        ->and(DB::table('stock_movement')->where('transaction_id', $deliveryNote->id)->value('qty_base'))->toEqual('24.0000')
         ->and((float) DB::table('stock_balance')->where('product_id', $this->catalog->id('CB-400'))->value('qty_base'))->toBe(40.0)
         ->and(session('toasts'))->toBe([[
             'type' => 'success',
-            'message' => __('feedback.saved', ['type' => __('transactions.types.issue.singular'), 'reference' => $issue->doc_no]),
-            'url' => route('issue.show', $issue->doc_no),
+            'message' => __('feedback.saved', ['type' => __('transactions.types.delivery_note.singular'), 'reference' => $deliveryNote->doc_no]),
+            'url' => route('delivery-note.show', $deliveryNote->doc_no),
             'link' => __('feedback.view'),
         ]]);
 });
@@ -488,15 +488,15 @@ it('takes serial numbers instead of a quantity for serial-numbered items', funct
 
     $receipt->set("lines.$row.serials", "SN-100\nSN-101")->call('save')->assertHasNoErrors();
 
-    $issue = Livewire::actingAs($this->catalog->user())
+    $deliveryNote = Livewire::actingAs($this->catalog->user())
         ->test(TransactionForm::class, ['type' => 'OUT'])
         ->call('chooseCustomer', $this->catalog->cedar->id);
-    [$row] = rowKeys($issue);
-    $issue->set("lines.$row.item", $this->catalog->id('ES-MCH'));
+    [$row] = rowKeys($deliveryNote);
+    $deliveryNote->set("lines.$row.item", $this->catalog->id('ES-MCH'));
 
-    expect($issue->html())->toContain('SN-100')->toContain('SN-101');
+    expect($deliveryNote->html())->toContain('SN-100')->toContain('SN-101');
 
-    $issue->set("lines.$row.picked", ['SN-101'])->call('save')->assertHasNoErrors();
+    $deliveryNote->set("lines.$row.picked", ['SN-101'])->call('save')->assertHasNoErrors();
 
     expect(DB::table('serial_number')->where('serial_no', 'SN-101')->value('status'))->toBe('ISSUED')
         ->and(DB::table('serial_number')->where('serial_no', 'SN-100')->value('status'))->toBe('IN_STOCK');

@@ -30,7 +30,7 @@ return [
 
     'activity' => [
         'title' => 'Activité par type',
-        'hint' => 'Réceptions, sorties, transferts… réalisés au fil du temps.',
+        'hint' => 'Réceptions, bons de livraison, transferts… réalisés au fil du temps.',
         'step' => [
             'day' => 'Par jour',
             'month' => 'Par mois',

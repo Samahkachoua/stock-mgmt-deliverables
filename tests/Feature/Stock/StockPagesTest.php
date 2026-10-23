@@ -107,28 +107,28 @@ it('shows lines in the unit entered with their base quantity, and the activity',
         ->assertSee(__('transactions.activity.posted', ['name' => '<bdi>'.e($this->stock->user->full_name).'</bdi>']), false);
 });
 
-it('shows which expiry dates an issue took, and the serial numbers', function () {
+it('shows which expiry dates a delivery note took, and the serial numbers', function () {
     $this->stock->post('IN', [
         $this->stock->line('YOGURT', 4, expiry: now()->addDays(5)->toDateString()),
         $this->stock->line('YOGURT', 10, expiry: now()->addDays(50)->toDateString()),
         $this->stock->line('PHONE', 2, serials: ['SN-1', 'SN-2']),
     ]);
-    $issue = $this->stock->post('OUT', [$this->stock->line('YOGURT', 6), $this->stock->line('PHONE', 1, serials: ['SN-2'])]);
+    $deliveryNote = $this->stock->post('OUT', [$this->stock->line('YOGURT', 6), $this->stock->line('PHONE', 1, serials: ['SN-2'])]);
 
-    $this->actingAs($this->stock->user)->get(route('issue.show', $issue->doc_no))
+    $this->actingAs($this->stock->user)->get(route('delivery-note.show', $deliveryNote->doc_no))
         ->assertOk()
         ->assertSee(__('transactions.details.from_expiries', ['dates' => Format::date(now()->addDays(5)).' (4 Piece), '.Format::date(now()->addDays(50)).' (2 Piece)']))
         ->assertSee(__('transactions.details.serials', ['serials' => 'SN-2']));
 });
 
-it('shows the expiry date chosen on an issue', function () {
+it('shows the expiry date chosen on a delivery note', function () {
     $this->stock->post('IN', [
         $this->stock->line('YOGURT', 4, expiry: now()->addDays(5)->toDateString()),
         $this->stock->line('YOGURT', 10, expiry: now()->addDays(50)->toDateString()),
     ]);
-    $issue = $this->stock->post('OUT', [$this->stock->line('YOGURT', 6, expiry: now()->addDays(50)->toDateString())]);
+    $deliveryNote = $this->stock->post('OUT', [$this->stock->line('YOGURT', 6, expiry: now()->addDays(50)->toDateString())]);
 
-    $this->actingAs($this->stock->user)->get(route('issue.show', $issue->doc_no))
+    $this->actingAs($this->stock->user)->get(route('delivery-note.show', $deliveryNote->doc_no))
         ->assertOk()
         ->assertSee(__('transactions.lines.expiry'))
         ->assertSee(Format::date(now()->addDays(50)))

@@ -57,12 +57,12 @@ it('draws flashed toasts on the next page, top-end, with a role per kind', funct
 
     $html = $this->actingAs($stock->user)
         ->withSession([Notify::SESSION_KEY => [
-            ['type' => 'success', 'message' => 'Issue ISS-TEST-1 saved', 'url' => '/issue/ISS-TEST-1', 'link' => 'View'],
+            ['type' => 'success', 'message' => 'Delivery note DN-TEST-1 saved', 'url' => '/delivery-note/DN-TEST-1', 'link' => 'View'],
         ]])
         ->get(route('receive'))->assertOk()->getContent();
 
     expect($html)
-        ->toContain('Issue ISS-TEST-1 saved')
+        ->toContain('Delivery note DN-TEST-1 saved')
         ->toContain('x-on:toast.window')
         ->toContain('md:end-4 md:top-4') // top-end; full width at the top on a phone
         ->toContain("toast.type === 'error' ? 'alert' : 'status'")
@@ -118,12 +118,12 @@ it('says what was saved, with the reference and a link, after the redirect', fun
     $row = array_key_first($form->get('lines'));
     $form->set("lines.$row.item", $stock->id('BEANS'))->set("lines.$row.qty", '4')->call('save');
 
-    $issue = DB::table('stock_transaction')->where('transaction_type', 'OUT')->first();
+    $deliveryNote = DB::table('stock_transaction')->where('transaction_type', 'OUT')->first();
 
     expect(session(Notify::SESSION_KEY))->toBe([[
         'type' => 'success',
-        'message' => 'Issue '.$issue->doc_no.' saved',
-        'url' => route('issue.show', $issue->doc_no),
+        'message' => 'Delivery note '.$deliveryNote->doc_no.' saved',
+        'url' => route('delivery-note.show', $deliveryNote->doc_no),
         'link' => 'View',
     ]]);
 });

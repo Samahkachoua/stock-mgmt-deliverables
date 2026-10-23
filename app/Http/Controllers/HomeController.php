@@ -51,7 +51,7 @@ class HomeController extends Controller
     }
 
     /**
-     * What the user may start: draft receipts / issues and transaction types
+     * What the user may start: draft receipts / orders and transaction types
      * they hold the create permission for, in sidebar order (config('ui.nav'):
      * each draft sits above the document it becomes).
      *

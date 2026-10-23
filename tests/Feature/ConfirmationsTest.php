@@ -167,9 +167,9 @@ it('says which documents use an item instead of asking to delete it', function (
         ->call('askDelete')
         ->assertSet('confirm', null)
         ->assertSet('deleteBlocked', trans_choice('confirm.blocked.item_on_documents', 3, [
-            'name' => $product->name(), 'count' => '3', 'types' => __('transactions.types.receive.singular').', '.__('transactions.types.issue.singular'),
+            'name' => $product->name(), 'count' => '3', 'types' => __('transactions.types.receive.singular').', '.__('transactions.types.delivery_note.singular'),
         ]))
-        ->assertSee(__('transactions.types.issue.singular'))
+        ->assertSee(__('transactions.types.delivery_note.singular'))
         // Save stays available: the message is not a form error.
         ->assertHasNoErrors();
 
@@ -264,33 +264,33 @@ it('says why a warehouse with stock can’t be deactivated instead of asking', f
 it('asks before cancelling, with the consequence and a required reason kept in the audit log', function () {
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 60)]);
-    $issue = $stock->post('OUT', [$stock->line('BEANS', 3, 'BOX')]);
+    $deliveryNote = $stock->post('OUT', [$stock->line('BEANS', 3, 'BOX')]);
 
-    $page = Livewire::actingAs($stock->user)->test(CancelTransaction::class, ['transactionId' => $issue->id])->call('ask');
+    $page = Livewire::actingAs($stock->user)->test(CancelTransaction::class, ['transactionId' => $deliveryNote->id])->call('ask');
 
-    $page->assertSet('confirm.title', 'Cancel issue '.$issue->doc_no.'?')
+    $page->assertSet('confirm.title', 'Cancel delivery note '.$deliveryNote->doc_no.'?')
         ->assertSet('confirm.body', 'This returns 3 Box of Canned Beans to Beirut Main stock and can’t be undone.')
-        ->assertSet('confirm.button', 'Cancel issue')
+        ->assertSet('confirm.button', 'Cancel delivery note')
         ->assertSee(__('confirm.cancel.reason'));
-    expect($issue->fresh()->status)->toBe('POSTED');
+    expect($deliveryNote->fresh()->status)->toBe('POSTED');
 
     // No reason: nothing happens, the modal stays.
     $page->call('runConfirmed')->assertHasErrors('confirmReason')->assertSee(__('confirm.reason_required'))->assertNoRedirect();
-    expect($issue->fresh()->status)->toBe('POSTED')->and($page->get('confirm'))->not->toBeNull();
+    expect($deliveryNote->fresh()->status)->toBe('POSTED')->and($page->get('confirm'))->not->toBeNull();
 
     // Dismissed: nothing happens either.
     $page->call('dismissConfirm')->call('runConfirmed');
-    expect($issue->fresh()->status)->toBe('POSTED');
+    expect($deliveryNote->fresh()->status)->toBe('POSTED');
 
     $page->call('ask')->set('confirmReason', '  Entered for the wrong customer ')->call('runConfirmed')
-        ->assertRedirect(route('issue.show', $issue->doc_no));
+        ->assertRedirect(route('delivery-note.show', $deliveryNote->doc_no));
 
-    expect($issue->fresh()->status)->toBe('CANCELLED')
+    expect($deliveryNote->fresh()->status)->toBe('CANCELLED')
         ->and($stock->balance('BEANS'))->toBe(60.0)
-        ->and(lastAudit($issue, 'CANCEL')['reason'])->toBe('Entered for the wrong customer');
+        ->and(lastAudit($deliveryNote, 'CANCEL')['reason'])->toBe('Entered for the wrong customer');
 
     // The details page shows it in the Activity list.
-    $this->actingAs($stock->user)->get(route('issue.show', $issue->doc_no))
+    $this->actingAs($stock->user)->get(route('delivery-note.show', $deliveryNote->doc_no))
         ->assertSee(__('transactions.activity.heading'))
         ->assertSee('Entered for the wrong customer');
 });
@@ -372,10 +372,10 @@ it('never asks for saving what can be cancelled, approving, confirming a receipt
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 36)]);
 
-    // An issue can be cancelled later: Save posts at once.
-    $issue = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'OUT'])->call('chooseCustomer', $stock->customer->id);
-    $row = array_key_first($issue->get('lines'));
-    $issue->set("lines.$row.item", $stock->id('BEANS'))->set("lines.$row.qty", '1')
+    // A delivery note can be cancelled later: Save posts at once.
+    $deliveryNote = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'OUT'])->call('chooseCustomer', $stock->customer->id);
+    $row = array_key_first($deliveryNote->get('lines'));
+    $deliveryNote->set("lines.$row.item", $stock->id('BEANS'))->set("lines.$row.qty", '1')
         ->call('save')
         ->assertSet('confirm', null)
         ->assertRedirect();

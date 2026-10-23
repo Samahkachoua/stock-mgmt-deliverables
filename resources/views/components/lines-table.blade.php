@@ -65,7 +65,7 @@
                                 <x-storage-status :label="$line['storage'] ?? null" />
                             </div>
                             @foreach ($line['details'] ?? [] as $detail)
-                                {{-- e.g. which expiry dates an issue took (FEFO), or the serial numbers --}}
+                                {{-- e.g. which expiry dates a delivery note took (FEFO), or the serial numbers --}}
                                 <p class="mt-0.5 text-small text-muted">{{ $detail }}</p>
                             @endforeach
                         </td>

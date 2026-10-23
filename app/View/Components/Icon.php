@@ -8,7 +8,7 @@ use InvalidArgumentException;
 
 /**
  * Inline Material Symbols (outlined) icon from resources/icons/<name>.svg.
- * Usage: <x-icon name="outbox" class="size-5 text-type-issue" />
+ * Usage: <x-icon name="outbox" class="size-5 text-type-delivery" />
  */
 class Icon extends Component
 {

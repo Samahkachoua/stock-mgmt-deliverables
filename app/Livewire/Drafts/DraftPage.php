@@ -21,7 +21,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
- * The read-only details page of a draft receipt / issue: summary, lines by
+ * The read-only details page of a draft receipt / order: summary, lines by
  * warehouse, the documents confirming created, activity. While it is a draft:
  * Edit, Confirm (no question asked, like approving: it posts at once and the
  * documents can be cancelled one by one) and Cancel draft (asks, with a reason).
@@ -90,12 +90,14 @@ class DraftPage extends Component
         $draft = $this->draft();
         $this->authorize('cancel', $draft['model']);
 
+        $name = mb_strtolower($this->kind()->label('singular'));
+
         $this->askToConfirm(
             'cancel',
             $draft['id'],
-            __('drafts.confirm_cancel.title', ['type' => $this->kind()->label('singular'), 'reference' => $draft['reference']]),
+            __('drafts.confirm_cancel.title', ['type' => $name, 'reference' => $draft['reference']]),
             __('drafts.confirm_cancel.body'),
-            __('drafts.confirm_cancel.button', ['type' => $this->kind()->label('singular')]),
+            __('drafts.confirm_cancel.button', ['type' => $name]),
             __('drafts.confirm_cancel.reason'),
             __('drafts.confirm_cancel.reason_placeholder'),
         );

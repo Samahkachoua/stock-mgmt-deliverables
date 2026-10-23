@@ -98,14 +98,14 @@ class AppServiceProvider extends ServiceProvider
         // Reports open for anyone who may see a report (the audit log needs audit.view only).
         Gate::define('reports.open', fn (User $user) => $user->hasPermission('report.view') || $user->hasPermission('audit.view'));
 
-        // Each type's list, details and print pages (documents.receive, documents.issue...):
+        // Each type's list, details and print pages (documents.receive, documents.delivery-note...):
         // its view permission, or creating / approving it (no dead end after saving).
         foreach (config('transactions.types') as $type) {
             $codes = array_filter([$type['view'], $type['create'], $type['approve'] ?? null, ...($type['view_also'] ?? [])]);
             Gate::define('documents.'.$type['slug'], fn (User $user) => collect($codes)->contains(fn (string $code) => $user->hasPermission($code)));
         }
 
-        // Draft receipts / issues (drafts.in.open, drafts.out.open): their view
+        // Draft receipts / orders (drafts.in.open, drafts.out.open): their view
         // permission, or creating / confirming them.
         foreach (config('transactions.drafts') as $code => $draft) {
             Gate::define('drafts.'.strtolower($code).'.open', fn (User $user) => $user->hasPermission($draft['view'])

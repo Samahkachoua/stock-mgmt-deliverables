@@ -8,7 +8,7 @@ use App\Models\Concerns\WarehouseScoped;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * A stock document header (Receive, Issue, Transfer, ...). Visible from its
+ * A stock document header (Receive, Delivery note, Transfer, ...). Visible from its
  * source warehouse and, for transfers, its destination warehouse.
  *
  * @property string $id

@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  * customers:
  *
  *   Beirut Main (BEY)
- *     Acme   BEANS   receive 60, issue 12, damage 6 (HANDLING), count 42→40 (−2),
+ *     Acme   BEANS   receive 60, deliver 12, damage 6 (HANDLING), count 42→40 (−2),
  *                    transfer 12 to Tripoli (in transit)              → 28
  *            YOGURT  +10 days 12, expired (−2 days) 6, +100 days 6;
  *                    damage 4 (EXPIRED) takes the expired first       → 20 (expired 2)

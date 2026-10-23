@@ -5,6 +5,7 @@ use App\Livewire\Drafts\DraftList;
 use App\Livewire\Drafts\DraftPage;
 use App\Livewire\Settings\Branches;
 use App\Livewire\Settings\Users;
+use App\Livewire\Transactions\TransactionList;
 use App\Models\Customer;
 use App\Models\CustomerBranch;
 use App\Models\StockDraft;
@@ -95,7 +96,7 @@ it('refuses more than 999,999 on a draft line, in the form and on save', functio
     expect(StockDraft::withoutGlobalScopes()->count())->toBe(0);
 });
 
-it('limits a draft issue row to what is in stock in its own warehouse', function () {
+it('limits a order row to what is in stock in its own warehouse', function () {
     $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);
 
     $form = draftForm($this, 'OUT')->call('chooseCustomer', $this->stock->customer->id);
@@ -226,20 +227,20 @@ it('lists drafts the user may see, and opens list, details and print pages', fun
     $this->get(route('home'))->assertSee(route('draft-receipts'), false);
 });
 
-it('offers New Draft Receipt / Issue on Home to whoever may create them, above the document they become', function () {
+it('offers New Draft Receipt / Order on Home to whoever may create them, above the document they become', function () {
     // OPERATOR creates both drafts and the documents: each draft sits just above its document.
     $operator = userWithRole('OPERATOR', $this->stock->warehouse);
     $labels = $this->actingAs($operator)->get(route('home'))->viewData('create')->map(fn ($kind) => $kind->label('new'))->all();
 
     expect(array_slice($labels, 0, 4))->toBe([
         __('drafts.types.receipt.new'), __('transactions.types.receive.new'),
-        __('drafts.types.issue.new'), __('transactions.types.issue.new'),
+        __('drafts.types.order.new'), __('transactions.types.delivery_note.new'),
     ]);
     $this->get(route('home'))
         ->assertSee(route('draft-receipts.create'), false)
-        ->assertSee(route('draft-issues.create'), false);
+        ->assertSee(route('orders.create'), false);
 
-    // A role with only draft receipts gets that one, and no draft issue.
+    // A role with only draft receipts gets that one, and no order.
     $role = DB::table('role')->insertGetId(['code' => 'BRANCH', 'name' => 'Branch clerk', 'is_system' => false], 'id');
     DB::table('role_permission')->insert(['role_id' => $role, 'permission_id' => DB::table('permission')->where('code', 'draft.in.create')->value('id')]);
     Permissions::flush();
@@ -249,7 +250,7 @@ it('offers New Draft Receipt / Issue on Home to whoever may create them, above t
 
     $this->actingAs($clerk->fresh())->get(route('home'))
         ->assertSee(route('draft-receipts.create'), false)
-        ->assertDontSee(route('draft-issues.create'), false)
+        ->assertDontSee(route('orders.create'), false)
         ->assertDontSee(__('home.nothing_to_create'));
 
     // AUDITOR creates nothing.
@@ -260,7 +261,7 @@ it('offers New Draft Receipt / Issue on Home to whoever may create them, above t
 
 it('is closed to users without the draft permissions', function () {
     $this->actingAs(userWithRole('AUDITOR', $this->stock->warehouse))
-        ->get(route('draft-issues'))
+        ->get(route('orders'))
         ->assertForbidden();
 });
 
@@ -343,3 +344,33 @@ it('prints each item’s storage status on a draft', function () {
         ->assertOk()
         ->assertSee(StorageStatuses::label('AMBIENT'));
 });
+
+it('shows on the list the draft each document came from, and finds it by that number', function (string $type, string $label) {
+    $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);
+    $draft = savedDraft($this, $type, [[$this->stock->warehouse, 4]]);
+
+    Livewire::actingAs($this->stock->user)
+        ->test(DraftPage::class, ['type' => $type, 'reference' => $draft->doc_no])
+        ->call('confirmDraft')
+        ->assertHasNoErrors();
+
+    $fromDraft = DB::table('stock_transaction')->where('draft_id', $draft->id)->value('doc_no');
+    $direct = $this->stock->post($type, [$this->stock->line('BEANS', 1)]);
+
+    $list = Livewire::actingAs($this->stock->user)->test(TransactionList::class, ['type' => $type])
+        ->assertSee(__($label))
+        ->assertSee($draft->doc_no)
+        ->assertSee($fromDraft)
+        ->assertSee($direct->doc_no);
+
+    $list->set('search', mb_strtolower($draft->doc_no))
+        ->assertSee($fromDraft)
+        ->assertDontSee($direct->doc_no);
+
+    // Types that never come from a draft have no such column.
+    Livewire::actingAs($this->stock->user)->test(TransactionList::class, ['type' => 'DAMAGE'])
+        ->assertDontSee(__($label));
+})->with([
+    'delivery note: its order' => ['OUT', 'drafts.types.order.singular'],
+    'receipt: its draft receipt' => ['IN', 'drafts.types.receipt.singular'],
+]);

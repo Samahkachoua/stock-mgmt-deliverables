@@ -5,7 +5,7 @@
  * and that the sidebar shows exactly those entries.
  */
 
-const STOCK_AREAS = ['receive', 'issue', 'transfer', 'adjustment', 'damage', 'opening-balance', 'stock'];
+const STOCK_AREAS = ['receive', 'delivery-note', 'transfer', 'adjustment', 'damage', 'opening-balance', 'stock'];
 
 /**
  * Areas each seeded role may open (besides the stock pages, which every role sees).

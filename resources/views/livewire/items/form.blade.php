@@ -163,10 +163,11 @@
                         wire:click="askDelete"
                         wire:loading.attr="disabled"
                         wire:target="askDelete, save, runConfirmed"
-                        class="flex h-control items-center gap-2 rounded-lg border border-control bg-card px-4 text-body font-semibold text-danger hover:bg-card-hover disabled:cursor-not-allowed disabled:opacity-50"
+                        title="{{ __('items.delete') }}"
+                        class="grid size-control place-items-center rounded-lg border border-control bg-card text-danger hover:bg-card-hover disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <x-busy-icon name="delete" target="askDelete" class="size-5" />
-                        {{ __('items.delete') }}
+                        <span class="sr-only">{{ __('items.delete') }}</span>
                     </button>
                     @if ($deleteBlocked)
                         <p data-delete-blocked class="flex min-w-0 items-center gap-1.5 text-body font-semibold text-danger" role="alert">
