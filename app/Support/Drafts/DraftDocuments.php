@@ -15,9 +15,9 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Drafts for the list and details pages. Reads go through StockDraft, so the
- * customer scope and DraftScope (warehouses / branches) always apply.
+ * customer scope and DraftScope (warehouse / branches) always apply.
  *
- * @phpstan-type DraftRow array{id: string, reference: string, date: CarbonImmutable, customer: string, branch: string, warehouses: string, status: string, created_by: string, items: int, total: float}
+ * @phpstan-type DraftRow array{id: string, reference: string, date: CarbonImmutable, customer: string, branch: string, warehouse: string, status: string, created_by: string, items: int, total: float}
  */
 final class DraftDocuments
 {
@@ -36,6 +36,7 @@ final class DraftDocuments
         return StockDraft::query()
             ->join('customer', 'customer.id', '=', 'stock_draft.customer_id')
             ->join('customer_branch as branch', 'branch.id', '=', 'stock_draft.customer_branch_id')
+            ->join('warehouse', 'warehouse.id', '=', 'stock_draft.warehouse_id')
             ->join('app_user', 'app_user.id', '=', 'stock_draft.created_by')
             ->where('stock_draft.transaction_type', $kind->code)
             ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query
@@ -50,13 +51,11 @@ final class DraftDocuments
                 'stock_draft.*',
                 'customer.name as customer_name',
                 'branch.name as branch_name',
+                'warehouse.name as warehouse_name',
                 'app_user.full_name as creator_name',
             ])
             ->selectSub(DB::table('stock_draft_line')->selectRaw('count(*)')->whereColumn('draft_id', 'stock_draft.id'), 'line_count')
             ->selectSub(DB::table('stock_draft_line')->selectRaw('coalesce(sum(qty_base), 0)')->whereColumn('draft_id', 'stock_draft.id'), 'total_base')
-            ->selectSub(DB::table('stock_draft_line as l')->join('warehouse as w', 'w.id', '=', 'l.warehouse_id')
-                ->selectRaw("string_agg(DISTINCT w.name, ', ' ORDER BY w.name)")
-                ->whereColumn('l.draft_id', 'stock_draft.id'), 'warehouse_names')
             ->when($filters['drafts_first'] ?? false, fn ($query) => $query->orderByRaw("(stock_draft.status = 'DRAFT') DESC"))
             ->orderByDesc('stock_draft.document_date')
             ->orderByDesc('stock_draft.created_at')
@@ -67,7 +66,7 @@ final class DraftDocuments
                 'date' => CarbonImmutable::parse($row->getAttribute('document_date')),
                 'customer' => (string) $row->getAttribute('customer_name'),
                 'branch' => (string) $row->getAttribute('branch_name'),
-                'warehouses' => (string) $row->getAttribute('warehouse_names'),
+                'warehouse' => (string) $row->getAttribute('warehouse_name'),
                 'status' => $row->status,
                 'created_by' => (string) $row->getAttribute('creator_name'),
                 'items' => (int) $row->getAttribute('line_count'),
@@ -93,10 +92,11 @@ final class DraftDocuments
         $header = DB::table('stock_draft as d')
             ->join('customer as c', 'c.id', '=', 'd.customer_id')
             ->join('customer_branch as b', 'b.id', '=', 'd.customer_branch_id')
+            ->join('warehouse as w', 'w.id', '=', 'd.warehouse_id')
             ->join('app_user as u', 'u.id', '=', 'd.created_by')
             ->leftJoin('app_user as cu', 'cu.id', '=', 'd.confirmed_by')
             ->where('d.id', $draft->id)
-            ->first(['d.*', 'c.name as customer_name', 'b.name as branch_name', 'b.code as branch_code', 'u.full_name as creator_name', 'cu.full_name as confirmer_name']);
+            ->first(['d.*', 'c.name as customer_name', 'b.name as branch_name', 'b.code as branch_code', 'w.name as warehouse_name', 'u.full_name as creator_name', 'cu.full_name as confirmer_name']);
 
         $lines = self::lines($draft->id);
 
@@ -112,6 +112,8 @@ final class DraftDocuments
             'customer' => $header->customer_name,
             'branch_id' => $header->customer_branch_id,
             'branch' => $header->branch_name,
+            'warehouse_id' => $header->warehouse_id,
+            'warehouse' => $header->warehouse_name,
             'note' => $header->reference_note,
             'created_by_id' => $header->created_by,
             'created_by' => $header->creator_name,
@@ -120,10 +122,6 @@ final class DraftDocuments
             'confirmed_at' => $header->confirmed_at ? CarbonImmutable::parse($header->confirmed_at)->setTimezone($timezone) : null,
             'cancel_reason' => $header->cancel_reason,
             'lines' => $lines,
-            'groups' => collect($lines)->groupBy('warehouse_id')->map(fn ($group) => [
-                'warehouse' => $group->first()['warehouse'],
-                'lines' => $group->values()->all(),
-            ])->values()->all(),
             'items' => count($lines),
             'total' => array_sum(array_column($lines, 'base_qty')),
             'documents' => self::documents($header->id),
@@ -144,7 +142,7 @@ final class DraftDocuments
             ['label' => __('transactions.details.customer'), 'value' => $draft['customer']],
             ['label' => $kind->label('branch'), 'value' => $draft['branch']],
             ['label' => __('transactions.details.date'), 'value' => Format::date($draft['date'])],
-            ['label' => __('drafts.details.warehouses'), 'value' => collect($draft['groups'])->pluck('warehouse')->implode(', ')],
+            ['label' => __('drafts.details.warehouse'), 'value' => $draft['warehouse']],
             ['label' => __('transactions.details.reference_note'), 'value' => $draft['note']],
             ...($print ? [] : [
                 ['label' => __('transactions.details.created_by'), 'value' => $draft['created_by']],
@@ -163,10 +161,9 @@ final class DraftDocuments
     {
         $rows = DB::table('stock_draft_line as l')
             ->join('unit as u', 'u.id', '=', 'l.unit_id')
-            ->join('warehouse as w', 'w.id', '=', 'l.warehouse_id')
             ->where('l.draft_id', $draftId)
             ->orderBy('l.line_no')
-            ->get(['l.*', 'u.code as unit', 'w.name as warehouse_name']);
+            ->get(['l.*', 'u.code as unit']);
 
         $products = Product::withoutGlobalScopes()->with(['baseUnit', 'units.unit'])->findMany($rows->pluck('product_id')->unique())->keyBy('id');
 
@@ -177,8 +174,6 @@ final class DraftDocuments
 
             return [
                 'id' => $row->id,
-                'warehouse_id' => $row->warehouse_id,
-                'warehouse' => $row->warehouse_name,
                 'product_id' => $row->product_id,
                 'code' => $product->sku,
                 'name' => $product->name(),
@@ -195,7 +190,8 @@ final class DraftDocuments
     }
 
     /**
-     * The receipts / delivery notes confirming the draft created, one per warehouse.
+     * The receipt / delivery note confirming the draft created (drafts confirmed
+     * before a draft had one warehouse may have created one per warehouse).
      *
      * @return list<array{reference: string, type: string, warehouse: string, status: string}>
      */

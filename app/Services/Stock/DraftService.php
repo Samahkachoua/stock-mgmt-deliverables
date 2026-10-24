@@ -2,6 +2,7 @@
 
 namespace App\Services\Stock;
 
+use App\Mail\DraftEmail;
 use App\Models\Product;
 use App\Models\StockDraft;
 use App\Models\StockTransaction;
@@ -14,6 +15,7 @@ use App\Services\Stock\Exceptions\SerialProblem;
 use App\Services\Stock\Exceptions\StockException;
 use App\Support\Audit;
 use App\Support\CompanyTime;
+use App\Support\Drafts\DraftNotifier;
 use App\Support\Drafts\DraftTypes;
 use App\Support\Drafts\DraftUi;
 use App\Support\Format;
@@ -28,8 +30,8 @@ use Illuminate\Support\Str;
  * confirming them (with or without last changes) through
  * PostingService::confirmDraft(), the only step that touches stock.
  *
- * A draft is checked like the document it becomes, line by line in each
- * line's own warehouse: items of the customer, units, whole quantities,
+ * A draft is checked like the document it becomes, in the draft's
+ * warehouse: items of the customer, units, whole quantities,
  * expiry dates, serial numbers, and for an order enough stock now (stock is
  * not reserved: confirming checks again, under locks). Each save runs in one
  * DB::transaction with its audit entry.
@@ -52,10 +54,14 @@ final class DraftService
      */
     private array $lineIds = [];
 
+    /** Whether the last store() changed the draft (an edit can save what was already there). */
+    private bool $lastSaveChanged = false;
+
     public function __construct(
         private readonly Availability $availability,
         private readonly DocumentNumbers $numbers,
         private readonly PostingService $posting,
+        private readonly DraftNotifier $notifier,
     ) {}
 
     /**
@@ -72,11 +78,21 @@ final class DraftService
         }
 
         try {
-            return DB::transaction(fn () => $this->store($kind, $input, $by, $draft));
+            $saved = DB::transaction(fn () => $this->store($kind, $input, $by, $draft));
         } catch (UniqueConstraintViolationException $e) {
             // Two submissions of the same form at the same moment: the other one saved it.
             return ($draft === null ? $this->alreadySaved($input, $by) : null) ?? throw $e;
         }
+
+        // Tell the people who can confirm the draft: once when it is added, and
+        // on each edit that changed something.
+        if ($draft === null) {
+            $this->notifier->notify($saved, DraftEmail::CREATED);
+        } elseif ($this->lastSaveChanged) {
+            $this->notifier->notify($saved, DraftEmail::UPDATED);
+        }
+
+        return $saved;
     }
 
     /**
@@ -85,7 +101,7 @@ final class DraftService
      * confirmation fails, the changes are not kept either.
      *
      * @param  string|null  $version  stock_draft.updated_at as the user saw it: a draft changed since is not confirmed
-     * @return list<StockTransaction> the documents created, one per warehouse
+     * @return list<StockTransaction> the document created (one, in the draft's warehouse)
      *
      * @throws StockException
      */
@@ -146,6 +162,8 @@ final class DraftService
                 $by->id,
             );
         });
+
+        $this->notifier->notify($draft, DraftEmail::CANCELLED);
     }
 
     /**
@@ -167,10 +185,7 @@ final class DraftService
             return $by->canUseBranch($header->customer_branch_id, $header->customer_id);
         }
 
-        return $header->created_by === $by->id || DB::table('stock_draft_line')
-            ->where('draft_id', $header->id)
-            ->whereIn('warehouse_id', $by->warehouseIds())
-            ->exists();
+        return $header->created_by === $by->id || $by->canAccessWarehouse((string) $header->warehouse_id);
     }
 
     private function store(DraftUi $kind, DraftInput $input, User $by, ?StockDraft $draft): StockDraft
@@ -198,10 +213,11 @@ final class DraftService
             throw new PostingRejected('transactions.form.add_a_line');
         }
 
-        $lines = $this->prepareLines($kind, $input, $by);
+        $lines = $this->prepareLines($kind, $input);
         $values = [
             'customer_id' => $input->customerId,
             'customer_branch_id' => $input->branchId,
+            'warehouse_id' => $input->warehouseId,
             'document_date' => $input->date->toDateString(),
             'reference_note' => filled($input->note) ? trim((string) $input->note) : null,
             'updated_at' => now(),
@@ -230,7 +246,6 @@ final class DraftService
             $this->lineIds[$key] = (string) DB::table('stock_draft_line')->insertGetId([
                 'draft_id' => $id,
                 'line_no' => ++$lineNo,
-                'warehouse_id' => $line['warehouse'],
                 'product_id' => $line['product']->id,
                 'unit_id' => $line['unit_id'],
                 'qty_entered' => $line['qty'],
@@ -241,6 +256,7 @@ final class DraftService
         }
 
         $after = $this->snapshot($id);
+        $this->lastSaveChanged = $before !== $after;
 
         if ($before !== $after) {
             Audit::record('stock_draft', $id, $draft === null ? 'CREATE' : 'UPDATE', $before, $after, $by->id);
@@ -251,7 +267,8 @@ final class DraftService
 
     /**
      * Customer (theirs, for a customer user), branch of that customer that the
-     * user may use, date not in the future, a reference note that fits.
+     * user may use, an active warehouse of theirs, date not in the future, a
+     * reference note that fits.
      */
     private function checkHeader(DraftInput $input, User $by): void
     {
@@ -268,6 +285,14 @@ final class DraftService
             throw new NotAllowed('drafts.errors.branch_not_allowed', [], null, 'branch');
         }
 
+        if (! DB::table('warehouse')->where('id', $input->warehouseId)->where('active', true)->exists()) {
+            throw new PostingRejected('drafts.errors.choose_warehouse', [], null, 'warehouse');
+        }
+
+        if (! $by->canAccessWarehouse($input->warehouseId)) {
+            throw new NotAllowed('stock.errors.warehouse_not_allowed', [], null, 'warehouse');
+        }
+
         if ($input->date->toDateString() > CompanyTime::now()->toDateString()) {
             throw new PostingRejected('transactions.form.errors.date_future', [], null, 'date');
         }
@@ -280,9 +305,9 @@ final class DraftService
     /**
      * Checks every line as the document it becomes would; returns what to save.
      *
-     * @return array<string, array{warehouse: string, product: Product, unit_id: string, qty: int, qty_base: float, expiry: string|null, serials: list<string>}>
+     * @return array<string, array{product: Product, unit_id: string, qty: int, qty_base: float, expiry: string|null, serials: list<string>}>
      */
-    private function prepareLines(DraftUi $kind, DraftInput $input, User $by): array
+    private function prepareLines(DraftUi $kind, DraftInput $input): array
     {
         /** @var Collection<string, Product> $products */
         $products = Product::withoutGlobalScopes()
@@ -291,26 +316,13 @@ final class DraftService
             ->where('active', true)
             ->findMany(array_map(fn (DraftLineInput $line) => $line->productId, $input->lines))
             ->keyBy('id');
-        $activeWarehouses = DB::table('warehouse')
-            ->whereIn('id', array_map(fn (DraftLineInput $line) => $line->warehouseId, $input->lines))
-            ->where('active', true)
-            ->pluck('id')
-            ->all();
         $seen = [];
         $rows = [];
-        $keys = []; // rule 12: warehouse + line key => [row key, row number]
+        $keys = []; // rule 12: line key => [row key, row number]
         $number = 0;
 
         foreach ($input->lines as $key => $line) {
             $number++;
-            if (! in_array($line->warehouseId, $activeWarehouses, true)) {
-                throw new PostingRejected('drafts.errors.choose_warehouse', [], $key, 'warehouse');
-            }
-
-            if (! $by->canAccessWarehouse($line->warehouseId)) {
-                throw new NotAllowed('stock.errors.warehouse_not_allowed', [], $key, 'warehouse');
-            }
-
             $product = $products[$line->productId] ?? throw new PostingRejected('transactions.form.errors.choose_item', [], $key, 'item');
             $converter = $product->converter();
 
@@ -349,8 +361,8 @@ final class DraftService
                     ?? throw new PostingRejected($kind->receives() ? 'transactions.form.errors.expiry_required' : 'transactions.form.errors.expiry_choose', [], $key, 'expiry');
             }
 
-            // Rule 12: each warehouse's lines become one document, which may not repeat a line.
-            $lineKey = $line->warehouseId.'|'.$kind->type->lineKey($product->id, $line->unit, $expiry, $product->track_expiry);
+            // Rule 12: the lines become one document, which may not repeat a line.
+            $lineKey = $kind->type->lineKey($product->id, $line->unit, $expiry, $product->track_expiry);
 
             if (isset($keys[$lineKey])) {
                 [$message, $params] = $kind->type->duplicateMessage($product->name(), $line->unit, $expiry, $product->track_expiry, $keys[$lineKey]['number']);
@@ -360,14 +372,13 @@ final class DraftService
 
             $keys[$lineKey] = ['key' => (string) $key, 'number' => $number];
 
-            $serials = $product->track_serial ? $this->serials($kind, $product, $line, $qtyBase, $seen, $key) : [];
+            $serials = $product->track_serial ? $this->serials($kind, $product, $line, $input->warehouseId, $qtyBase, $seen, $key) : [];
 
             if (! $kind->receives()) {
-                $this->checkStock($product, $line->warehouseId, $input->customerId, $expiry, $qtyBase, $seen, $key);
+                $this->checkStock($product, $input->warehouseId, $input->customerId, $expiry, $qtyBase, $seen, $key);
             }
 
             $rows[$key] = [
-                'warehouse' => $line->warehouseId,
                 'product' => $product,
                 'unit_id' => $product->units->firstWhere('unit.code', $line->unit)->unit_id,
                 'qty' => (int) $qty,
@@ -382,12 +393,12 @@ final class DraftService
 
     /**
      * Serial-numbered items: one distinct serial per piece. Coming in, none may
-     * be in stock already; going out, each must be in stock in the line's warehouse.
+     * be in stock already; going out, each must be in stock in the draft's warehouse.
      *
      * @param  array<string, mixed>  $seen
      * @return list<string>
      */
-    private function serials(DraftUi $kind, Product $product, DraftLineInput $line, float $qtyBase, array &$seen, string $key): array
+    private function serials(DraftUi $kind, Product $product, DraftLineInput $line, string $warehouseId, float $qtyBase, array &$seen, string $key): array
     {
         $serials = array_values(array_filter(array_map('trim', $line->serials), fn (string $serial) => $serial !== ''));
 
@@ -419,7 +430,7 @@ final class DraftService
 
         $here = DB::table('serial_number')
             ->where('product_id', $product->id)
-            ->where('warehouse_id', $line->warehouseId)
+            ->where('warehouse_id', $warehouseId)
             ->where('status', 'IN_STOCK')
             ->whereIn('serial_no', $serials)
             ->pluck('serial_no')
@@ -435,7 +446,7 @@ final class DraftService
     }
 
     /**
-     * Order: enough in stock now in the line's warehouse (of its expiry
+     * Order: enough in stock now in the draft's warehouse (of the line's expiry
      * date, which must not have expired), after earlier lines of the same item.
      *
      * @param  array<string, mixed>  $seen
@@ -522,15 +533,15 @@ final class DraftService
             'doc_no' => $header->doc_no,
             'customer_id' => $header->customer_id,
             'branch_id' => $header->customer_branch_id,
+            'warehouse_id' => $header->warehouse_id,
             'date' => $header->document_date,
             'note' => $header->reference_note,
             'lines' => DB::table('stock_draft_line as l')
                 ->join('unit as u', 'u.id', '=', 'l.unit_id')
                 ->where('l.draft_id', $id)
                 ->orderBy('l.line_no')
-                ->get(['l.warehouse_id', 'l.product_id', 'u.code as unit', 'l.qty_entered', 'l.expiry_date', 'l.serials'])
+                ->get(['l.product_id', 'u.code as unit', 'l.qty_entered', 'l.expiry_date', 'l.serials'])
                 ->map(fn ($line) => [
-                    'warehouse_id' => $line->warehouse_id,
                     'product_id' => $line->product_id,
                     'unit' => $line->unit,
                     'qty' => (float) $line->qty_entered,

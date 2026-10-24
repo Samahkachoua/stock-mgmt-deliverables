@@ -11,6 +11,7 @@ final class DraftInput
 {
     /**
      * @param  string  $type  transaction_type.code confirming creates (IN / OUT)
+     * @param  string  $warehouseId  where the stock comes in / goes out when confirmed
      * @param  array<string, DraftLineInput>  $lines  keyed by the form's row key, so problems point at the row
      * @param  string|null  $requestId  UUID of the form that creates it (stock_draft.client_request_id)
      * @param  string|null  $version  stock_draft.updated_at as the form opened it (edits only):
@@ -20,6 +21,7 @@ final class DraftInput
         public readonly string $type,
         public readonly string $customerId,
         public readonly string $branchId,
+        public readonly string $warehouseId,
         public readonly CarbonImmutable $date,
         public readonly ?string $note,
         public readonly array $lines,

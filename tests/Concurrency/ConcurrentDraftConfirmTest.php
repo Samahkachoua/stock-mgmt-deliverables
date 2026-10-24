@@ -44,8 +44,8 @@ beforeEach(function () {
         $this->user,
     );
 
-    $this->draft = app(DraftService::class)->save(new DraftInput('OUT', $this->customer->id, $this->branch->id, CarbonImmutable::today(), null, [
-        'r1' => new DraftLineInput($this->warehouse->id, $this->product->id, 'PC', 10),
+    $this->draft = app(DraftService::class)->save(new DraftInput('OUT', $this->customer->id, $this->branch->id, $this->warehouse->id, CarbonImmutable::today(), null, [
+        'r1' => new DraftLineInput($this->product->id, 'PC', 10),
     ]), $this->user);
 });
 

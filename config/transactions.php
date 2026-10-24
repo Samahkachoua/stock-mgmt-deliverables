@@ -149,7 +149,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Keyed by the transaction_type.code that confirming a draft creates (one
-    | posted document per warehouse of its lines). A draft never touches stock.
+    | posted document in the draft's warehouse). A draft never touches stock.
     |
     |   slug      URL segment and route name prefix: <slug>, <slug>.create,
     |             <slug>.show, <slug>.edit, <slug>.print
@@ -159,7 +159,9 @@ return [
     |             to whoever may create or confirm drafts of this kind)
     |   create    permission to create and edit drafts
     |   confirm   permission to confirm (and to change a draft while confirming it)
-    |   lang      key under lang/<locale>/drafts.php `types`
+    |   lang      key under lang/<locale>/drafts.php `types` and `mail`
+    |   notify    app_user column: whether a confirmer gets an email when one is
+    |             added, changed or cancelled (Settings › Users)
     |
     */
     'drafts' => [
@@ -172,6 +174,7 @@ return [
             'create' => 'draft.in.create',
             'confirm' => 'draft.in.confirm',
             'lang' => 'receipt',
+            'notify' => 'notify_draft_receipts',
         ],
         'OUT' => [
             'slug' => 'orders',
@@ -182,6 +185,7 @@ return [
             'create' => 'draft.out.create',
             'confirm' => 'draft.out.confirm',
             'lang' => 'order',
+            'notify' => 'notify_new_orders',
         ],
     ],
 

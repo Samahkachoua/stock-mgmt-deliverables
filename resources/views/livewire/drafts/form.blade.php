@@ -97,6 +97,50 @@
                     @endisset
                 </div>
 
+                {{-- Warehouse: one of the user's, their default pre-selected; hidden when they have only one. --}}
+                @if ($showWarehouse)
+                    <div>
+                        <label for="field-warehouse" class="mb-1 block text-body font-semibold text-fg">
+                            {{ __('transactions.form.warehouse') }} <span class="text-danger" aria-hidden="true">*</span>
+                        </label>
+                        <div class="relative">
+                            <select
+                                id="field-warehouse"
+                                wire:key="warehouse-{{ $warehouseVersion }}"
+                                wire:change="chooseWarehouse($event.target.value)"
+                                @disabled($locked)
+                                @isset($header['warehouse']) aria-invalid="true" aria-describedby="field-warehouse-error" @endisset
+                                class="{{ $control }} {{ isset($header['warehouse']) ? $bad : $ok }} appearance-none pe-10"
+                            >
+                                @unless (array_key_exists($warehouseId, $warehouses))
+                                    <option value="" disabled selected>{{ __('drafts.form.choose_warehouse') }}</option>
+                                @endunless
+                                @foreach ($warehouses as $id => $name)
+                                    <option value="{{ $id }}" @selected($warehouseId === (string) $id)>{{ $name }}</option>
+                                @endforeach
+                            </select>
+                            <x-busy-icon name="keyboard_arrow_down" target="chooseWarehouse, confirmWarehouseChange, keepWarehouse" class="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-muted" />
+                        </div>
+                        @if ($pendingWarehouse)
+                            <div class="mt-2 rounded-lg border px-3 py-2 text-body {{ config('ui.statuses.pending') }}" role="alert">
+                                <p class="font-semibold">{{ trans_choice('transactions.form.change_warehouse_warning', max($check['filled'], 1), ['warehouse' => $warehouses[$pendingWarehouse] ?? '', 'count' => Format::qty($check['filled'])]) }}</p>
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    <button type="button" wire:click="confirmWarehouseChange" class="h-control rounded-lg bg-brand px-4 text-body font-semibold text-on-brand hover:bg-brand-hover">
+                                        {{ __('transactions.form.change_warehouse_confirm') }}
+                                    </button>
+                                    <button type="button" wire:click="keepWarehouse" class="h-control rounded-lg border border-control bg-card px-4 text-body font-semibold text-fg hover:bg-card-hover">
+                                        {{ __('transactions.form.change_warehouse_keep', ['warehouse' => $warehouses[$warehouseId] ?? '']) }}
+                                    </button>
+                                </div>
+                            </div>
+                        @elseif (isset($header['warehouse']))
+                            <p id="field-warehouse-error" class="mt-1 text-small text-danger" role="alert">{{ $header['warehouse'] }}</p>
+                        @else
+                            <p class="mt-1 text-small text-muted">{{ $kind->label('warehouse_hint') }}</p>
+                        @endif
+                    </div>
+                @endif
+
                 <div>
                     <label for="field-date" class="mb-1 block text-body font-semibold text-fg">
                         {{ __('transactions.form.date') }} <span class="text-danger" aria-hidden="true">*</span>
@@ -136,7 +180,7 @@
             </div>
         </section>
 
-        {{-- Lines: each in its own warehouse. --}}
+        {{-- Lines, all in the header's warehouse. --}}
         <section class="rounded-xl border border-default bg-card shadow-card" aria-labelledby="lines-heading">
             <div class="flex flex-wrap items-center justify-between gap-3 px-edge py-card-y">
                 <div class="flex items-center gap-3">
@@ -157,7 +201,6 @@
                         <thead>
                             <tr class="h-thead bg-surface text-small font-semibold uppercase tracking-wide text-muted">
                                 <th scope="col" class="w-12 ps-edge text-start">#</th>
-                                <th scope="col" class="w-44 px-cell text-start">{{ __('drafts.form.warehouse') }}</th>
                                 <th scope="col" class="min-w-56 px-cell text-start xl:min-w-72">{{ __('transactions.lines.item') }}</th>
                                 <th scope="col" class="w-36 px-cell text-start">{{ __('transactions.lines.unit') }}</th>
                                 <th scope="col" @class(['px-cell text-start', 'w-44' => $receives, 'w-60' => ! $receives])>{{ __('transactions.lines.expiry') }}</th>
@@ -176,35 +219,13 @@
                                 <tr wire:key="{{ $id }}" data-line class="align-top">
                                     <td data-card="index" class="py-cell-y ps-edge text-muted tabular"><span class="flex items-center md:h-control">{{ Format::qty($loop->iteration) }}</span></td>
 
-                                    {{-- Warehouse: the previous row's pre-selected --}}
-                                    <td data-label="{{ __('drafts.form.warehouse') }}" class="px-cell py-cell-y">
-                                        <label for="{{ $id }}-warehouse" class="sr-only">{{ __('drafts.form.row_warehouse', ['row' => $loop->iteration]) }}</label>
-                                        <div class="relative">
-                                            <select
-                                                id="{{ $id }}-warehouse"
-                                                wire:model.live="lines.{{ $key }}.warehouse"
-                                                @isset($errors['warehouse']) aria-invalid="true" @endisset
-                                                class="{{ $control }} {{ isset($errors['warehouse']) ? $bad : $ok }} appearance-none pe-9"
-                                            >
-                                                <option value="">{{ __('drafts.form.choose_warehouse') }}</option>
-                                                @foreach ($warehouses as $warehouseId => $name)
-                                                    <option value="{{ $warehouseId }}">{{ $name }}</option>
-                                                @endforeach
-                                            </select>
-                                            <x-icon name="keyboard_arrow_down" class="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-muted" />
-                                        </div>
-                                        @isset($errors['warehouse'])
-                                            <p class="mt-1 text-small text-danger" role="alert">{{ $errors['warehouse'] }}</p>
-                                        @endisset
-                                    </td>
-
                                     {{-- Item --}}
                                     <td data-label="{{ __('transactions.lines.item') }}" class="px-cell py-cell-y">
                                         <label for="{{ $id }}-item" class="sr-only">{{ __('transactions.form.row_item', ['row' => $loop->iteration]) }}</label>
                                         <livewire:item-picker
                                             wire:model.live="lines.{{ $key }}.item"
                                             :customer="$customerId"
-                                            :warehouse="$line['warehouse']"
+                                            :warehouse="$warehouseId"
                                             :invalid="isset($errors['item'])"
                                             :input-id="$id.'-item'"
                                             :next="$id.'-unit'"
@@ -244,7 +265,7 @@
                                         @if ($item && $item['expiry'])
                                             <label for="{{ $id }}-expiry" class="sr-only">{{ __('transactions.form.row_expiry', ['row' => $loop->iteration]) }}</label>
                                             @if (! $receives)
-                                                {{-- Dates in stock in the row's warehouse, nearest first, with what each holds. --}}
+                                                {{-- Dates in stock in the draft's warehouse, nearest first, with what each holds. --}}
                                                 <div class="relative">
                                                     <select id="{{ $id }}-expiry" wire:model.live="lines.{{ $key }}.expiry" class="{{ $control }} {{ isset($errors['expiry']) ? $bad : $ok }} appearance-none pe-9">
                                                         <option value="">{{ __('transactions.form.choose_expiry') }}</option>
@@ -355,7 +376,7 @@
         {{-- A draft never changes stock until it is confirmed. --}}
         <p class="flex items-center gap-3 rounded-xl border px-card py-3 text-body {{ config('ui.statuses.draft') }}" role="status">
             <x-icon name="info" />
-            <span class="font-semibold">{{ trans_choice('drafts.form.notice_'.strtolower($kind->code), max($check['warehouses'], 1), ['count' => Format::qty($check['warehouses'])]) }}</span>
+            <span class="font-semibold">{{ __('drafts.form.notice_'.strtolower($kind->code)) }}</span>
         </p>
         </fieldset>
 

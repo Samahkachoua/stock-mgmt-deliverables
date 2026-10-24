@@ -9,6 +9,8 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Support\Audit;
+use App\Support\Drafts\DraftTypes;
+use App\Support\Drafts\DraftUi;
 use App\Support\Notify;
 use App\Support\Permissions;
 use Closure;
@@ -70,6 +72,12 @@ class Users extends Component
 
     public bool $active = true;
 
+    /** "Email about orders": only offered (and only used) with an orders confirm permission. */
+    public bool $notifyNewOrders = true;
+
+    /** "Email about draft receipts": the same, with the draft receipts confirm permission. */
+    public bool $notifyDraftReceipts = true;
+
     public function mount(): void
     {
         $this->authorize('viewAny', User::class);
@@ -120,6 +128,39 @@ class Users extends Component
     public function customerBranches(): Collection
     {
         return CustomerBranch::where('customer_id', $this->customerId === '' ? null : $this->customerId)->orderBy('name')->get();
+    }
+
+    /**
+     * Whether the ticked roles may confirm orders (a draft that takes stock out),
+     * so the order email setting applies.
+     */
+    #[Computed]
+    public function confirmsOrders(): bool
+    {
+        return $this->confirmsDrafts(fn (DraftUi $kind) => ! $kind->receives());
+    }
+
+    /**
+     * Whether the ticked roles may confirm draft receipts (a draft that brings
+     * stock in), so the draft receipt email setting applies.
+     */
+    #[Computed]
+    public function confirmsDraftReceipts(): bool
+    {
+        return $this->confirmsDrafts(fn (DraftUi $kind) => $kind->receives());
+    }
+
+    /**
+     * @param  callable(DraftUi): bool  $which  the kinds of draft to look at
+     */
+    private function confirmsDrafts(callable $which): bool
+    {
+        $byRole = Permissions::byRole();
+        $granted = collect($this->roleIds)->flatMap(fn ($roleId) => $byRole[(string) $roleId] ?? []);
+
+        return collect(DraftTypes::all())
+            ->filter($which)
+            ->contains(fn (DraftUi $kind) => $granted->contains($kind->confirmPermission()));
     }
 
     public function add(): void
@@ -215,6 +256,8 @@ class Users extends Component
             $user->active = $data['active'];
             $user->customer_id = $data['customerId'] === '' ? null : $data['customerId'];
             $user->default_warehouse_id = $data['defaultWarehouseId'];
+            $user->notify_new_orders = $data['notifyNewOrders'];
+            $user->notify_draft_receipts = $data['notifyDraftReceipts'];
 
             if ($data['password'] !== '') {
                 $user->password_hash = $data['password']; // hashed by the model cast
@@ -270,6 +313,8 @@ class Users extends Component
             'branchIds' => ['array'],
             'branchIds.*' => ['integer', Rule::exists('customer_branch', 'id')->where('customer_id', $this->customerId === '' ? null : $this->customerId)],
             'active' => ['boolean', $this->staySignedIn($editingSelf)],
+            'notifyNewOrders' => ['boolean'],
+            'notifyDraftReceipts' => ['boolean'],
         ];
     }
 
@@ -356,6 +401,8 @@ class Users extends Component
             'email' => $user->email,
             'preferred_lang' => $user->preferred_lang,
             'active' => (bool) $user->active,
+            'notify_new_orders' => (bool) $user->notify_new_orders,
+            'notify_draft_receipts' => (bool) $user->notify_draft_receipts,
             'roles' => $user->roles()->orderBy('code')->pluck('code')->all(),
             'warehouses' => $user->warehouses()->orderBy('code')->pluck('code')->all(),
             // The warehouse they actually start in (a user saved before defaults existed has none stored).
@@ -374,6 +421,8 @@ class Users extends Component
         $this->password = '';
         $this->preferred_lang = $user->preferred_lang ?? app()->getLocale();
         $this->active = $user->active ?? true;
+        $this->notifyNewOrders = $user->notify_new_orders ?? true;
+        $this->notifyDraftReceipts = $user->notify_draft_receipts ?? true;
         $this->roleIds = $user->exists ? $user->roles()->pluck('role.id')->all() : [];
         $this->warehouseIds = $user->exists ? $user->warehouses()->pluck('warehouse.id')->all() : [];
         $this->defaultWarehouseId = $user->exists ? (string) $user->defaultWarehouseId() : '';

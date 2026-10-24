@@ -6,12 +6,11 @@ use App\Models\Concerns\HasNumericKey;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One line of a draft, in its own warehouse.
+ * One line of a draft (its warehouse is the draft's).
  *
  * @property string $id
  * @property string $draft_id
  * @property int $line_no
- * @property string $warehouse_id
  * @property string $product_id
  * @property string $unit_id
  * @property string $qty_entered

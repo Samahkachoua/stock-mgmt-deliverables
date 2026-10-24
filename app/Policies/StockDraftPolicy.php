@@ -28,8 +28,8 @@ class StockDraftPolicy
     }
 
     /**
-     * Confirm a draft: still a draft, the type's confirm permission and every
-     * warehouse of its lines. Its creator may confirm it too.
+     * Confirm a draft: still a draft, the type's confirm permission and the
+     * draft's warehouse. Its creator may confirm it too.
      */
     public function confirm(User $user, StockDraft $draft): Response
     {
@@ -39,12 +39,10 @@ class StockDraftPolicy
             return Response::deny(__('drafts.errors.cannot_confirm'));
         }
 
-        foreach ($draft->warehouseIds() as $warehouseId) {
-            if (! $user->canAccessWarehouse($warehouseId)) {
-                return Response::deny(__('drafts.errors.warehouse_not_allowed', [
-                    'warehouse' => (string) DB::table('warehouse')->where('id', $warehouseId)->value('name'),
-                ]));
-            }
+        if (! $user->canAccessWarehouse($draft->warehouse_id)) {
+            return Response::deny(__('drafts.errors.warehouse_not_allowed', [
+                'warehouse' => (string) DB::table('warehouse')->where('id', $draft->warehouse_id)->value('name'),
+            ]));
         }
 
         return Response::allow();
@@ -62,6 +60,6 @@ class StockDraftPolicy
 
     private function header(StockDraft $draft): object
     {
-        return (object) $draft->only(['id', 'customer_id', 'customer_branch_id', 'created_by']);
+        return (object) $draft->only(['id', 'customer_id', 'customer_branch_id', 'warehouse_id', 'created_by']);
     }
 }

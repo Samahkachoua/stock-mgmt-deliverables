@@ -47,6 +47,25 @@ final class DraftUi
     }
 
     /**
+     * The app_user column that says whether a confirmer gets an email about
+     * these drafts (e.g. notify_new_orders).
+     */
+    public function notifyColumn(): string
+    {
+        return $this->config['notify'];
+    }
+
+    /**
+     * Translated email text for this kind of draft, e.g. mailText('open') → "Open order".
+     *
+     * @param  array<string, mixed>  $replace
+     */
+    public function mailText(string $key, array $replace = []): string
+    {
+        return __('drafts.mail.'.$this->config['lang'].'.'.$key, $replace);
+    }
+
+    /**
      * @return array{icon: string, soft: string, strong: string}
      */
     public function colours(): array

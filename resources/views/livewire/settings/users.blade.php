@@ -125,6 +125,22 @@
                     <p class="ms-8 text-body text-danger" role="alert">{{ $message }}</p>
                 @enderror
 
+                {{-- Only for people who can confirm that kind of draft: the email is sent to them alone. --}}
+                @if ($this->confirmsOrders)
+                    <label class="mt-2 flex min-h-control cursor-pointer items-center gap-3">
+                        <input type="checkbox" wire:model="notifyNewOrders" aria-describedby="notify-new-orders-hint" class="size-5 rounded border-control accent-brand">
+                        <span class="text-body text-fg">{{ __('settings.users.notify_new_orders') }}</span>
+                    </label>
+                    <p id="notify-new-orders-hint" class="ms-8 text-body text-muted">{{ __('settings.users.notify_new_orders_hint') }}</p>
+                @endif
+                @if ($this->confirmsDraftReceipts)
+                    <label class="mt-2 flex min-h-control cursor-pointer items-center gap-3">
+                        <input type="checkbox" wire:model="notifyDraftReceipts" aria-describedby="notify-draft-receipts-hint" class="size-5 rounded border-control accent-brand">
+                        <span class="text-body text-fg">{{ __('settings.users.notify_draft_receipts') }}</span>
+                    </label>
+                    <p id="notify-draft-receipts-hint" class="ms-8 text-body text-muted">{{ __('settings.users.notify_draft_receipts_hint') }}</p>
+                @endif
+
                 <div class="mt-4 flex flex-wrap justify-end gap-3">
                     <button type="button" wire:click="cancel" class="h-control rounded-lg border border-control bg-card px-4 text-body font-semibold text-fg hover:bg-card-hover">
                         {{ __('settings.cancel') }}

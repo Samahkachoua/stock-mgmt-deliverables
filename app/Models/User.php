@@ -20,6 +20,8 @@ use Illuminate\Notifications\Notifiable;
  * @property string|null $default_warehouse_id where pages start; see defaultWarehouseId()
  * @property string $preferred_lang
  * @property string $preferred_theme
+ * @property bool $notify_new_orders email about orders they may confirm (App\Support\Drafts\DraftNotifier)
+ * @property bool $notify_draft_receipts email about draft receipts they may confirm (App\Support\Drafts\DraftNotifier)
  * @property bool $active
  */
 class User extends Authenticatable
@@ -74,6 +76,8 @@ class User extends Authenticatable
         return [
             'password_hash' => 'hashed',
             'active' => 'boolean',
+            'notify_new_orders' => 'boolean',
+            'notify_draft_receipts' => 'boolean',
         ];
     }
 

@@ -35,11 +35,11 @@ use Livewire\Component;
 /**
  * New / edit form of a draft receipt or order. Like the transaction form
  * (customer first, rows appended as quantities are filled, the empty last row
- * never saved), plus a Branch in the header and a Warehouse on every row: a
- * draft spans warehouses. Saving touches no stock.
+ * never saved, Warehouse in the header starting on the user's default, lines
+ * cleared after asking when it changes), plus a Branch. Saving touches no stock.
  *
  * Receipt rows take what Receive takes (expiry date typed, serials typed);
- * order rows what a Delivery note takes, in the row's warehouse (expiry date picked,
+ * order rows what a Delivery note takes, in the draft's warehouse (expiry date picked,
  * nearest first; serials picked; "Available" there and no more).
  *
  * Editing, a user who may confirm drafts also gets "Save and confirm": the
@@ -72,15 +72,28 @@ class DraftForm extends Component
 
     public string $branchId = '';
 
+    /**
+     * Where the stock comes in / goes out: one of the user's warehouses,
+     * starting on their default. Changed only through chooseWarehouse().
+     */
+    #[Locked]
+    public string $warehouseId = '';
+
+    /** Warehouse the user picked while lines exist; waits for confirmation. */
+    public ?string $pendingWarehouse = null;
+
+    /** Bumped to redraw the warehouse dropdown when a change is put on hold. */
+    public int $warehouseVersion = 0;
+
     public string $date = '';
 
     public string $note = '';
 
     /**
      * Rows keyed by a stable key ("r1", "r2", ...). `serials`: typed (receipt);
-     * `picked`: chosen from stock in the row's warehouse (order).
+     * `picked`: chosen from stock in the draft's warehouse (order).
      *
-     * @var array<string, array{warehouse: string, item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}>
+     * @var array<string, array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}>
      */
     public array $lines = [];
 
@@ -93,8 +106,11 @@ class DraftForm extends Component
 
     public bool $showAll = false;
 
-    /** @var array<string, array<string, mixed>|null> per-request cache: product|warehouse => catalog item */
+    /** @var array<string, array<string, mixed>|null> per-request cache: product => catalog item */
     private array $items = [];
+
+    /** @var array<string, string>|null per-request cache: the user's warehouses, id => name */
+    private ?array $warehouseNames = null;
 
     public function mount(string $type, ?string $reference = null): void
     {
@@ -110,13 +126,13 @@ class DraftForm extends Component
                 'version' => (string) $draft['version'],
                 'customerId' => $draft['customer_id'],
                 'branchId' => $draft['branch_id'],
+                'warehouseId' => (string) $draft['warehouse_id'],
                 'date' => $draft['date']->toDateString(),
                 'note' => (string) $draft['note'],
             ]);
 
             foreach ($draft['lines'] as $line) {
                 $this->lines['r'.$this->nextLine++] = [
-                    'warehouse' => $line['warehouse_id'],
                     'item' => $line['product_id'],
                     'unit' => $line['unit'],
                     'qty' => (string) (int) $line['qty'],
@@ -129,6 +145,7 @@ class DraftForm extends Component
             Gate::authorize($kind->createPermission());
             $this->date = CompanyTime::today()->toDateString();
             $this->requestId = (string) Str::uuid();
+            $this->warehouseId = (string) $user->defaultWarehouseId();
 
             // A customer user works for their own customer only.
             if ($user->isCustomerUser()) {
@@ -174,6 +191,54 @@ class DraftForm extends Component
         $this->customerVersion++;
     }
 
+    // Warehouse
+
+    /**
+     * Another warehouse: what is in stock, expiry dates and serials differ
+     * there, so lines already entered are cleared (after asking).
+     */
+    public function chooseWarehouse(string $id): void
+    {
+        if ($id === $this->warehouseId || ! array_key_exists($id, $this->warehouseOptions())) {
+            $this->warehouseVersion++;
+
+            return;
+        }
+
+        if ($this->filledLines() !== []) {
+            $this->pendingWarehouse = $id;
+            $this->warehouseVersion++;
+
+            return;
+        }
+
+        $this->applyWarehouse($id);
+    }
+
+    public function confirmWarehouseChange(): void
+    {
+        if ($this->pendingWarehouse !== null) {
+            $this->applyWarehouse($this->pendingWarehouse);
+        }
+    }
+
+    public function keepWarehouse(): void
+    {
+        $this->pendingWarehouse = null;
+        $this->warehouseVersion++;
+    }
+
+    private function applyWarehouse(string $id): void
+    {
+        $this->warehouseId = $id;
+        $this->pendingWarehouse = null;
+        $this->warehouseVersion++;
+        $this->showAll = false;
+        $this->items = [];
+        $this->lines = [];
+        $this->addBlankLine();
+    }
+
     // Lines
 
     public function updated(): void
@@ -190,18 +255,14 @@ class DraftForm extends Component
             return;
         }
 
-        if ($field === 'item' || $field === 'warehouse') {
+        if ($field === 'item') {
             $item = $this->item($this->lines[$key]);
-
-            if ($field === 'item') {
-                $this->lines[$key]['unit'] = $item['base'] ?? '';
-                $this->lines[$key]['serials'] = '';
-            }
-
+            $this->lines[$key]['unit'] = $item['base'] ?? '';
+            $this->lines[$key]['serials'] = '';
             $this->lines[$key]['picked'] = [];
             $this->lines[$key]['expiry'] = '';
 
-            // Stock going out of an expiry item: suggest the nearest expiry date in the row's warehouse.
+            // Stock going out of an expiry item: suggest the nearest expiry date in the draft's warehouse.
             if ($item !== null && $item['expiry'] && ! $this->kind()->receives()) {
                 $this->lines[$key]['expiry'] = $this->pickableExpiries($item)[0]['expiry'] ?? '';
             }
@@ -297,7 +358,7 @@ class DraftForm extends Component
 
             if ($row !== null && isset($this->lines[$row])) {
                 $this->addError('lines.'.$row.'.'.($e->field ?? 'qty'), $e->getMessage());
-            } elseif ($row === null && in_array($e->field, ['customer', 'branch', 'date', 'reference'], true)) {
+            } elseif ($row === null && in_array($e->field, ['customer', 'branch', 'warehouse', 'date', 'reference'], true)) {
                 $this->addError($e->field, $e->getMessage());
             } else {
                 $this->addError('posting', $e->getMessage());
@@ -337,7 +398,6 @@ class DraftForm extends Component
 
         foreach ($this->filledLines() as $key => $line) {
             $lines[$key] = new DraftLineInput(
-                warehouseId: $line['warehouse'],
                 productId: (string) $line['item'],
                 unit: $line['unit'],
                 qty: trim($line['qty']),
@@ -350,6 +410,7 @@ class DraftForm extends Component
             type: $this->type,
             customerId: $this->customerId,
             branchId: $this->branchId,
+            warehouseId: $this->warehouseId,
             date: CarbonImmutable::parse($this->date),
             note: $this->note,
             lines: $lines,
@@ -370,6 +431,8 @@ class DraftForm extends Component
             'customers' => $this->customerOptions(),
             'branches' => $this->branchOptions(),
             'warehouses' => $this->warehouseOptions(),
+            // One warehouse: nothing to choose (unless the draft's isn't one of the user's).
+            'showWarehouse' => count($this->warehouseOptions()) > 1 || ! $this->warehouseOk(),
             'customerUser' => $this->user()->isCustomerUser(),
             'canConfirm' => $this->reference !== '' && Gate::allows($kind->confirmPermission()),
         ])->title($title);
@@ -381,7 +444,7 @@ class DraftForm extends Component
      * Every row's numbers, hints and errors, header errors, the footer summary
      * and whether Save is allowed.
      *
-     * @return array{rows: array<string, array<string, mixed>>, header: array<string, string>, problems: list<string>, valid: bool, summary: string, filled: int, warehouses: int}
+     * @return array{rows: array<string, array<string, mixed>>, header: array<string, string>, problems: list<string>, valid: bool, summary: string, filled: int}
      */
     protected function check(): array
     {
@@ -390,7 +453,6 @@ class DraftForm extends Component
         $used = [];
         $baseUnits = [];
         $total = 0.0;
-        $warehouses = [];
         $lastKey = array_key_last($this->lines);
         $number = 0;
         $this->loadItems();
@@ -410,7 +472,7 @@ class DraftForm extends Component
                 : array_diff_key($row['errors'], array_flip($row['missing']));
 
             // Refusals from the last save stay until the form changes.
-            foreach (['warehouse', 'item', 'unit', 'qty', 'expiry', 'serials'] as $field) {
+            foreach (['item', 'unit', 'qty', 'expiry', 'serials'] as $field) {
                 if ($message = $this->getErrorBag()->first('lines.'.$key.'.'.$field)) {
                     $row['errors'][$field] = $message;
                     $row['shown'][$field] = $message;
@@ -424,10 +486,6 @@ class DraftForm extends Component
             if ($row['item'] !== null) {
                 $baseUnits[] = $row['item']['base'];
                 $total += $row['base'] ?? 0;
-            }
-
-            if ($line['warehouse'] !== '') {
-                $warehouses[$line['warehouse']] = true;
             }
 
             $rows[$key] = $row;
@@ -457,20 +515,18 @@ class DraftForm extends Component
             'valid' => $header['errors'] === [] && $problems === [],
             'summary' => Format::itemsTotal($filled, $total, $baseUnits),
             'filled' => $filled,
-            'warehouses' => count($warehouses),
         ];
     }
 
     /**
-     * @param  array{warehouse: string, item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}  $line
-     * @param  array<string, float>  $used  base quantity taken by earlier rows (per warehouse, item and expiry date), serials seen
+     * @param  array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}  $line
+     * @param  array<string, float>  $used  base quantity taken by earlier rows (per item and expiry date), serials seen
      * @return array<string, mixed>
      */
     private function checkLine(array $line, array &$used): array
     {
         $receives = $this->kind()->receives();
-        $warehouseOk = array_key_exists($line['warehouse'], $this->warehouseOptions());
-        $item = $warehouseOk ? $this->item($line) : null;
+        $item = $this->item($line);
         $factor = $item['units'][$line['unit']] ?? null;
         $converter = $item ? new UnitConverter($item['units'], $item['base']) : null;
         $errors = [];
@@ -479,13 +535,11 @@ class DraftForm extends Component
         $base = null;
         $row = ['blank' => false, 'item' => $item, 'factor' => $factor];
 
-        if (! $warehouseOk) {
-            $errors['warehouse'] = __('drafts.errors.choose_warehouse');
-            $missing[] = 'warehouse';
-        } elseif ($line['item'] === null || $item === null) {
+        // Without a warehouse nothing can be checked: the header says so.
+        if ($this->warehouseOk() && ($line['item'] === null || $item === null)) {
             $errors['item'] = __('transactions.form.errors.choose_item');
             $missing[] = 'item';
-        } elseif ($factor === null) {
+        } elseif ($item !== null && $factor === null) {
             $errors['unit'] = __('transactions.form.errors.choose_unit');
         }
 
@@ -527,9 +581,9 @@ class DraftForm extends Component
             $row['expiry_past'] = ! isset($errors['expiry']) && $line['expiry'] < CompanyTime::today()->toDateString();
         }
 
-        // In stock in the row's warehouse (of the chosen expiry date when going out), in base units.
+        // In stock in the draft's warehouse (of the chosen expiry date when going out), in base units.
         $perExpiry = $needsExpiry && ! $receives;
-        $stockKey = $line['warehouse'].'|'.($item['id'] ?? '').($perExpiry ? '|'.$line['expiry'] : '');
+        $stockKey = ($item['id'] ?? '').($perExpiry ? '|'.$line['expiry'] : '');
         $inStock = $item === null ? 0.0 : ($perExpiry && $line['expiry'] !== ''
             ? (float) (collect($item['expiries'])->firstWhere('expiry', $line['expiry'])['qty'] ?? 0)
             : $item['available']);
@@ -567,7 +621,7 @@ class DraftForm extends Component
 
     /**
      * @param  array<string, mixed>  $item
-     * @param  array{warehouse: string, item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}  $line
+     * @param  array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}  $line
      * @param  array<string, float>  $used
      * @return array{0: list<string>, 1: list<string>} errors, and the serials that can be picked
      */
@@ -599,7 +653,7 @@ class DraftForm extends Component
             return [$errors, []];
         }
 
-        $options = app(Availability::class)->serials($line['warehouse'], $item['id']);
+        $options = app(Availability::class)->serials($this->warehouseId, $item['id']);
 
         foreach ($line['picked'] as $serial) {
             if (! in_array($serial, $options, true)) {
@@ -628,6 +682,12 @@ class DraftForm extends Component
             return ['errors' => [], 'missing' => []];
         }
 
+        if ($this->warehouseId === '') {
+            $missing['warehouse'] = __('drafts.errors.choose_warehouse');
+        } elseif (! $this->warehouseOk()) {
+            $errors['warehouse'] = __('drafts.errors.choose_warehouse');
+        }
+
         if ($this->branchId === '') {
             $missing['branch'] = __('drafts.errors.branch_required');
         } elseif (! array_key_exists($this->branchId, $this->branchOptions())) {
@@ -647,7 +707,7 @@ class DraftForm extends Component
         }
 
         // Refusals from the last save about the header.
-        foreach (['customer', 'branch', 'date', 'reference'] as $field) {
+        foreach (['customer', 'branch', 'warehouse', 'date', 'reference'] as $field) {
             if ($message = $this->getErrorBag()->first($field)) {
                 $errors[$field] = $message;
             }
@@ -657,54 +717,53 @@ class DraftForm extends Component
     }
 
     /**
-     * One of the chosen customer's active items with its stock in the row's
+     * One of the chosen customer's active items with its stock in the draft's
      * warehouse (memoized per request). Going out, expired stock doesn't count.
      *
-     * @param  array{warehouse: string, item: ?string}  $line
+     * @param  array{item: ?string}  $line
      * @return array<string, mixed>|null
      */
     private function item(array $line): ?array
     {
-        if ($line['item'] === null || $this->customerId === '' || ! array_key_exists($line['warehouse'], $this->warehouseOptions())) {
+        if ($line['item'] === null || $this->customerId === '' || ! $this->warehouseOk()) {
             return null;
         }
 
-        $key = $line['item'].'|'.$line['warehouse'];
-
-        if (! array_key_exists($key, $this->items)) {
+        if (! array_key_exists($line['item'], $this->items)) {
             $this->loadItems([$line]);
         }
 
-        return $this->items[$key];
+        return $this->items[$line['item']];
     }
 
     /**
-     * Loads the items of all rows (or of $lines) not loaded yet, one query per
-     * warehouse instead of one per row; unknown items are kept as null.
+     * Loads the items of all rows (or of $lines) not loaded yet, in one query
+     * instead of one per row; unknown items are kept as null.
      *
-     * @param  list<array{warehouse: string, item: ?string}>|null  $lines
+     * @param  list<array{item: ?string}>|null  $lines
      */
     private function loadItems(?array $lines = null): void
     {
-        if ($this->customerId === '') {
+        if ($this->customerId === '' || ! $this->warehouseOk()) {
             return;
         }
 
         $missing = [];
 
         foreach ($lines ?? $this->lines as $line) {
-            if ($line['item'] !== null && $line['item'] !== '' && array_key_exists($line['warehouse'], $this->warehouseOptions())
-                && ! array_key_exists($line['item'].'|'.$line['warehouse'], $this->items)) {
-                $missing[$line['warehouse']][$line['item']] = $line['item'];
+            if ($line['item'] !== null && $line['item'] !== '' && ! array_key_exists($line['item'], $this->items)) {
+                $missing[$line['item']] = $line['item'];
             }
         }
 
-        foreach ($missing as $warehouse => $ids) {
-            $found = ItemCatalog::items($this->customerId, array_values($ids), (string) $warehouse, excludeExpired: ! $this->kind()->receives());
+        if ($missing === []) {
+            return;
+        }
 
-            foreach ($ids as $id) {
-                $this->items[$id.'|'.$warehouse] = $found[$id] ?? null;
-            }
+        $found = ItemCatalog::items($this->customerId, array_values($missing), $this->warehouseId, excludeExpired: ! $this->kind()->receives());
+
+        foreach ($missing as $id) {
+            $this->items[$id] = $found[$id] ?? null;
         }
     }
 
@@ -767,7 +826,15 @@ class DraftForm extends Component
      */
     private function warehouseOptions(): array
     {
-        return $this->user()->assignedWarehouses()->pluck('name', 'id')->all();
+        return $this->warehouseNames ??= $this->user()->assignedWarehouses()->pluck('name', 'id')->all();
+    }
+
+    /**
+     * The chosen warehouse is one of the user's.
+     */
+    private function warehouseOk(): bool
+    {
+        return array_key_exists($this->warehouseId, $this->warehouseOptions());
     }
 
     /**
@@ -793,7 +860,7 @@ class DraftForm extends Component
     // Rows
 
     /**
-     * @return array<string, array{warehouse: string, item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}>
+     * @return array<string, array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}>
      */
     private function filledLines(): array
     {
@@ -801,9 +868,9 @@ class DraftForm extends Component
     }
 
     /**
-     * A row is blank until something but its (pre-selected) warehouse is filled.
+     * A row is blank until something is filled.
      *
-     * @param  array{warehouse: string, item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}  $line
+     * @param  array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}  $line
      */
     private function isBlank(array $line): bool
     {
@@ -820,19 +887,9 @@ class DraftForm extends Component
         }
     }
 
-    /**
-     * A new row, in the previous row's warehouse (or the user's default one).
-     */
     private function addBlankLine(): void
     {
-        $previous = end($this->lines);
-        $warehouse = $previous !== false && $previous['warehouse'] !== '' ? $previous['warehouse'] : (string) $this->user()->defaultWarehouseId();
-
-        if (! array_key_exists($warehouse, $this->warehouseOptions())) {
-            $warehouse = '';
-        }
-
-        $this->lines['r'.$this->nextLine++] = ['warehouse' => $warehouse, 'item' => null, 'unit' => '', 'qty' => '', 'expiry' => '', 'serials' => '', 'picked' => []];
+        $this->lines['r'.$this->nextLine++] = ['item' => null, 'unit' => '', 'qty' => '', 'expiry' => '', 'serials' => '', 'picked' => []];
     }
 
     // Leaving
@@ -842,10 +899,11 @@ class DraftForm extends Component
         return [
             'customer' => $this->customerId,
             'branch' => $this->branchId,
+            'warehouse' => $this->warehouseId,
             'date' => $this->date,
             'note' => trim($this->note),
             'lines' => array_values(array_map(fn (array $line) => [
-                $line['warehouse'], $line['item'], $line['unit'], trim($line['qty']), $line['expiry'], trim($line['serials']), $line['picked'],
+                $line['item'], $line['unit'], trim($line['qty']), $line['expiry'], trim($line['serials']), $line['picked'],
             ], $this->filledLines())),
         ];
     }

@@ -33,19 +33,20 @@ beforeEach(function () {
 });
 
 /**
- * A saved draft of $type with BEANS lines: [warehouse, qty] each.
+ * A saved draft of $type in $warehouse (Beirut Main by default) with BEANS
+ * lines in Piece: one quantity each.
  *
- * @param  list<array{0: Warehouse, 1: int}>  $lines
+ * @param  list<int>  $lines
  */
-function savedDraft(object $test, string $type, array $lines): StockDraft
+function savedDraft(object $test, string $type, array $lines, ?Warehouse $warehouse = null): StockDraft
 {
     $keyed = [];
-    foreach ($lines as $i => [$warehouse, $qty]) {
-        $keyed['r'.($i + 1)] = new DraftLineInput($warehouse->id, $test->stock->id('BEANS'), 'PC', $qty);
+    foreach ($lines as $i => $qty) {
+        $keyed['r'.($i + 1)] = new DraftLineInput($test->stock->id('BEANS'), 'PC', $qty);
     }
 
     return app(DraftService::class)->save(
-        new DraftInput($type, $test->stock->customer->id, $test->branch->id, CarbonImmutable::today(), null, $keyed),
+        new DraftInput($type, $test->stock->customer->id, $test->branch->id, ($warehouse ?? $test->stock->warehouse)->id, CarbonImmutable::today(), null, $keyed),
         $test->stock->user,
     );
 }
@@ -55,24 +56,26 @@ function draftForm(object $test, string $type = 'IN', ?string $reference = null)
     return Livewire::actingAs($test->stock->user)->test(DraftForm::class, array_filter(['type' => $type, 'reference' => $reference]));
 }
 
-it('saves a new draft receipt with lines in two warehouses, touching no stock', function () {
+it('saves a new draft receipt in the warehouse chosen in its header, touching no stock', function () {
     $form = draftForm($this)
+        // The user's default warehouse is pre-selected.
+        ->assertSet('warehouseId', $this->stock->warehouse->id)
         ->call('chooseCustomer', $this->stock->customer->id)
         // The only branch is chosen already.
-        ->assertSet('branchId', $this->branch->id);
+        ->assertSet('branchId', $this->branch->id)
+        // No lines yet: the warehouse changes without asking.
+        ->call('chooseWarehouse', $this->depot->id)
+        ->assertSet('warehouseId', $this->depot->id)
+        ->assertSet('pendingWarehouse', null)
+        ->assertSee(__('drafts.types.receipt.warehouse_hint'));
 
     [$first] = array_keys($form->get('lines'));
-    // The user's default warehouse is pre-selected.
-    $form->assertSet("lines.$first.warehouse", $this->stock->warehouse->id)
-        ->set("lines.$first.item", $this->stock->id('BEANS'))
+    $form->set("lines.$first.item", $this->stock->id('BEANS'))
         ->set("lines.$first.qty", '2')
         ->set("lines.$first.unit", 'BOX');
 
     [, $second] = array_keys($form->get('lines'));
-    // A new row starts in the previous row's warehouse.
-    $form->assertSet("lines.$second.warehouse", $this->stock->warehouse->id)
-        ->set("lines.$second.warehouse", $this->depot->id)
-        ->set("lines.$second.item", $this->stock->id('BEANS'))
+    $form->set("lines.$second.item", $this->stock->id('BEANS'))
         ->set("lines.$second.qty", '5')
         ->call('save')
         ->assertHasNoErrors();
@@ -81,8 +84,38 @@ it('saves a new draft receipt with lines in two warehouses, touching no stock', 
 
     $form->assertRedirect(route('draft-receipts.show', $draft->doc_no));
 
-    expect(DB::table('stock_draft_line')->where('draft_id', $draft->id)->orderBy('line_no')->pluck('qty_base')->map(fn ($q) => (float) $q)->all())->toBe([24.0, 5.0])
+    expect($draft->warehouse_id)->toBe($this->depot->id)
+        ->and(DB::table('stock_draft_line')->where('draft_id', $draft->id)->orderBy('line_no')->pluck('qty_base')->map(fn ($q) => (float) $q)->all())->toBe([24.0, 5.0])
         ->and(DB::table('stock_movement')->count())->toBe(0);
+});
+
+it('asks before another warehouse clears the lines entered', function () {
+    $form = draftForm($this)->call('chooseCustomer', $this->stock->customer->id);
+    [$row] = array_keys($form->get('lines'));
+    $form->set("lines.$row.item", $this->stock->id('BEANS'))->set("lines.$row.qty", '3');
+
+    // Asked first; keeping the warehouse keeps the line.
+    $form->call('chooseWarehouse', $this->depot->id)
+        ->assertSet('pendingWarehouse', $this->depot->id)
+        ->assertSet('warehouseId', $this->stock->warehouse->id)
+        ->assertSee(trans_choice('transactions.form.change_warehouse_warning', 1, ['warehouse' => 'Depot X', 'count' => '1']))
+        ->call('keepWarehouse')
+        ->assertSet('pendingWarehouse', null)
+        ->assertSet("lines.$row.qty", '3');
+
+    // Switching clears it.
+    $form->call('chooseWarehouse', $this->depot->id)
+        ->call('confirmWarehouseChange')
+        ->assertSet('warehouseId', $this->depot->id)
+        ->assertSet('lines', fn (array $lines) => count($lines) === 1 && reset($lines)['item'] === null);
+});
+
+it('hides the warehouse field from a user with one warehouse', function () {
+    $operator = userWithRole('OPERATOR', $this->stock->warehouse);
+
+    Livewire::actingAs($operator)->test(DraftForm::class, ['type' => 'IN'])
+        ->assertSet('warehouseId', $this->stock->warehouse->id)
+        ->assertDontSeeHtml('id="field-warehouse"');
 });
 
 it('refuses more than 999,999 on a draft line, in the form and on save', function () {
@@ -96,7 +129,7 @@ it('refuses more than 999,999 on a draft line, in the form and on save', functio
     expect(StockDraft::withoutGlobalScopes()->count())->toBe(0);
 });
 
-it('limits a order row to what is in stock in its own warehouse', function () {
+it('limits an order row to what is in stock in the order\'s warehouse', function () {
     $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);
 
     $form = draftForm($this, 'OUT')->call('chooseCustomer', $this->stock->customer->id);
@@ -106,7 +139,9 @@ it('limits a order row to what is in stock in its own warehouse', function () {
     expect($form->html())->toContain('Available');
 
     // Nothing of it in Depot X.
-    $form->set("lines.$row.warehouse", $this->depot->id)->set("lines.$row.qty", '8');
+    $form->call('chooseWarehouse', $this->depot->id)->call('confirmWarehouseChange');
+    [$row] = array_keys($form->get('lines'));
+    $form->set("lines.$row.item", $this->stock->id('BEANS'))->set("lines.$row.qty", '8');
     expect($form->html())->toContain('Only 0 Piece available.');
     $form->call('save');
 
@@ -116,21 +151,24 @@ it('limits a order row to what is in stock in its own warehouse', function () {
 it('edits a draft, and lets a confirmer change a quantity and confirm in one step', function () {
     $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);
     $this->stock->post('IN', [$this->stock->line('BEANS', 10)], warehouse: $this->depot);
-    $draft = savedDraft($this, 'OUT', [[$this->stock->warehouse, 4], [$this->depot, 6]]);
+    $draft = savedDraft($this, 'OUT', [6], $this->depot);
 
-    $form = draftForm($this, 'OUT', $draft->doc_no)->assertSee(__('drafts.actions.save_and_confirm'));
+    $form = draftForm($this, 'OUT', $draft->doc_no)
+        ->assertSee(__('drafts.actions.save_and_confirm'))
+        ->assertSet('warehouseId', $this->depot->id);
     [$first] = array_keys($form->get('lines'));
 
     $form->set("lines.$first.qty", '3')->call('saveAndConfirm')->assertHasNoErrors();
 
+    // One delivery note, from the order's warehouse only.
     expect($draft->fresh()->status)->toBe('POSTED')
-        ->and(DB::table('stock_transaction')->where('draft_id', $draft->id)->count())->toBe(2)
-        ->and($this->stock->balance('BEANS'))->toBe(7.0)
-        ->and($this->stock->balance('BEANS', warehouse: $this->depot))->toBe(4.0);
+        ->and(DB::table('stock_transaction')->where('draft_id', $draft->id)->pluck('warehouse_id')->all())->toBe([$this->depot->id])
+        ->and($this->stock->balance('BEANS'))->toBe(10.0)
+        ->and($this->stock->balance('BEANS', warehouse: $this->depot))->toBe(7.0);
 });
 
 it('offers no "Save and confirm" to whoever may not confirm', function () {
-    $draft = savedDraft($this, 'IN', [[$this->stock->warehouse, 1]]);
+    $draft = savedDraft($this, 'IN', [1]);
 
     Livewire::actingAs(userWithRole('OPERATOR', $this->stock->warehouse))
         ->test(DraftForm::class, ['type' => 'IN', 'reference' => $draft->doc_no])
@@ -139,12 +177,13 @@ it('offers no "Save and confirm" to whoever may not confirm', function () {
         ->assertForbidden();
 });
 
-it('confirms a draft from its details page and lists the documents created', function () {
-    $draft = savedDraft($this, 'IN', [[$this->stock->warehouse, 8], [$this->depot, 4]]);
+it('confirms a draft from its details page and shows the receipt created', function () {
+    $draft = savedDraft($this, 'IN', [8], $this->depot);
 
     Livewire::actingAs($this->stock->user)
         ->test(DraftPage::class, ['type' => 'IN', 'reference' => $draft->doc_no])
-        ->assertSee('Beirut Main')->assertSee('Depot X')
+        ->assertSee('Depot X')
+        ->assertSee(__('drafts.details.not_in_stock_in', ['warehouse' => 'Depot X']))
         ->call('confirmDraft')
         ->assertHasNoErrors()
         ->assertRedirect(route('draft-receipts.show', $draft->doc_no));
@@ -153,7 +192,7 @@ it('confirms a draft from its details page and lists the documents created', fun
 
     Livewire::actingAs($this->stock->user)
         ->test(DraftPage::class, ['type' => 'IN', 'reference' => $draft->doc_no])
-        ->assertSee($receipts[0])->assertSee($receipts[1])
+        ->assertSee($receipts[0])
         ->assertDontSee(__('drafts.actions.edit'));
 
     // The receipt names its branch and links back to the draft.
@@ -163,22 +202,20 @@ it('confirms a draft from its details page and lists the documents created', fun
         ->assertSee('Downtown')
         ->assertSee(route('draft-receipts.show', $draft->doc_no), false);
 
-    expect($receipts)->toHaveCount(2)
-        ->and($this->stock->balance('BEANS'))->toBe(8.0);
+    expect($receipts)->toHaveCount(1)
+        ->and($this->stock->balance('BEANS', warehouse: $this->depot))->toBe(8.0)
+        ->and($this->stock->balance('BEANS'))->toBe(0.0);
 });
 
-it('refuses a draft that repeats an item and unit for the same warehouse (rule 12)', function () {
-    expect(fn () => savedDraft($this, 'IN', [[$this->stock->warehouse, 3], [$this->depot, 4], [$this->stock->warehouse, 5]]))
+it('refuses a draft that repeats an item and unit (rule 12)', function () {
+    expect(fn () => savedDraft($this, 'IN', [3, 5]))
         ->toThrow(DuplicateLine::class, __('transactions.form.duplicate.unit', ['item' => 'Canned Beans', 'unit' => Format::unit('PC'), 'row' => '1']))
         ->and(StockDraft::count())->toBe(0);
-
-    // The same item and unit for two warehouses: two documents, one line each.
-    expect(savedDraft($this, 'IN', [[$this->stock->warehouse, 3], [$this->depot, 4]])->exists)->toBeTrue();
 });
 
 it('shows why a confirmation failed under the line concerned', function () {
     $this->stock->post('IN', [$this->stock->line('BEANS', 5)]);
-    $draft = savedDraft($this, 'OUT', [[$this->stock->warehouse, 5]]);
+    $draft = savedDraft($this, 'OUT', [5]);
     $this->stock->post('OUT', [$this->stock->line('BEANS', 2)]);
     $line = DB::table('stock_draft_line')->where('draft_id', $draft->id)->value('id');
 
@@ -193,7 +230,7 @@ it('shows why a confirmation failed under the line concerned', function () {
 });
 
 it('cancels a draft after asking, with a reason', function () {
-    $draft = savedDraft($this, 'IN', [[$this->stock->warehouse, 1]]);
+    $draft = savedDraft($this, 'IN', [1]);
 
     Livewire::actingAs($this->stock->user)
         ->test(DraftPage::class, ['type' => 'IN', 'reference' => $draft->doc_no])
@@ -208,7 +245,7 @@ it('cancels a draft after asking, with a reason', function () {
 });
 
 it('lists drafts the user may see, and opens list, details and print pages', function () {
-    $draft = savedDraft($this, 'IN', [[$this->stock->warehouse, 1]]);
+    $draft = savedDraft($this, 'IN', [1]);
 
     Livewire::actingAs($this->stock->user)->test(DraftList::class, ['type' => 'IN'])
         ->call('loadRows')
@@ -337,7 +374,7 @@ it('links a user to a customer and some of its branches in Settings', function (
 
 it('prints each item’s storage status on a draft', function () {
     $this->stock->items['BEANS']->update(['storage_status' => 'AMBIENT']);
-    $draft = savedDraft($this, 'IN', [[$this->stock->warehouse, 1]]);
+    $draft = savedDraft($this, 'IN', [1]);
 
     $this->actingAs($this->stock->user)
         ->get(route('draft-receipts.print', $draft->doc_no))
@@ -347,7 +384,7 @@ it('prints each item’s storage status on a draft', function () {
 
 it('shows on the list the draft each document came from, and finds it by that number', function (string $type, string $label) {
     $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);
-    $draft = savedDraft($this, $type, [[$this->stock->warehouse, 4]]);
+    $draft = savedDraft($this, $type, [4]);
 
     Livewire::actingAs($this->stock->user)
         ->test(DraftPage::class, ['type' => $type, 'reference' => $draft->doc_no])

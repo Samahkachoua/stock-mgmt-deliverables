@@ -39,7 +39,7 @@ use Illuminate\Support\Str;
  * movements until approve() (or reject()) — unless its creator may approve
  * that type: then it is posted at once. cancel() reverses a posted
  * document. confirmDraft() turns a draft receipt / order into one posted
- * document per warehouse. Each runs in one DB::transaction: the
+ * document in its warehouse. Each runs in one DB::transaction: the
  * reference number, header, lines, serials, movements and audit entry are
  * saved together or not at all. Every movement goes through fn_post_movement,
  * which updates stock_balance and refuses negative stock.
@@ -669,16 +669,15 @@ final class PostingService
     }
 
     /**
-     * Confirms a draft receipt / order: its lines, grouped by warehouse, become
-     * one posted document of the draft's type per warehouse (in the order the
-     * warehouses first appear on the draft), each linked to the draft and its
-     * branch, dated today in that warehouse. All of them or none: when one line
+     * Confirms a draft receipt / order: its lines become one posted document of
+     * the draft's type in the draft's warehouse, linked to the draft and its
+     * branch, dated today in that warehouse. All lines or none: when one line
      * can't be posted (not enough stock, a serial gone...), nothing is.
      *
-     * Anyone with the type's confirm permission who works in every warehouse of
-     * the draft may confirm it, its creator included.
+     * Anyone with the type's confirm permission who works in the draft's
+     * warehouse may confirm it, its creator included.
      *
-     * @return list<StockTransaction> the documents created, in that order
+     * @return list<StockTransaction> the document created (always one)
      *
      * @throws StockException with the draft line id as row
      */
@@ -709,40 +708,36 @@ final class PostingService
                 throw new PostingRejected('transactions.form.add_a_line');
             }
 
-            foreach ($lines->pluck('warehouse_id')->unique() as $warehouseId) {
-                if (! $by->canAccessWarehouse($warehouseId)) {
-                    throw new NotAllowed('drafts.errors.warehouse_not_allowed', [
-                        'warehouse' => (string) DB::table('warehouse')->where('id', $warehouseId)->value('name'),
-                    ]);
-                }
+            $warehouseId = (string) $header->warehouse_id;
+
+            if (! $by->canAccessWarehouse($warehouseId)) {
+                throw new NotAllowed('drafts.errors.warehouse_not_allowed', [
+                    'warehouse' => (string) DB::table('warehouse')->where('id', $warehouseId)->value('name'),
+                ]);
             }
 
-            $created = [];
+            $documentLines = [];
 
-            foreach ($lines->groupBy('warehouse_id') as $warehouseId => $group) {
-                $documentLines = [];
-
-                foreach ($group as $line) {
-                    $documentLines[(string) $line->id] = new DocumentLine(
-                        productId: $line->product_id,
-                        unit: $line->unit_code,
-                        qty: (string) (int) round((float) $line->qty_entered),
-                        expiry: $line->expiry_date,
-                        serials: json_decode((string) $line->serials, true) ?: [],
-                    );
-                }
-
-                $created[] = $this->postDocument($kind->type, new Document(
-                    type: $kind->type->code,
-                    warehouseId: (string) $warehouseId,
-                    customerId: $header->customer_id,
-                    date: $this->availability->today((string) $warehouseId),
-                    note: $header->reference_note,
-                    lines: $documentLines,
-                    draftId: $header->id,
-                    branchId: $header->customer_branch_id,
-                ), $by);
+            foreach ($lines as $line) {
+                $documentLines[(string) $line->id] = new DocumentLine(
+                    productId: $line->product_id,
+                    unit: $line->unit_code,
+                    qty: (string) (int) round((float) $line->qty_entered),
+                    expiry: $line->expiry_date,
+                    serials: json_decode((string) $line->serials, true) ?: [],
+                );
             }
+
+            $created = [$this->postDocument($kind->type, new Document(
+                type: $kind->type->code,
+                warehouseId: $warehouseId,
+                customerId: $header->customer_id,
+                date: $this->availability->today($warehouseId),
+                note: $header->reference_note,
+                lines: $documentLines,
+                draftId: $header->id,
+                branchId: $header->customer_branch_id,
+            ), $by)];
 
             DB::table('stock_draft')->where('id', $header->id)->update([
                 'status' => 'POSTED',

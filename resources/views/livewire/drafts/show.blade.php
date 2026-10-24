@@ -40,7 +40,7 @@
         <p @class(['flex items-start gap-2 rounded-lg border px-4 py-3 text-body font-semibold', config('ui.statuses.draft')]) role="status">
             <x-icon name="info" class="mt-0.5 shrink-0" />
             <span>
-                {{ trans_choice('drafts.details.not_in_stock_'.strtolower($kind->code), count($draft['groups']), ['count' => \App\Support\Format::qty(count($draft['groups']))]) }}
+                {{ __('drafts.details.not_in_stock_'.strtolower($kind->code), ['warehouse' => $draft['warehouse']]) }}
                 @if ($confirmBlocked)
                     <span class="block font-normal">{{ $confirmBlocked }}</span>
                 @elseif (! $canConfirm)
@@ -71,7 +71,7 @@
         </section>
     @endif
 
-    <x-draft-lines :groups="$draft['groups']" :line-errors="$lineErrors" />
+    <x-draft-lines :lines="$draft['lines']" :line-errors="$lineErrors" />
 
     <x-activity-list :entries="$draft['activity']" />
 

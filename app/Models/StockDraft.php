@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * A draft receipt / order: lines in one or more warehouses that touch no
+ * A draft receipt / order for one warehouse: lines that touch no
  * stock until the draft is confirmed (App\Services\Stock\PostingService::confirmDraft).
  * Who sees which drafts: CustomerScope and DraftScope.
  *
@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $status DRAFT, POSTED (confirmed) or CANCELLED
  * @property string $customer_id
  * @property string $customer_branch_id
+ * @property string $warehouse_id where the stock comes in / goes out when confirmed
  * @property string $created_by
  * @property string|null $confirmed_by
  * @property string $updated_at
@@ -45,15 +46,5 @@ class StockDraft extends Model
     public function isDraft(): bool
     {
         return $this->status === 'DRAFT';
-    }
-
-    /**
-     * Warehouses the draft's lines are in.
-     *
-     * @return list<string>
-     */
-    public function warehouseIds(): array
-    {
-        return StockDraftLine::where('draft_id', $this->id)->distinct()->pluck('warehouse_id')->all();
     }
 }

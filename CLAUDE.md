@@ -7,6 +7,8 @@ always owned by a customer, never by the company running the warehouses.
 Naming: the OUT type is shown as **Delivery note** (`DN-`) and a draft of it as
 **Order** (`ORD-`); older documents keep their `ISS-` / `DRI-` numbers. Codes
 stay direction-based (`OUT`, `stock.out.*`, `draft.out.*`).
+A draft (Order / Draft receipt) has one warehouse, in its header
+(`stock_draft.warehouse_id`); confirming it creates one Delivery note / Receipt.
 
 Reference material (read before large changes):
 - `database/sql/schema.sql` — source of truth for tables, constraints, posting functions
@@ -177,7 +179,7 @@ them so users get a clear, translated message instead of a raw DB error.
     (Carton, expiry 12 Mar 2027) is already in row 1 — change the quantity
     there" and move focus to that row's quantity.
   - Check again on save (server side, `PostingService` for every path, and
-    `DraftService` per warehouse of a draft): `DuplicateLine`, same toast,
+    `DraftService` for a draft): `DuplicateLine`, same toast,
     red border on both rows. The Opening Balance import adds up rows of the
     same item + unit + expiry (and a serial item's pieces) into one line.
   - Database safety net: unique index `uq_transaction_line_key` on

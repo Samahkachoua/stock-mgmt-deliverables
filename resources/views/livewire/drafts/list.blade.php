@@ -7,7 +7,7 @@
         'date' => ['label' => __('transactions.list.date')],
         'customer' => ['label' => __('transactions.list.customer'), 'card' => 'lead'],
         'branch' => ['label' => $kind->label('branch')],
-        'warehouses' => ['label' => __('drafts.list.warehouses'), 'priority' => 2, 'card' => 'hide'],
+        'warehouse' => ['label' => __('drafts.list.warehouse'), 'priority' => 2, 'card' => 'hide'],
         'items' => ['label' => __('transactions.list.items'), 'align' => 'end', 'priority' => 2, 'card' => 'hide'],
         'total' => ['label' => __('transactions.list.total'), 'align' => 'end'],
         'status' => ['label' => __('transactions.list.status'), 'card' => 'badge'],
@@ -65,7 +65,7 @@
                 <x-data-table.cell col="date" class="whitespace-nowrap text-fg">{{ Format::date($row['date']) }}</x-data-table.cell>
                 <x-data-table.cell col="customer" class="font-semibold text-fg"><bdi>{{ $row['customer'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="branch" class="text-fg"><bdi>{{ $row['branch'] }}</bdi></x-data-table.cell>
-                <x-data-table.cell col="warehouses" class="text-fg"><bdi>{{ $row['warehouses'] }}</bdi></x-data-table.cell>
+                <x-data-table.cell col="warehouse" class="text-fg"><bdi>{{ $row['warehouse'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="items" align="end" class="whitespace-nowrap text-fg tabular">{{ trans_choice('transactions.summary.items', $row['items'], ['count' => Format::qty($row['items'])]) }}</x-data-table.cell>
                 <x-data-table.cell col="total" align="end" class="whitespace-nowrap font-semibold text-fg tabular">
                     {{ trans_choice('transactions.summary.units', (int) $row['total'], ['count' => Format::qty($row['total'])]) }}

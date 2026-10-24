@@ -98,7 +98,9 @@ the build. Set these in `.env` (all listed in `.env.example`):
 | `SESSION_SECURE_COOKIE` / `SESSION_ENCRYPT` | `true` / `true` |
 | `IMPORT_DISK` | `s3` |
 | `AWS_*` | Supabase S3 key, region, bucket `imports`, `AWS_ENDPOINT=https://<project-ref>.supabase.co/storage/v1/s3`, `AWS_USE_PATH_STYLE_ENDPOINT=true` |
-| `MAIL_*` | your SMTP provider (for the nightly stock check alert) |
+| `MAIL_MAILER` | `resend` (all app email: order emails (added, changed, cancelled), the nightly stock check alert) |
+| `RESEND_API_KEY` | the API key from the Resend dashboard (only in `.env`, never committed) |
+| `MAIL_FROM_ADDRESS` / `MAIL_FROM_NAME` | a sender on a domain verified in Resend (SPF/DKIM records added in DNS) / the app name |
 | `RECONCILE_MAIL_TO` | who gets that alert (empty = all administrators) |
 | `TRUSTED_PROXIES` | `*` behind a platform load balancer, else empty |
 | `LOG_STACK` / `LOG_LEVEL` | `daily` / `info` |
@@ -132,7 +134,7 @@ app under **Settings**.
 
 ### 3.5 Queue worker
 
-Excel imports are read in the background. Keep one worker running, restarted
+Excel imports are read and emails (new orders) are sent in the background. Keep one worker running, restarted
 if it stops. With Supervisor (`/etc/supervisor/conf.d/stock-worker.conf`):
 
 ```ini
@@ -145,7 +147,7 @@ stopwaitsecs=660
 stdout_logfile=/var/www/stock/storage/logs/worker.log
 ```
 
-Without a worker, uploads stay at "Reading the file…".
+Without a worker, uploads stay at "Reading the file…" and no order email goes out.
 
 ### 3.6 Scheduler
 

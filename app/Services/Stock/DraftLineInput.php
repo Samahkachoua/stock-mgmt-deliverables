@@ -3,7 +3,7 @@
 namespace App\Services\Stock;
 
 /**
- * One line of a draft: like a DocumentLine, in its own warehouse.
+ * One line of a draft: like a DocumentLine (the draft's warehouse is in DraftInput).
  */
 final class DraftLineInput
 {
@@ -13,7 +13,6 @@ final class DraftLineInput
      * @param  list<string>  $serials  serial numbers, for serial-numbered items
      */
     public function __construct(
-        public readonly string $warehouseId,
         public readonly string $productId,
         public readonly string $unit,
         public readonly string|int $qty,

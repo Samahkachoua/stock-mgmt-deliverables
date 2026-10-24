@@ -67,12 +67,11 @@ class ResponsiveTest extends DuskTestCase
             self::$itemId = $stock->id('BEANS');
             self::$reference = $receipt->doc_no;
 
-            // A order with lines in both warehouses.
+            // An order of two lines (the user has two warehouses: the form shows the Warehouse field).
             $branch = CustomerBranch::create(['customer_id' => $stock->customer->id, 'code' => 'DT', 'name' => 'Downtown']);
-            $stock->post('IN', [$stock->line('BEANS', 10)], warehouse: $tripoli);
-            self::$draft = app(DraftService::class)->save(new DraftInput('OUT', $stock->customer->id, $branch->id, CarbonImmutable::today(), 'PO 77', [
-                'r1' => new DraftLineInput($stock->warehouse->id, $stock->id('BEANS'), 'BOX', 2),
-                'r2' => new DraftLineInput($tripoli->id, $stock->id('BEANS'), 'PC', 5),
+            self::$draft = app(DraftService::class)->save(new DraftInput('OUT', $stock->customer->id, $branch->id, $stock->warehouse->id, CarbonImmutable::today(), 'PO 77', [
+                'r1' => new DraftLineInput($stock->id('BEANS'), 'BOX', 2),
+                'r2' => new DraftLineInput($stock->id('BEANS'), 'PC', 5),
             ]), $stock->user)->doc_no;
 
             self::$seeded = true;
@@ -246,6 +245,50 @@ class ResponsiveTest extends DuskTestCase
                 // Hidden; the menu button opens it as a drawer.
                 'phone' => $this->assertEquals(['onScreen' => false, 'menuButton' => true], ['onScreen' => $state['onScreen'], 'menuButton' => $state['menuButton']]),
             };
+
+            // Icons only: hovering or focusing one shows its label beside the rail, level with it.
+            $tip = fn () => $browser->script(<<<'JS'
+                const tip = document.querySelector('[data-sidebar-tip]');
+                const box = tip.getBoundingClientRect();
+                const link = document.querySelector('[data-sidebar] a[href$="/delivery-note"]').getBoundingClientRect();
+                return {
+                    shown: getComputedStyle(tip).display !== 'none' && box.width > 0,
+                    text: tip.textContent.trim(),
+                    besideRail: document.dir === 'rtl'
+                        ? box.right <= document.querySelector('[data-sidebar]').getBoundingClientRect().left
+                        : box.left >= document.querySelector('[data-sidebar]').getBoundingClientRect().right,
+                    level: Math.abs((box.top + box.height / 2) - (link.top + link.height / 2)) < 2,
+                };
+            JS)[0];
+
+            if ($size !== 'phone') {
+                $browser->mouseover('[data-sidebar] a[href$="/delivery-note"]')->pause(100);
+                $hovered = $tip();
+                $browser->mouseover('main')->pause(100);
+
+                if ($size === 'tablet') {
+                    $this->assertEquals(['shown' => true, 'text' => __('transactions.types.delivery_note.title'), 'besideRail' => true, 'level' => true], $hovered);
+                    $this->assertFalse($tip()['shown']);
+
+                    $browser->script("document.querySelector('[data-sidebar] a[href$=\"/delivery-note\"]').focus()");
+                    $this->assertTrue($tip()['shown']);
+
+                    // Arabic: the rail is on the right, the label to its left.
+                    User::whereKey(self::$userId)->update(['preferred_lang' => 'ar', 'preferred_theme' => 'dark']);
+                    $this->open($browser, $size, '/receive')->mouseover('[data-sidebar] a[href$="/delivery-note"]')->pause(100);
+                    app()->setLocale('ar');
+                    $this->assertEquals(['shown' => true, 'text' => __('transactions.types.delivery_note.title'), 'besideRail' => true, 'level' => true], $tip());
+                    app()->setLocale('en');
+
+                    if (getenv('DUSK_SCREENSHOTS')) {
+                        $browser->screenshot('tablet/ar-sidebar-tooltip');
+                    }
+                    User::whereKey(self::$userId)->update(['preferred_lang' => 'en', 'preferred_theme' => 'light']);
+                } else {
+                    // The labels are visible already.
+                    $this->assertFalse($hovered['shown']);
+                }
+            }
 
             if ($size === 'phone') {
                 $browser->click('[data-menu-button]')->pause(350);

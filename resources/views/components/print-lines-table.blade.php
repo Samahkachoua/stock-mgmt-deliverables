@@ -3,22 +3,18 @@
     header (SKU | Description | Unit of measure | Expiry date | Qty).
     Transfers show Sent | Received, adjustments In system | Counted | Difference
     in place of Qty. Expiry date appears when the type records it and a line has one.
-    A draft passes its warehouse groups instead (no type): plain Qty, and a
-    warehouse row before each group when there are several.
+    A draft passes no type: plain Qty.
     <x-print-lines-table :type="$type" :lines="$document['lines']" />
-    <x-print-lines-table :groups="$draft['groups']" />
+    <x-print-lines-table :lines="$draft['lines']" />
 --}}
-@props(['type' => null, 'lines' => null, 'groups' => null])
+@props(['type' => null, 'lines' => []])
 
 @use('App\Support\Format')
 
 @php
-    $groups ??= [['warehouse' => null, 'lines' => $lines]];
-    $lines = collect($groups)->flatMap(fn ($group) => $group['lines'])->all();
     $mode = $type === null ? 'quantity' : ($type->dispatchReceive() ? 'transfer' : ($type->hasLineColumn('counted') ? 'count' : 'quantity'));
     $expiries = collect($lines)->contains(fn ($line) => filled($line['expiry'] ?? null))
         && ($type === null || $type->hasLineColumn('expiry') || $type->hasLineColumn('expiry_pick') || $mode === 'count');
-    $columns = 3 + ($expiries ? 1 : 0) + ($mode === 'count' ? 3 : ($mode === 'transfer' ? 2 : 1));
     $total = collect($lines)->sum(fn ($line) => match ($mode) {
         'transfer' => $line['received'] === null ? $line['base_qty'] : $line['received'] * ($line['base_qty'] / max($line['qty'], 1)),
         default => $line['base_qty'],
@@ -49,14 +45,8 @@
             @endif
         </tr>
     </thead>
-    @foreach ($groups as $group)
     <tbody>
-        @if (count($groups) > 1)
-            <tr>
-                <th scope="rowgroup" colspan="{{ $columns }}" class="{{ $td }} text-start font-bold"><bdi>{{ $group['warehouse'] }}</bdi></th>
-            </tr>
-        @endif
-        @foreach ($group['lines'] as $line)
+        @foreach ($lines as $line)
             <tr>
                 <td class="{{ $td }} text-center"><span dir="ltr" class="tabular">{{ $line['code'] }}</span></td>
                 <td class="{{ $td }} text-start">
@@ -86,7 +76,6 @@
             </tr>
         @endforeach
     </tbody>
-    @endforeach
     <tfoot>
         <tr>
             <th scope="row" colspan="{{ 3 + ($expiries ? 1 : 0) }}" class="{{ $td }} text-end">{{ __('transactions.details.summary_total') }}</th>

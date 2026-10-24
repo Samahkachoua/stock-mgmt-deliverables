@@ -75,6 +75,11 @@ CREATE TABLE app_user (
     preferred_lang  VARCHAR(5) NOT NULL DEFAULT 'en', -- en | ar | fr
     preferred_theme VARCHAR(10) NOT NULL DEFAULT 'system'
                     CHECK (preferred_theme IN ('light', 'dark', 'system')),
+    -- Email when an order in their warehouses is added, changed or cancelled (only with the orders'
+    -- confirm permission); Settings › Users "Email about orders".
+    notify_new_orders BOOLEAN NOT NULL DEFAULT TRUE,
+    -- The same for draft receipts (only with their confirm permission); "Email about draft receipts".
+    notify_draft_receipts BOOLEAN NOT NULL DEFAULT TRUE,
     active          BOOLEAN NOT NULL DEFAULT TRUE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -485,10 +490,10 @@ CREATE TABLE stock_transaction_line_serial (   -- serials attached to a transact
 -- ----------------------------------------------------------------------------
 -- DRAFTS (draft receipt / order)
 -- ----------------------------------------------------------------------------
--- A draft never touches stock. Its lines each name their own warehouse; it can
--- be edited until it is confirmed. Confirming (App\Services\Stock\PostingService::
--- confirmDraft) creates one posted document of transaction_type per warehouse,
--- each pointing back here (stock_transaction.draft_id).
+-- A draft never touches stock. It is for one warehouse (in the header, like a
+-- receipt / delivery note); it can be edited until it is confirmed. Confirming
+-- (App\Services\Stock\PostingService::confirmDraft) creates one posted document
+-- of transaction_type in that warehouse, pointing back here (stock_transaction.draft_id).
 --   status: DRAFT -> POSTED (shown as "Confirmed") or CANCELLED.
 CREATE TABLE stock_draft (
     id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -500,6 +505,8 @@ CREATE TABLE stock_draft (
     document_date      DATE NOT NULL DEFAULT CURRENT_DATE,
     reference_note     TEXT,
     client_request_id  UUID UNIQUE,                      -- submission token of the form that created it
+    -- Stock comes into / goes out of this warehouse when confirmed.
+    warehouse_id      BIGINT NOT NULL REFERENCES warehouse(id),
     created_by         BIGINT NOT NULL REFERENCES app_user(id),
     updated_by         BIGINT REFERENCES app_user(id),
     confirmed_by       BIGINT REFERENCES app_user(id),   -- may be the creator
@@ -513,12 +520,13 @@ CREATE TABLE stock_draft (
 );
 
 CREATE INDEX idx_stock_draft_list ON stock_draft (transaction_type, customer_id, document_date DESC);
+-- Which drafts a user may see (their warehouses).
+CREATE INDEX idx_stock_draft_warehouse ON stock_draft (warehouse_id, transaction_type);
 
 CREATE TABLE stock_draft_line (
     id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     draft_id     BIGINT NOT NULL REFERENCES stock_draft(id) ON DELETE CASCADE,
     line_no      INT NOT NULL,
-    warehouse_id BIGINT NOT NULL REFERENCES warehouse(id),
     product_id   BIGINT NOT NULL REFERENCES product(id),
     unit_id      BIGINT NOT NULL REFERENCES unit(id),
     qty_entered  NUMERIC(18,4) NOT NULL CHECK (qty_entered > 0),
@@ -527,9 +535,6 @@ CREATE TABLE stock_draft_line (
     serials      JSONB NOT NULL DEFAULT '[]'::jsonb,    -- serial numbers, for serial-numbered items
     UNIQUE (draft_id, line_no)
 );
-
--- Which drafts a user may see (their warehouses).
-CREATE INDEX idx_stock_draft_line_warehouse ON stock_draft_line (warehouse_id, draft_id);
 
 ALTER TABLE stock_transaction
     ADD CONSTRAINT fk_stock_transaction_draft FOREIGN KEY (draft_id) REFERENCES stock_draft(id);

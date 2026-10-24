@@ -12,7 +12,17 @@
         {{ __('app.skip_to_content') }}
     </a>
 
-    <div x-data="{ nav: false }" x-on:keydown.escape.window="nav = false">
+    <div
+        x-data="{
+            nav: false,
+            tip: null,
+            showTip(link) {
+                const box = link.getBoundingClientRect();
+                this.tip = { label: link.dataset.label, pending: link.dataset.pending, top: box.top + box.height / 2 };
+            },
+        }"
+        x-on:keydown.escape.window="nav = false; tip = null"
+    >
         {{-- Phone: a tap outside the drawer closes it. --}}
         <div x-cloak x-show="nav" x-transition.opacity x-on:click="nav = false" class="fixed inset-0 z-40 bg-scrim md:hidden print:hidden" aria-hidden="true"></div>
 
@@ -31,7 +41,7 @@
                 </button>
             </div>
 
-            <nav class="flex-1 overflow-y-auto px-3 py-3 md:px-2 xl:px-3" aria-label="{{ __('nav.main') }}">
+            <nav x-on:scroll.passive="tip = null" class="flex-1 overflow-y-auto px-3 py-3 md:px-2 xl:px-3" aria-label="{{ __('nav.main') }}">
                 @php
                     // Sidebar badges: documents waiting for this user's approval.
                     $pendingApprovals = auth()->user() ? \App\Support\Transactions\PendingApprovals::bySlug(auth()->user()) : [];
@@ -52,13 +62,19 @@
                             $colours = $item['type'] ? config('ui.types.'.$item['type']) : null;
                             $label = __($item['label']);
                             $pending = $pendingApprovals[$item['route']] ?? 0;
+                            $pendingText = $pending > 0 ? __('nav.pending_count', ['count' => \App\Support\Format::qty($pending)]) : '';
                         @endphp
                         <li>
                             <a
                                 href="{{ route($item['route']) }}"
-                                title="{{ $label }}"
+                                data-label="{{ $label }}"
+                                data-pending="{{ $pendingText }}"
                                 wire:navigate
-                                x-on:click="nav = false"
+                                x-on:click="nav = false; tip = null"
+                                x-on:mouseenter="showTip($el)"
+                                x-on:mouseleave="tip = null"
+                                x-on:focus="showTip($el)"
+                                x-on:blur="tip = null"
                                 @if ($active) aria-current="page" @endif
                                 @class([
                                     'relative flex h-control items-center justify-start gap-3 rounded-lg px-3 text-body font-semibold transition-colors md:justify-center xl:justify-start',
@@ -73,7 +89,7 @@
                                     {{-- Waiting for this user's approval (not their own documents). --}}
                                     <span class="ms-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1.5 text-small font-semibold tabular md:absolute md:-top-0.5 md:end-0.5 md:ms-0 xl:static xl:ms-auto {{ config('ui.statuses.pending') }}">
                                         <span aria-hidden="true">{{ \App\Support\Format::qty($pending) }}</span>
-                                        <span class="sr-only">{{ __('nav.pending_count', ['count' => \App\Support\Format::qty($pending)]) }}</span>
+                                        <span class="sr-only">{{ $pendingText }}</span>
                                     </span>
                                 @endif
                             </a>
@@ -82,6 +98,23 @@
                 </ul>
             </nav>
         </aside>
+
+        {{--
+            Tablet: the icon rail's labels, on hover and on keyboard focus. Outside
+            the nav so its scrolling doesn't clip it; screen readers already get
+            the label from the link itself.
+        --}}
+        <div
+            x-cloak
+            x-show="tip"
+            x-bind:style="tip && { top: tip.top + 'px' }"
+            data-sidebar-tip
+            aria-hidden="true"
+            class="pointer-events-none fixed start-rail z-50 ms-2 hidden -translate-y-1/2 rounded-lg border border-default bg-card px-2.5 py-1.5 shadow-pop md:block xl:hidden print:hidden"
+        >
+            <p class="whitespace-nowrap text-small font-semibold text-fg" x-text="tip?.label"></p>
+            <p x-show="tip?.pending" class="whitespace-nowrap text-small text-muted" x-text="tip?.pending"></p>
+        </div>
 
         <div class="flex min-h-screen min-w-0 flex-col md:ps-rail xl:ps-sidebar print:ps-0">
             {{-- Phone: menu button, page title, user menu (with theme and language). No warehouse here: pages that need one have their own field or filter. --}}
@@ -110,7 +143,7 @@
             </header>
 
             <main id="main" class="min-w-0 flex-1 p-page">
-                <div class="mx-auto w-full max-w-7xl">
+                <div class="mx-auto w-full">
                     {{ $slot }}
                 </div>
             </main>
