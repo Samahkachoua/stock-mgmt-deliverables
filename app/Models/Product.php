@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\DB;
  * @property string $base_unit_id
  * @property bool $track_expiry
  * @property bool $track_serial
+ * @property bool $is_service a service (packing, delivery fee...): on receipts / delivery notes, never stock
  * @property string|null $storage_status storage_status.code; null = not set
  * @property string|null $approval_threshold_qty
  * @property bool $active
@@ -39,6 +40,15 @@ class Product extends Model
     protected $table = 'product';
 
     /**
+     * The column's default, so a model created without it says so too.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'is_service' => false,
+    ];
+
+    /**
      * @var list<string>
      */
     protected $fillable = [
@@ -50,6 +60,7 @@ class Product extends Model
         'base_unit_id',
         'track_expiry',
         'track_serial',
+        'is_service',
         'storage_status',
         'approval_threshold_qty',
         'active',
@@ -63,6 +74,7 @@ class Product extends Model
         return [
             'track_expiry' => 'boolean',
             'track_serial' => 'boolean',
+            'is_service' => 'boolean',
             'active' => 'boolean',
         ];
     }
@@ -116,6 +128,26 @@ class Product extends Model
     public function hasMovements(): bool
     {
         return $this->exists && DB::table('stock_movement')->where('product_id', $this->id)->exists();
+    }
+
+    /**
+     * Is the item on any document or draft? A service has no movements, so
+     * this (not hasMovements()) is what fixes whether an item is a service.
+     */
+    public function hasLines(): bool
+    {
+        return $this->exists && (DB::table('stock_transaction_line')->where('product_id', $this->id)->exists()
+            || DB::table('stock_draft_line')->where('product_id', $this->id)->exists());
+    }
+
+    /**
+     * Items kept in stock (not services).
+     *
+     * @param  Builder<Product>  $query
+     */
+    public function scopeStocked(Builder $query): void
+    {
+        $query->where($query->qualifyColumn('is_service'), false);
     }
 
     /**

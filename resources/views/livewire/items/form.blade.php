@@ -21,7 +21,7 @@
     @if ($locked)
         <p class="flex items-start gap-3 rounded-xl border px-4 py-4 text-body {{ config('ui.statuses.pending') }}" role="note">
             <x-icon name="lock_clock" class="mt-0.5" />
-            <span>{{ __('items.locked_notice') }}</span>
+            <span>{{ __($isService ? 'items.service_locked_notice' : 'items.locked_notice') }}</span>
         </p>
     @endif
 
@@ -34,7 +34,7 @@
                     model="customerId"
                     :label="__('items.fields.customer')"
                     :options="['' => __('transactions.form.choose_customer_option')] + $customers"
-                    :hint="$locked ? __('items.locked_field') : null"
+                    :hint="$locked ? __($isService ? 'items.service_locked_field' : 'items.locked_field') : null"
                     :disabled="$locked"
                     required
                 />
@@ -55,15 +55,17 @@
                     model="baseUnitId"
                     :label="__('items.fields.base_unit')"
                     :options="$this->allUnits->mapWithKeys(fn ($unit) => [$unit->id => $unit->label()])->all()"
-                    :hint="$locked ? __('items.locked_field') : __('items.fields.base_unit_hint')"
+                    :hint="$locked ? __($isService ? 'items.service_locked_field' : 'items.locked_field') : __('items.fields.base_unit_hint')"
                     :disabled="$locked"
                     required
                 />
             </div>
 
-            <fieldset @disabled($trackSerial) class="mt-4 min-w-0">
+            <fieldset @disabled($trackSerial || $isService) class="mt-4 min-w-0">
                 <legend class="text-body font-semibold text-fg">{{ __('items.fields.other_units') }}</legend>
-                @if ($trackSerial)
+                @if ($isService)
+                    <p class="mt-1 text-body text-muted">{{ __('items.units.service_note') }}</p>
+                @elseif ($trackSerial)
                     <p class="mt-1 text-body text-muted">{{ __('items.units.serial_note') }}</p>
                 @else
                     <p class="mt-1 text-body text-muted">{{ __('items.units.hint', ['base' => $baseName]) }}</p>
@@ -132,8 +134,9 @@
             <h2 id="section-tracking" class="text-h3 font-semibold text-fg">{{ __('items.sections.tracking') }}</h2>
             <div class="mt-4 grid gap-4 md:grid-cols-2">
                 <div class="flex flex-col gap-3">
-                    <x-form.toggle model="trackExpiry" :label="__('items.fields.track_expiry')" :hint="$locked ? __('items.locked_field') : __('items.fields.track_expiry_hint')" :disabled="$locked" />
-                    <x-form.toggle model="trackSerial" :label="__('items.fields.track_serial')" :hint="$locked ? __('items.locked_field') : __('items.fields.track_serial_hint')" :disabled="$locked" />
+                    <x-form.toggle model="isService" :label="__('items.fields.is_service')" :hint="$serviceLocked ? __('items.service_locked_field') : __('items.fields.is_service_hint')" :disabled="$serviceLocked" />
+                    <x-form.toggle model="trackExpiry" :label="__('items.fields.track_expiry')" :hint="$isService ? __('items.fields.service_untracked_hint') : ($locked ? __('items.locked_field') : __('items.fields.track_expiry_hint'))" :disabled="$locked || $isService" />
+                    <x-form.toggle model="trackSerial" :label="__('items.fields.track_serial')" :hint="$isService ? __('items.fields.service_untracked_hint') : ($locked ? __('items.locked_field') : __('items.fields.track_serial_hint'))" :disabled="$locked || $isService" />
                 </div>
                 <div class="flex flex-col gap-4">
                     <x-form.select

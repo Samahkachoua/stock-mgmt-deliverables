@@ -175,6 +175,7 @@ return [
             'units' => 'الوحدات',
             'track_expiry' => 'يتتبّع الصلاحية',
             'track_serial' => 'يتتبّع الأرقام التسلسلية',
+            'is_service' => 'خدمة',
             'approval_threshold_qty' => 'حد الموافقة',
             'active' => 'قيد الاستخدام',
             'code' => 'الرمز',

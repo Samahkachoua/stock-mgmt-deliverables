@@ -49,6 +49,7 @@ final class ProductImport extends ImportType
             new Column('base_unit', required: true),
             new Column('tracks_expiry'),
             new Column('tracks_serial'),
+            new Column('is_service'),
             new Column('storage_status'),
             new Column('approval_limit'),
         ];
@@ -146,14 +147,16 @@ final class ProductImport extends ImportType
 
             // Y / N flags
             $flags = [];
-            foreach (['tracks_expiry', 'tracks_serial'] as $key) {
+            foreach (['tracks_expiry', 'tracks_serial', 'is_service'] as $key) {
                 $flags[$key] = Values::flag($v[$key] ?? '');
 
                 if ($flags[$key] === null) {
                     $check->error('imports.errors.flag', ['column' => $key, 'value' => $v[$key]]);
                 }
             }
-            if ($flags['tracks_expiry'] && $flags['tracks_serial']) {
+            if ($flags['is_service'] && ($flags['tracks_expiry'] || $flags['tracks_serial'])) {
+                $check->error('items.errors.service_untracked');
+            } elseif ($flags['tracks_expiry'] && $flags['tracks_serial']) {
                 $check->error('items.errors.serial_and_expiry');
             }
 
@@ -168,7 +171,7 @@ final class ProductImport extends ImportType
             }
 
             // Alternate units
-            $this->checkUnits($check, $v, $units, $base, (bool) $flags['tracks_serial']);
+            $this->checkUnits($check, $v, $units, $base, (bool) $flags['tracks_serial'], (bool) $flags['is_service']);
 
             $checks[$row->id] = $check;
         }
@@ -186,6 +189,7 @@ final class ProductImport extends ImportType
         foreach ($this->importable($rows) as $row) {
             $v = array_map(fn ($value) => trim((string) $value), $row->payload['values']);
             $serial = (bool) Values::flag($v['tracks_serial'] ?? '');
+            $service = (bool) Values::flag($v['is_service'] ?? '');
             $alternates = [];
 
             for ($i = 1; $i <= self::ALTERNATE_UNITS; $i++) {
@@ -203,6 +207,7 @@ final class ProductImport extends ImportType
                 'base_unit_id' => $units[mb_strtoupper($v['base_unit'])],
                 'track_expiry' => (bool) Values::flag($v['tracks_expiry'] ?? ''),
                 'track_serial' => $serial,
+                'is_service' => $service,
                 'storage_status' => ($v['storage_status'] ?? '') === '' ? null : self::storageCode($v['storage_status']),
                 'approval_threshold_qty' => ($v['approval_limit'] ?? '') === '' ? null : Values::number($v['approval_limit']),
                 'active' => true,
@@ -229,7 +234,7 @@ final class ProductImport extends ImportType
      * @param  array<string, string>  $v
      * @param  Collection<string, Unit>  $units
      */
-    private function checkUnits(RowCheck $check, array $v, Collection $units, ?Unit $base, bool $serial): void
+    private function checkUnits(RowCheck $check, array $v, Collection $units, ?Unit $base, bool $serial, bool $service = false): void
     {
         $seen = [];
 
@@ -239,6 +244,12 @@ final class ProductImport extends ImportType
 
             if ($code === '' && $factor === '') {
                 continue;
+            }
+
+            if ($service) {
+                $check->error('imports.errors.service_units');
+
+                return;
             }
 
             if ($serial) {

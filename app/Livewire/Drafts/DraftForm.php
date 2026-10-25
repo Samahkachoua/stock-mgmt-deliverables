@@ -452,6 +452,7 @@ class DraftForm extends Component
         $problems = [];
         $used = [];
         $baseUnits = [];
+        $filled = 0;
         $total = 0.0;
         $lastKey = array_key_last($this->lines);
         $number = 0;
@@ -484,6 +485,11 @@ class DraftForm extends Component
             }
 
             if ($row['item'] !== null) {
+                $filled++;
+            }
+
+            // Services are not stock: the footer total adds up stock items only.
+            if ($row['item'] !== null && ! $row['item']['service']) {
                 $baseUnits[] = $row['item']['base'];
                 $total += $row['base'] ?? 0;
             }
@@ -492,7 +498,6 @@ class DraftForm extends Component
         }
 
         $header = $this->checkHeader();
-        $filled = count($baseUnits);
 
         if ($this->customerId === '') {
             array_unshift($problems, __('transactions.form.choose_customer'));
@@ -603,7 +608,8 @@ class DraftForm extends Component
         } elseif ($converter !== null && $factor !== null) {
             $base = $converter->toBase($qty, $line['unit']);
 
-            if (! $receives && $base > $remaining + 1e-9) {
+            // A service has no stock: never limited by it.
+            if (! $receives && ! $item['service'] && $base > $remaining + 1e-9) {
                 $errors['qty'] = __('transactions.form.errors.not_enough', ['qty' => $converter->breakdown($remaining, [$line['unit']])]);
             }
 
@@ -614,7 +620,7 @@ class DraftForm extends Component
             'errors' => $errors,
             'missing' => $missing,
             'base' => $base,
-            'available_text' => $converter && $factor ? $converter->breakdown($remaining, [$line['unit']]) : null,
+            'available_text' => $converter && $factor && ! $item['service'] ? $converter->breakdown($remaining, [$line['unit']]) : null,
             'conversion' => $base !== null && $factor > 1 ? Format::qtyUnit($base, $item['base']) : null,
         ];
     }
@@ -760,7 +766,7 @@ class DraftForm extends Component
             return;
         }
 
-        $found = ItemCatalog::items($this->customerId, array_values($missing), $this->warehouseId, excludeExpired: ! $this->kind()->receives());
+        $found = ItemCatalog::items($this->customerId, array_values($missing), $this->warehouseId, excludeExpired: ! $this->kind()->receives(), withServices: $this->kind()->type->allowsServices());
 
         foreach ($missing as $id) {
             $this->items[$id] = $found[$id] ?? null;

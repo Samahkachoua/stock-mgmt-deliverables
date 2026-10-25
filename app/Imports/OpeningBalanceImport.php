@@ -69,7 +69,7 @@ final class OpeningBalanceImport extends ImportType
         return [
             __('imports.codes.warehouses') => $user->assignedWarehouses()->sortBy('code')->pluck('name', 'code')->all(),
             __('imports.codes.customers') => Customer::where('active', true)->orderBy('code')->pluck('name', 'code')->all(),
-            __('imports.codes.items') => Product::with('customer')->where('active', true)->orderBy('sku')->get()
+            __('imports.codes.items') => Product::with('customer')->where('active', true)->stocked()->orderBy('sku')->get()
                 ->mapWithKeys(fn (Product $p) => [$p->sku.' ('.$p->customer->code.')' => $p->name()])->all(),
         ];
     }
@@ -153,6 +153,10 @@ final class OpeningBalanceImport extends ImportType
                     $check->error('imports.errors.item_unknown', ['value' => $v['item_code'], 'customer' => $customer->code], $suggestion);
                 } elseif (! $product->active) {
                     $check->error('imports.errors.item_inactive', ['value' => $product->sku]);
+                    $product = null;
+                } elseif ($product->is_service) {
+                    // A service has no stock, so no opening balance either.
+                    $check->error('imports.errors.item_is_service', ['value' => $product->sku]);
                     $product = null;
                 }
             }

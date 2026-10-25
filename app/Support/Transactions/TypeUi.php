@@ -246,6 +246,14 @@ final class TypeUi
     }
 
     /**
+     * May service items (no stock) be lines of this type? (config `services`)
+     */
+    public function allowsServices(): bool
+    {
+        return $this->config['services'] ?? false;
+    }
+
+    /**
      * "available": quantity may not exceed what is in stock. "in_stock": no maximum.
      */
     public function hint(): string

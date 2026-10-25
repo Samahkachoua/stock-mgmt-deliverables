@@ -247,14 +247,19 @@ CREATE TABLE product (
     base_unit_id            BIGINT NOT NULL REFERENCES unit(id),
     track_expiry            BOOLEAN NOT NULL DEFAULT FALSE,
     track_serial            BOOLEAN NOT NULL DEFAULT FALSE,
+    -- A service (packing, delivery fee...) is a line on receipts and delivery
+    -- notes but never stock: no movement, balance, expiry or serial.
+    is_service              BOOLEAN NOT NULL DEFAULT FALSE,
     storage_status          VARCHAR(20) REFERENCES storage_status(code),  -- NULL = not set
     approval_threshold_qty  NUMERIC(18,4),        -- product-level override; NULL = fall back to customer/global
     active                  BOOLEAN NOT NULL DEFAULT TRUE,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (customer_id, sku)
-    -- Rule "a serial-tracked product may only use its base unit" is enforced by
-    -- the trg_check_serial_product_units trigger on product_unit below.
+    UNIQUE (customer_id, sku),
+    CONSTRAINT ck_product_service_untracked
+        CHECK (NOT is_service OR (NOT track_expiry AND NOT track_serial))
+    -- Rule "a serial-tracked product (or a service) may only use its base unit"
+    -- is enforced by the trg_validate_product_unit trigger on product_unit below.
 );
 
 -- Alternate units + conversion factor to base unit. The base unit is always the
@@ -280,7 +285,7 @@ CREATE TABLE product_barcode (
 );
 
 -- Enforces two rules on every product_unit row:
---   1. Serial-tracked products may only have their base unit (no alt units).
+--   1. Serial-tracked products and services may only have their base unit (no alt units).
 --   2. The base unit is always the smallest unit: the base unit's own row (if
 --      present) must have factor_to_base = 1, and every alternate (non-base)
 --      unit must have factor_to_base > 1 (it must represent MORE than one
@@ -288,13 +293,18 @@ CREATE TABLE product_barcode (
 CREATE OR REPLACE FUNCTION fn_validate_product_unit() RETURNS TRIGGER AS $$
 DECLARE
     v_track_serial BOOLEAN;
+    v_is_service   BOOLEAN;
     v_base_unit_id BIGINT;
 BEGIN
-    SELECT track_serial, base_unit_id INTO v_track_serial, v_base_unit_id
+    SELECT track_serial, is_service, base_unit_id INTO v_track_serial, v_is_service, v_base_unit_id
     FROM product WHERE id = NEW.product_id;
 
     IF v_track_serial AND NEW.unit_id <> v_base_unit_id THEN
         RAISE EXCEPTION 'Serial-tracked products only support their base unit (product_id=%)', NEW.product_id;
+    END IF;
+
+    IF v_is_service AND NEW.unit_id <> v_base_unit_id THEN
+        RAISE EXCEPTION 'Services only support their base unit (product_id=%)', NEW.product_id;
     END IF;
 
     IF NEW.unit_id = v_base_unit_id THEN
@@ -827,6 +837,10 @@ CREATE OR REPLACE FUNCTION fn_post_movement(
 DECLARE
     v_movement_id BIGINT;
 BEGIN
+    IF EXISTS (SELECT 1 FROM product WHERE id = p_product_id AND is_service) THEN
+        RAISE EXCEPTION 'Service item has no stock (product_id=%)', p_product_id;
+    END IF;
+
     PERFORM fn_apply_balance(p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, p_direction, p_qty_base);
 
     INSERT INTO stock_movement (transaction_id, line_id, warehouse_id, customer_id, product_id, expiry_date, direction, qty_base)

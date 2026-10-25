@@ -175,6 +175,7 @@ return [
             'units' => 'Units',
             'track_expiry' => 'Tracks expiry',
             'track_serial' => 'Tracks serial numbers',
+            'is_service' => 'Is a service',
             'approval_threshold_qty' => 'Approval limit',
             'active' => 'In use',
             'code' => 'Code',

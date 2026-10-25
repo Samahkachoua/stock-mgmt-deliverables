@@ -69,6 +69,11 @@
                 </x-data-table.cell>
                 <x-data-table.cell col="tracking">
                     <div class="flex flex-wrap gap-1.5">
+                        @if ($item->is_service)
+                            <span class="inline-flex h-6 items-center gap-1 rounded-md border px-2 text-small font-semibold {{ config('ui.statuses.draft') }}">
+                                <x-icon name="construction" class="size-3.5" />{{ __('items.list.service') }}
+                            </span>
+                        @endif
                         @if ($item->track_expiry)
                             <span class="inline-flex h-6 items-center gap-1 rounded-md border px-2 text-small font-semibold {{ config('ui.statuses.pending') }}">
                                 <x-icon name="calendar_today" class="size-3.5" />{{ __('items.list.expiry') }}

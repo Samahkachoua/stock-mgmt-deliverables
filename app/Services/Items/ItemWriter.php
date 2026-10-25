@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\DB;
 final class ItemWriter
 {
     /**
-     * @param  array{customer_id: string, sku: string, name_en: string, name_ar: ?string, name_fr: ?string, base_unit_id: string, track_expiry: bool, track_serial: bool, storage_status: ?string, approval_threshold_qty: ?string, active: bool}  $attributes
-     * @param  list<array{unit_id: string, factor: string|float}>  $units  alternate units (ignored for serial items)
+     * @param  array{customer_id: string, sku: string, name_en: string, name_ar: ?string, name_fr: ?string, base_unit_id: string, track_expiry: bool, track_serial: bool, is_service: bool, storage_status: ?string, approval_threshold_qty: ?string, active: bool}  $attributes
+     * @param  list<array{unit_id: string, factor: string|float}>  $units  alternate units (ignored for serial items and services)
      */
     public function save(Product $product, array $attributes, array $units, ?string $userId = null): Product
     {
@@ -29,7 +29,7 @@ final class ItemWriter
         $product->units()->delete();
         $product->units()->create(['unit_id' => $attributes['base_unit_id'], 'factor_to_base' => 1, 'is_default' => true]);
 
-        if (! $attributes['track_serial']) {
+        if (! $attributes['track_serial'] && ! $attributes['is_service']) {
             foreach ($units as $row) {
                 $product->units()->create(['unit_id' => $row['unit_id'], 'factor_to_base' => $row['factor'], 'is_default' => false]);
             }
@@ -68,6 +68,7 @@ final class ItemWriter
             'units' => $codes->whereNotNull('unit')->mapWithKeys(fn ($row) => [$row->unit => (float) $row->factor_to_base])->sortKeys()->all(),
             'track_expiry' => $product->track_expiry,
             'track_serial' => $product->track_serial,
+            'is_service' => $product->is_service,
             'storage_status' => $product->storage_status,
             'approval_threshold_qty' => $product->approval_threshold_qty,
             'active' => $product->active,

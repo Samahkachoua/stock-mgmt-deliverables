@@ -300,3 +300,52 @@ it('shows the storage status in the item picker', function () {
         ->set('search', 'CB-400')
         ->assertSee(StorageStatuses::label('CHILLED'));
 });
+
+// Services (CLAUDE.md business rule 13)
+
+it('saves a service with only its base unit and no tracking', function () {
+    $form = newItem($this->catalog, 'PACK')->set('nameEn', 'Packing')->set('baseUnitId', ($this->unit)('PC'));
+    [$row] = unitRows($form);
+    $form->set("units.$row.unit_id", ($this->unit)('BOX'))->set("units.$row.factor", '12')
+        ->set('trackExpiry', true);
+
+    $form->set('isService', true)
+        ->assertSet('trackExpiry', false)
+        ->assertSet('trackSerial', false)
+        ->assertSee(__('items.units.service_note'));
+
+    foreach (['field-trackExpiry', 'field-trackSerial'] as $id) {
+        expect($form->html())->toMatch('/<input\s[^>]*id="'.$id.'"[^>]*\sdisabled/s');
+    }
+
+    $form->call('save')->assertHasNoErrors();
+
+    $product = Product::where('sku', 'PACK')->firstOrFail();
+    expect($product->is_service)->toBeTrue()
+        ->and($product->track_expiry)->toBeFalse()
+        ->and($product->units()->pluck('unit_id')->all())->toBe([($this->unit)('PC')]);
+
+    Livewire::actingAs(userWithRole('DATA_ENTRY'))->test(ItemList::class)->set('search', 'pack')
+        ->assertSee(__('items.list.service'));
+});
+
+it('refuses a service with an expiry date or serial numbers', function () {
+    newItem($this->catalog)->set('isService', true)->set('trackSerial', true)->call('save')
+        ->assertHasErrors(['trackSerial']);
+
+    expect(Product::where('sku', 'CP-400')->exists())->toBeFalse();
+});
+
+it('fixes whether an item is a service once it is on a document', function () {
+    $product = $this->catalog->items['CB-400'];
+    moveStock($this->catalog, $product);
+
+    $form = Livewire::actingAs(userWithRole('DATA_ENTRY'))
+        ->test(ItemForm::class, ['product' => $product])
+        ->assertSet('serviceLocked', true);
+
+    expect($form->html())->toMatch('/<input\s[^>]*id="field-isService"[^>]*\sdisabled/s');
+
+    $form->set('isService', true)->call('save')->assertHasErrors('baseUnitId');
+    expect($product->fresh()->is_service)->toBeFalse();
+});

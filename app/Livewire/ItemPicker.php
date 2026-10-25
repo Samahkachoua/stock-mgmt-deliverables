@@ -38,6 +38,9 @@ class ItemPicker extends Component
     #[Reactive]
     public string $warehouse = '';
 
+    /** Offer service items too (types that take them, TypeUi::allowsServices()). */
+    public bool $services = false;
+
     /** id for the search input / chosen-item button, so labels and focus can target it. */
     public string $inputId = '';
 
@@ -54,7 +57,7 @@ class ItemPicker extends Component
     #[Computed]
     public function results(): array
     {
-        return $this->customer === '' ? [] : ItemCatalog::search($this->customer, $this->search, $this->warehouseId(), self::MAX_RESULTS);
+        return $this->customer === '' ? [] : ItemCatalog::search($this->customer, $this->search, $this->warehouseId(), self::MAX_RESULTS, withServices: $this->services);
     }
 
     /**
@@ -63,7 +66,7 @@ class ItemPicker extends Component
     #[Computed]
     public function chosen(): ?array
     {
-        return $this->customer === '' ? null : ItemCatalog::item($this->customer, $this->value, $this->warehouseId());
+        return $this->customer === '' ? null : ItemCatalog::item($this->customer, $this->value, $this->warehouseId(), withServices: $this->services);
     }
 
     public function updatedSearch(): void
@@ -73,7 +76,7 @@ class ItemPicker extends Component
 
     public function choose(string $productId): void
     {
-        if (ItemCatalog::item($this->customer, $productId, $this->warehouseId()) === null) {
+        if (ItemCatalog::item($this->customer, $productId, $this->warehouseId(), withServices: $this->services) === null) {
             return;
         }
 

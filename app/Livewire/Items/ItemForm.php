@@ -33,8 +33,9 @@ use Livewire\Component;
  * The unit rules are the ones trg_validate_product_unit enforces, checked here
  * first so they are explained: the base unit is the smallest unit and has its
  * own row at factor 1; every other unit is more than 1 base unit; no unit twice;
- * serial-numbered items use only their base unit. Once an item has stock
- * movements its customer, base unit and tracking can no longer change.
+ * serial-numbered items and services use only their base unit. Once an item has
+ * stock movements its customer, base unit and tracking can no longer change; once
+ * it is on a document or draft, whether it is a service can't either.
  *
  * Cancel, the back link or any other link asks first when something was
  * changed (WarnsBeforeLeaving).
@@ -52,6 +53,10 @@ class ItemForm extends Component
     /** Stock has moved for this item: customer, base unit and tracking are fixed. */
     #[Locked]
     public bool $locked = false;
+
+    /** The item is on a document or draft: whether it is a service is fixed. */
+    #[Locked]
+    public bool $serviceLocked = false;
 
     public string $customerId = '';
 
@@ -78,6 +83,9 @@ class ItemForm extends Component
     public bool $trackExpiry = false;
 
     public bool $trackSerial = false;
+
+    /** A service (packing, delivery fee...): never stock, so no expiry, serials or other units. */
+    public bool $isService = false;
 
     /** storage_status.code (Ambient, Chilled, …); '' = not set. */
     public string $storageStatus = '';
@@ -121,6 +129,13 @@ class ItemForm extends Component
 
         if (str_starts_with($property, 'units.')) {
             $this->appendBlankUnit();
+        }
+
+        if ($property === 'isService' && $this->isService) {
+            // A service has no stock to track and only its base unit.
+            $this->trackExpiry = false;
+            $this->trackSerial = false;
+            $this->resetValidation(['trackExpiry', 'trackSerial', 'units.*']);
         }
 
         if ($property === 'baseUnitId') {
@@ -255,7 +270,8 @@ class ItemForm extends Component
         $product = $this->productId ? Product::findOrFail($this->productId) : new Product;
         $this->authorize($product->exists ? 'update' : 'create', $product->exists ? $product : Product::class);
 
-        if ($product->exists && $product->hasMovements() && $this->changesLockedFields($product)) {
+        if ($product->exists && (($this->isLocked($product) && $this->changesLockedFields($product))
+            || ($product->is_service !== $this->isService && ($product->hasMovements() || $product->hasLines())))) {
             // The page was stale or tampered with: the fields are disabled in the form.
             $this->load($product);
             $this->appendBlankUnit();
@@ -289,6 +305,7 @@ class ItemForm extends Component
             'base_unit_id' => $this->baseUnitId,
             'track_expiry' => $this->trackExpiry,
             'track_serial' => $this->trackSerial,
+            'is_service' => $this->isService,
             'storage_status' => $this->storageStatus !== '' ? $this->storageStatus : null,
             'approval_threshold_qty' => trim($this->threshold) === '' ? null : trim($this->threshold),
             'active' => $this->active,
@@ -322,7 +339,7 @@ class ItemForm extends Component
             'names' => [trim($this->nameEn), trim($this->nameAr), trim($this->nameFr)],
             'base_unit' => $this->baseUnitId,
             'units' => array_map(fn (array $row) => [$row['unit_id'], trim($row['factor'])], $this->filledUnits()),
-            'tracking' => [$this->trackExpiry, $this->trackSerial],
+            'tracking' => [$this->trackExpiry, $this->trackSerial, $this->isService],
             'storage_status' => $this->storageStatus,
             'threshold' => trim($this->threshold),
             'active' => $this->active,
@@ -369,13 +386,20 @@ class ItemForm extends Component
             'units' => ['array'],
             'units.*.unit_id' => [new Always($this->validUnitRow(...))],
             'units.*.factor' => [new Always($this->validFactor(...))],
-            'trackExpiry' => ['boolean'],
+            'trackExpiry' => ['boolean', new Always(function (string $attribute, mixed $value, Closure $fail) {
+                if ($value && $this->isService) {
+                    $fail(__('items.errors.service_untracked'));
+                }
+            })],
             'trackSerial' => ['boolean', new Always(function (string $attribute, mixed $value, Closure $fail) {
                 // serial_number has no expiry date, so a serial can't be tied to one.
-                if ($value && $this->trackExpiry) {
+                if ($value && $this->isService) {
+                    $fail(__('items.errors.service_untracked'));
+                } elseif ($value && $this->trackExpiry) {
                     $fail(__('items.errors.serial_and_expiry'));
                 }
             })],
+            'isService' => ['boolean'],
             'storageStatus' => ['nullable', 'string', Rule::in(array_keys(StorageStatuses::all()))],
             'threshold' => ['nullable', 'numeric', 'min:0', 'max:99999999999999', 'decimal:0,4'],
             'active' => ['boolean'],
@@ -431,7 +455,7 @@ class ItemForm extends Component
         $key = explode('.', $attribute)[1];
         $row = $this->units[$key] ?? null;
 
-        if ($row === null || $this->trackSerial || $this->isBlank($row)) {
+        if ($row === null || $this->baseUnitOnly() || $this->isBlank($row)) {
             return;
         }
 
@@ -452,7 +476,7 @@ class ItemForm extends Component
         $key = explode('.', $attribute)[1];
         $row = $this->units[$key] ?? null;
 
-        if ($row === null || $this->trackSerial || $this->isBlank($row)) {
+        if ($row === null || $this->baseUnitOnly() || $this->isBlank($row)) {
             return;
         }
 
@@ -473,7 +497,7 @@ class ItemForm extends Component
     private function preview(): ?string
     {
         $base = $this->allUnits->firstWhere('id', $this->baseUnitId);
-        $rows = $this->trackSerial ? [] : $this->filledUnits();
+        $rows = $this->baseUnitOnly() ? [] : $this->filledUnits();
 
         if ($base === null || $rows === []) {
             return null;
@@ -524,6 +548,21 @@ class ItemForm extends Component
         }
     }
 
+    /** Serial-numbered items and services have only their base unit. */
+    private function baseUnitOnly(): bool
+    {
+        return $this->trackSerial || $this->isService;
+    }
+
+    /**
+     * Customer, base unit and tracking are fixed once stock has moved, and for
+     * a service once it is on a document or draft (it never has movements).
+     */
+    private function isLocked(Product $product): bool
+    {
+        return $product->hasMovements() || ($product->is_service && $product->hasLines());
+    }
+
     private function changesLockedFields(Product $product): bool
     {
         return $product->customer_id !== $this->customerId
@@ -537,7 +576,8 @@ class ItemForm extends Component
         $product->load('units');
 
         $this->productId = $product->id;
-        $this->locked = $product->hasMovements();
+        $this->locked = $this->isLocked($product);
+        $this->serviceLocked = $this->locked || $product->hasLines();
         $this->customerId = $product->customer_id;
         $this->sku = $product->sku;
         $this->nameEn = $product->name_en;
@@ -546,6 +586,7 @@ class ItemForm extends Component
         $this->baseUnitId = $product->base_unit_id;
         $this->trackExpiry = $product->track_expiry;
         $this->trackSerial = $product->track_serial;
+        $this->isService = $product->is_service;
         $this->storageStatus = (string) $product->storage_status;
         $this->threshold = $product->approval_threshold_qty === null ? '' : rtrim(rtrim($product->approval_threshold_qty, '0'), '.');
         $this->active = $product->active;

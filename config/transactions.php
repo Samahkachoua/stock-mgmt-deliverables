@@ -40,6 +40,8 @@
 |   confirm_save   ask before saving (true), even though the type can be cancelled
 |                  afterwards; types that can't be cancelled (Damage, Adjustment)
 |                  always ask when they post at once
+|   services       service items (packing, delivery fee...) may be lines; they are
+|                  saved on the document but never move stock. Default false
 |   lang           key under lang/<locale>/transactions.php `types`
 |
 */
@@ -60,6 +62,7 @@ return [
             'line_columns' => ['expiry'],
             'hint' => 'in_stock',
             'line_key' => ['unit', 'expiry'],
+            'services' => true,
             'lang' => 'receive',
         ],
         'OUT' => [
@@ -75,6 +78,7 @@ return [
             'line_columns' => ['expiry_pick'],
             'hint' => 'available',
             'line_key' => ['unit', 'expiry'],
+            'services' => true,
             'lang' => 'delivery_note',
         ],
         'TRANSFER' => [

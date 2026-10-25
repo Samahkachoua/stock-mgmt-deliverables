@@ -485,6 +485,7 @@ final class PostingService
             ->findMany(array_map(fn (DocumentLine $line) => $line->productId, $document->lines))
             ->keyBy('id');
 
+        $this->assertServicesAllowed($type, $document, $products);
         $this->assertNoDuplicateLines($type, $document, $products);
 
         if ($type->supportsApproval()) {
@@ -532,6 +533,19 @@ final class PostingService
                 throw new PostingRejected('stock.errors.not_exact', [], $key, 'qty');
             }
 
+            // A service (packing, delivery fee...) is on the document but never stock: no movement.
+            if ($product->is_service) {
+                $this->insertLine([
+                    'transaction' => $transactionId,
+                    'line_no' => ++$lineNo,
+                    'unit' => $product->units->firstWhere('unit.code', $line->unit)->unit_id,
+                    'qty' => $qty,
+                    'qty_base' => $qtyBase,
+                ], $product, null);
+
+                continue;
+            }
+
             $serials = $product->track_serial ? $this->serials($line, $qtyBase, $seenSerials, $key) : [];
 
             if ($product->track_serial && $product->track_expiry) {
@@ -565,6 +579,32 @@ final class PostingService
         ], $by->id);
 
         return $transaction;
+    }
+
+    /**
+     * Service items only on types that take them (TypeUi::allowsServices():
+     * Receipt, Delivery note); anywhere else the line is refused under its row.
+     *
+     * @param  Collection<string, Product>  $products
+     *
+     * @throws PostingRejected
+     */
+    private function assertServicesAllowed(TypeUi $type, Document $document, Collection $products): void
+    {
+        if ($type->allowsServices()) {
+            return;
+        }
+
+        foreach ($document->lines as $key => $line) {
+            $product = $products[$line->productId] ?? null;
+
+            if ($product?->is_service) {
+                throw new PostingRejected('transactions.form.errors.service_not_here', [
+                    'item' => $product->name(),
+                    'type' => $type->label('singular'),
+                ], (string) $key, 'item');
+            }
+        }
     }
 
     /**

@@ -164,6 +164,7 @@ return [
         'choose_customer_first' => 'Choose a customer first',
         'catalog' => ':customer items',
         'in_stock' => 'In stock: :qty',
+        'service' => 'Service — no stock',
         'no_results' => 'No item matches. Check the spelling or search by code.',
     ],
 
@@ -200,6 +201,7 @@ return [
         'available' => 'Available:',
         'available_on' => 'Available on :date:',
         'in_stock_now' => 'In stock now:',
+        'service_hint' => 'Service — doesn’t affect stock',
         'in_unit' => ':qty (:base)',
         'delete_row' => 'Remove row',
         'delete_row_number' => 'Remove row :row',
@@ -230,6 +232,7 @@ return [
             'serials_required' => 'Enter the serial numbers, one per line.',
             'serials_pick' => 'Tick the serial numbers that go out.',
             'choose_item' => 'Choose an item.',
+            'service_not_here' => ':item is a service and can’t be used on this document (:type).',
             'choose_unit' => 'Choose a unit.',
             'qty_required' => 'Enter a quantity.',
             'count_required' => 'Enter what you counted.',

@@ -163,6 +163,7 @@ return [
         'choose_customer_first' => 'اختر العميل أولًا',
         'catalog' => 'أصناف :customer',
         'in_stock' => 'في المخزون: :qty',
+        'service' => 'خدمة — بلا مخزون',
         'no_results' => 'لا يوجد صنف مطابق. تحقق من الكتابة أو ابحث بالرمز.',
     ],
 
@@ -199,6 +200,7 @@ return [
         'available' => 'المتاح:',
         'available_on' => 'المتاح في :date:',
         'in_stock_now' => 'في المخزون الآن:',
+        'service_hint' => 'خدمة — لا تؤثر في المخزون',
         'in_unit' => ':qty (:base)',
         'delete_row' => 'حذف السطر',
         'delete_row_number' => 'حذف السطر :row',
@@ -229,6 +231,7 @@ return [
             'serials_required' => 'أدخل الأرقام التسلسلية، رقمًا في كل سطر.',
             'serials_pick' => 'حدّد الأرقام التسلسلية الخارجة.',
             'choose_item' => 'اختر صنفًا.',
+            'service_not_here' => ':item خدمة ولا يمكن استخدامها في هذا المستند (:type).',
             'choose_unit' => 'اختر وحدة.',
             'qty_required' => 'أدخل الكمية.',
             'count_required' => 'أدخل الكمية التي عددتها.',

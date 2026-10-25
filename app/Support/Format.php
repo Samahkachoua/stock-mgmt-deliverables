@@ -73,6 +73,11 @@ final class Format
     {
         $units = array_values(array_unique($baseUnits));
 
+        // Only services (no stock quantity to add up): just the number of items.
+        if ($items > 0 && $units === []) {
+            return trans_choice('transactions.summary.items', $items, ['count' => self::qty($items)]);
+        }
+
         return trans_choice('transactions.summary.items', $items, ['count' => self::qty($items)])
             .' · '
             .(count($units) === 1 ? self::qtyUnit($total, $units[0]) : trans_choice('transactions.summary.units', (int) ceil($total), ['count' => self::qty($total)]));

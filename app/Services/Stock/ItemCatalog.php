@@ -17,8 +17,10 @@ use Illuminate\Support\Facades\DB;
  * With $excludeExpired (types that skip expired stock, e.g. Delivery note), `available`
  * counts only stock that has not expired; `expired` says how much has.
  * `expiries` is the stock of an expiry item per expiry date, nearest first.
+ * Services (no stock) are left out unless $withServices (types that take them,
+ * TypeUi::allowsServices()); a service has `service` true and no stock.
  *
- * @phpstan-type CatalogItem array{id: string, code: string, name: string, storage: ?string, base: string, units: array<string, float>, available: float, expired: float, expiry: bool, serial: bool, expiries: list<array{expiry: string, qty: float, expired: bool}>}
+ * @phpstan-type CatalogItem array{id: string, code: string, name: string, storage: ?string, base: string, units: array<string, float>, available: float, expired: float, expiry: bool, serial: bool, service: bool, expiries: list<array{expiry: string, qty: float, expired: bool}>}
  */
 final class ItemCatalog
 {
@@ -29,7 +31,7 @@ final class ItemCatalog
      *
      * @return list<CatalogItem>
      */
-    public static function search(string $customerId, string $search, ?string $warehouseId, int $limit = self::MAX_RESULTS, bool $excludeExpired = false): array
+    public static function search(string $customerId, string $search, ?string $warehouseId, int $limit = self::MAX_RESULTS, bool $excludeExpired = false, bool $withServices = false): array
     {
         if (! Ids::valid($customerId)) {
             return [];
@@ -38,6 +40,7 @@ final class ItemCatalog
         $products = Product::query()
             ->where('customer_id', $customerId)
             ->where('active', true)
+            ->when(! $withServices, fn ($query) => $query->stocked())
             ->when(trim($search) !== '', fn ($query) => $query->search($search))
             ->with(['baseUnit', 'units.unit'])
             ->orderBy('name_en')
@@ -54,13 +57,13 @@ final class ItemCatalog
      *
      * @return CatalogItem|null
      */
-    public static function item(string $customerId, ?string $productId, ?string $warehouseId, bool $excludeExpired = false, ?CarbonInterface $date = null): ?array
+    public static function item(string $customerId, ?string $productId, ?string $warehouseId, bool $excludeExpired = false, ?CarbonInterface $date = null, bool $withServices = false): ?array
     {
         if ($productId === null) {
             return null;
         }
 
-        return self::items($customerId, [$productId], $warehouseId, $excludeExpired, $date)[$productId] ?? null;
+        return self::items($customerId, [$productId], $warehouseId, $excludeExpired, $date, $withServices)[$productId] ?? null;
     }
 
     /**
@@ -70,7 +73,7 @@ final class ItemCatalog
      * @param  list<string>  $productIds
      * @return array<string, CatalogItem>
      */
-    public static function items(string $customerId, array $productIds, ?string $warehouseId, bool $excludeExpired = false, ?CarbonInterface $date = null): array
+    public static function items(string $customerId, array $productIds, ?string $warehouseId, bool $excludeExpired = false, ?CarbonInterface $date = null, bool $withServices = false): array
     {
         $productIds = array_values(array_unique(array_filter($productIds, fn ($id) => Ids::valid($id))));
 
@@ -82,6 +85,7 @@ final class ItemCatalog
             ->whereKey($productIds)
             ->where('customer_id', $customerId)
             ->where('active', true)
+            ->when(! $withServices, fn ($query) => $query->stocked())
             ->with(['baseUnit', 'units.unit'])
             ->get();
 
@@ -155,6 +159,7 @@ final class ItemCatalog
                 'expired' => $expired,
                 'expiry' => $product->track_expiry,
                 'serial' => $product->track_serial,
+                'service' => $product->is_service,
                 'expiries' => $expiries,
             ];
         }

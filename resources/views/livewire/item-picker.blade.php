@@ -98,7 +98,11 @@
                         </span>
                         <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-small text-muted">
                             <x-storage-status :label="$item['storage']" />
-                            {{ __('transactions.picker.in_stock', ['qty' => (new UnitConverter($item['units'], $item['base']))->breakdown($item['available'])]) }}
+                            @if ($item['service'])
+                                {{ __('transactions.picker.service') }}
+                            @else
+                                {{ __('transactions.picker.in_stock', ['qty' => (new UnitConverter($item['units'], $item['base']))->breakdown($item['available'])]) }}
+                            @endif
                         </span>
                     </li>
                 @empty

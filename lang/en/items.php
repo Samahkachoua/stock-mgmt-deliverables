@@ -17,8 +17,11 @@ return [
     'save' => 'Save item',
     'locked_notice' => 'Stock of this item has already moved, so its customer, base unit and tracking can’t change: that would change the meaning of quantities already recorded.',
     'locked_field' => 'Fixed: this item already has stock movements.',
+    'service_locked_notice' => 'This service is already on documents, so its customer, base unit and whether it is a service can’t change.',
+    'service_locked_field' => 'Fixed: this item is already on documents.',
 
     'list' => [
+        'service' => 'Service',
         'code' => 'Code',
         'name' => 'Name',
         'customer' => 'Customer',
@@ -36,6 +39,9 @@ return [
     ],
 
     'fields' => [
+        'is_service' => 'Is a service',
+        'is_service_hint' => 'Doesn’t affect stock. Can be added to receipts and delivery notes, e.g. packing or a delivery fee.',
+        'service_untracked_hint' => 'Not used for services: they have no stock.',
         'customer' => 'Customer',
         'code' => 'Code',
         'code_hint' => 'Unique for this customer, e.g. CB-400.',
@@ -58,6 +64,7 @@ return [
     ],
 
     'units' => [
+        'service_note' => 'Services use only their base unit. These units are not used and are removed when you save.',
         'equation' => '1 :unit = :qty',
         'hint' => 'How many :base are in one of each larger unit. A new row appears when you fill one in.',
         'serial_note' => 'Serial-numbered items are counted one by one in their base unit. These units are not used and are removed when you save.',
@@ -69,6 +76,7 @@ return [
     ],
 
     'errors' => [
+        'service_untracked' => 'A service has no stock, so it can’t have an expiry date or serial numbers.',
         'customer_required' => 'Choose the customer who owns this item.',
         'code_required' => 'Enter a code.',
         'code_format' => 'Use capital letters, digits and . _ - / only, without spaces.',

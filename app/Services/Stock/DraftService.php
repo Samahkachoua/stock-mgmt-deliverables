@@ -326,6 +326,13 @@ final class DraftService
             $product = $products[$line->productId] ?? throw new PostingRejected('transactions.form.errors.choose_item', [], $key, 'item');
             $converter = $product->converter();
 
+            if ($product->is_service && ! $kind->type->allowsServices()) {
+                throw new PostingRejected('transactions.form.errors.service_not_here', [
+                    'item' => $product->name(),
+                    'type' => $kind->type->label('singular'),
+                ], $key, 'item');
+            }
+
             if (! $converter->has($line->unit)) {
                 throw new PostingRejected('transactions.form.errors.choose_unit', [], $key, 'unit');
             }
@@ -374,7 +381,8 @@ final class DraftService
 
             $serials = $product->track_serial ? $this->serials($kind, $product, $line, $input->warehouseId, $qtyBase, $seen, $key) : [];
 
-            if (! $kind->receives()) {
+            // A service has no stock to check.
+            if (! $kind->receives() && ! $product->is_service) {
                 $this->checkStock($product, $input->warehouseId, $input->customerId, $expiry, $qtyBase, $seen, $key);
             }
 

@@ -163,6 +163,7 @@ return [
         'choose_customer_first' => 'Choisissez d’abord un client',
         'catalog' => 'Articles de :customer',
         'in_stock' => 'En stock : :qty',
+        'service' => 'Service — sans stock',
         'no_results' => 'Aucun article trouvé. Vérifiez l’orthographe ou cherchez par code.',
     ],
 
@@ -199,6 +200,7 @@ return [
         'available' => 'Disponible :',
         'available_on' => 'Disponible le :date :',
         'in_stock_now' => 'En stock :',
+        'service_hint' => 'Service — n’affecte pas le stock',
         'in_unit' => ':qty (:base)',
         'delete_row' => 'Supprimer la ligne',
         'delete_row_number' => 'Supprimer la ligne :row',
@@ -229,6 +231,7 @@ return [
             'serials_required' => 'Saisissez les numéros de série, un par ligne.',
             'serials_pick' => 'Cochez les numéros de série qui sortent.',
             'choose_item' => 'Choisissez un article.',
+            'service_not_here' => ':item est un service et ne peut pas être utilisé dans ce document (:type).',
             'choose_unit' => 'Choisissez une unité.',
             'qty_required' => 'Saisissez une quantité.',
             'count_required' => 'Saisissez la quantité comptée.',

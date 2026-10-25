@@ -6,7 +6,9 @@ use App\Imports\Imports;
 use App\Livewire\Imports\ImportJobPage;
 use App\Livewire\Imports\ImportUpload;
 use App\Models\ImportJob;
+use App\Models\Product;
 use App\Models\StockTransaction;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Support\Format;
@@ -232,4 +234,15 @@ it('lists only the user’s warehouses in the template', function () {
 
     expect($codes)->toContain('BEY')->toContain('TRP')->not->toContain('SAI')
         ->and($codes)->toContain('BEANS (ACME)');
+});
+
+it('refuses a service: it has no stock, so no opening balance', function () {
+    $pc = Unit::where('code', 'PC')->value('id');
+    $service = Product::create(['customer_id' => $this->stock->customer->id, 'sku' => 'PACK', 'name_en' => 'Packing', 'base_unit_id' => $pc, 'is_service' => true]);
+    $service->units()->create(['unit_id' => $pc, 'factor_to_base' => 1, 'is_default' => true]);
+
+    $result = uploadBalances($this->manager, balanceFile([balanceRow('BEY', 'PACK', 3)]))->rows()->sole();
+
+    expect($result->status)->toBe('ERROR')
+        ->and($result->text())->toContain('Item PACK is a service');
 });

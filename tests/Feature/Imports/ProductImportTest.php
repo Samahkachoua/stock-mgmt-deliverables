@@ -46,7 +46,7 @@ function itemRow(array $values): array
 {
     $row = array_merge([
         'customer_code' => 'ACME', 'item_code' => 'RICE-5K', 'name_en' => 'Rice 5kg', 'name_ar' => 'أرز', 'name_fr' => 'Riz',
-        'base_unit' => 'PC', 'tracks_expiry' => 'N', 'tracks_serial' => 'N', 'storage_status' => '', 'approval_limit' => '',
+        'base_unit' => 'PC', 'tracks_expiry' => 'N', 'tracks_serial' => 'N', 'is_service' => 'N', 'storage_status' => '', 'approval_limit' => '',
         'alternate_unit_1' => '', 'factor_1' => '', 'alternate_unit_2' => '', 'factor_2' => '', 'alternate_unit_3' => '', 'factor_3' => '',
     ], $values);
 
@@ -127,6 +127,8 @@ it('catches every kind of mistake with a plain message', function (array $values
     'alternate unit that is the base unit' => [['alternate_unit_1' => 'PC', 'factor_1' => '6'], 'PC is already the base unit.'],
     'alternate units on a serial item' => [['tracks_serial' => 'Y', 'alternate_unit_1' => 'BOX', 'factor_1' => '12'], 'Items with serial numbers use only their base unit'],
     'serial and expiry together' => [['tracks_serial' => 'Y', 'tracks_expiry' => 'Y'], 'An item can’t have both serial numbers and an expiry date yet.'],
+    'service with an expiry date' => [['is_service' => 'Y', 'tracks_expiry' => 'Y'], 'A service has no stock, so it can’t have an expiry date or serial numbers.'],
+    'alternate units on a service' => [['is_service' => 'Y', 'alternate_unit_1' => 'BOX', 'factor_1' => '12'], 'Services use only their base unit'],
     'code with spaces' => [['item_code' => 'RICE 5K'], 'may only use letters, digits'],
     'negative approval limit' => [['approval_limit' => '-3'], 'Approval limit must be a number of 0 or more'],
     'unknown storage status, with a suggestion' => [['storage_status' => 'CHILLD'], 'Storage status “CHILLD” was not found. Did you mean “CHILLED”?'],

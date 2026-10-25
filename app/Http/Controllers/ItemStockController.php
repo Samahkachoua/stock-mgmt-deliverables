@@ -31,6 +31,8 @@ class ItemStockController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User && $user->canAccessWarehouse($warehouse->id), 404);
+        // A service has no stock (no report links to it).
+        abort_if($product->is_service, 404);
 
         $product->load(['baseUnit', 'units.unit', 'customer']);
         $converter = $product->converter();

@@ -185,6 +185,15 @@ them so users get a clear, translated message instead of a raw DB error.
   - Database safety net: unique index `uq_transaction_line_key` on
     stock_transaction_line over transaction + item + unit + expiry, with
     "no expiry" treated as one value.
+13. **Service items never touch stock.** An item with `product.is_service`
+    (packing, delivery fee...) has only its base unit, no expiry and no
+    serials (`ck_product_service_untracked`, `trg_validate_product_unit`).
+    It may be a line only on types with `services` in config/transactions.php
+    (Receipt, Delivery note and their drafts; `TypeUi::allowsServices()`):
+    the line is saved, but no movement or balance is written
+    (`fn_post_movement` refuses a service) and availability is never checked.
+    Stock reports and the other types' item pickers leave services out
+    (`Product::stocked()`, `ItemCatalog` `withServices`).
 
 ## i18n and RTL (English, Arabic, French)
 - Every user-facing string goes through `__('file.key')` with translations in

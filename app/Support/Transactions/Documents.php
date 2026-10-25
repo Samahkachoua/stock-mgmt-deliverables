@@ -228,6 +228,10 @@ final class Documents
             $converter = UnitConverter::forProduct($product);
             $details = [];
 
+            if ($product->is_service) {
+                $details[] = __('transactions.form.service_hint');
+            }
+
             if (($taken = $allocations->get($row->id)) && $taken->count() > 0 && $row->expiry_date === null) {
                 $details[] = __('transactions.details.from_expiries', [
                     'dates' => $taken->map(fn ($m) => __('transactions.details.expiry_qty', ['date' => Format::date(CarbonImmutable::parse($m->expiry_date)), 'qty' => Format::qtyUnit($m->qty_base, $converter->base())]))->implode(', '),

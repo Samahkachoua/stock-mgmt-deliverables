@@ -17,8 +17,11 @@ return [
     'save' => 'Enregistrer l’article',
     'locked_notice' => 'Le stock de cet article a déjà bougé : son client, son unité de base et son suivi ne peuvent plus changer, sinon les quantités déjà enregistrées changeraient de sens.',
     'locked_field' => 'Figé : cet article a déjà des mouvements de stock.',
+    'service_locked_notice' => 'Ce service figure déjà sur des documents : son client, son unité de base et le fait qu’il soit un service ne peuvent plus changer.',
+    'service_locked_field' => 'Figé : cet article figure déjà sur des documents.',
 
     'list' => [
+        'service' => 'Service',
         'code' => 'Code',
         'name' => 'Nom',
         'customer' => 'Client',
@@ -36,6 +39,9 @@ return [
     ],
 
     'fields' => [
+        'is_service' => 'Est un service',
+        'is_service_hint' => 'N’affecte pas le stock. Peut être ajouté aux réceptions et bons de livraison, p. ex. emballage ou frais de livraison.',
+        'service_untracked_hint' => 'Non utilisé pour les services : ils n’ont pas de stock.',
         'customer' => 'Client',
         'code' => 'Code',
         'code_hint' => 'Unique pour ce client, par ex. CB-400.',
@@ -58,6 +64,7 @@ return [
     ],
 
     'units' => [
+        'service_note' => 'Les services n’utilisent que leur unité de base. Ces unités ne sont pas utilisées et seront supprimées à l’enregistrement.',
         'equation' => '1 :unit = :qty',
         'hint' => 'Combien de :base dans chaque unité plus grande. Une nouvelle ligne apparaît quand vous en remplissez une.',
         'serial_note' => 'Les articles à numéro de série se comptent un par un dans leur unité de base. Ces unités ne sont pas utilisées et seront supprimées à l’enregistrement.',
@@ -69,6 +76,7 @@ return [
     ],
 
     'errors' => [
+        'service_untracked' => 'Un service n’a pas de stock : il ne peut pas avoir de date de péremption ni de numéros de série.',
         'customer_required' => 'Choisissez le client propriétaire de cet article.',
         'code_required' => 'Saisissez un code.',
         'code_format' => 'Utilisez uniquement des majuscules, des chiffres et . _ - /, sans espace.',

@@ -282,6 +282,7 @@
                                             wire:model.live="lines.{{ $key }}.item"
                                             :customer="$customerId"
                                             :warehouse="$warehouseId"
+                                            :services="$ui->allowsServices()"
                                             :invalid="isset($errors['item'])"
                                             :input-id="$id.'-item'"
                                             :next="$id.'-unit'"
@@ -412,6 +413,8 @@
                                         </div>
                                         @isset($errors['qty'])
                                             <p id="{{ $id }}-qty-error" class="mt-1 text-small text-danger" role="alert">{{ $errors['qty'] }}</p>
+                                        @elseif ($item['service'] ?? false)
+                                            <p class="mt-1 text-small text-muted">{{ __('transactions.form.service_hint') }}</p>
                                         @elseif (! $counted && ($row['available_text'] ?? null))
                                             <p class="mt-1 text-small text-muted">
                                                 @if ($stockDate)

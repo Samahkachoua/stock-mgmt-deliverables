@@ -588,6 +588,7 @@ class TransactionForm extends Component
         $selfApproves = $ui->approvePermission() !== null && Gate::allows($ui->approvePermission());
         $lastKey = array_key_last($this->lines);
         $number = 0;
+        $filled = 0;
         $this->loadItems();
 
         foreach ($this->lines as $key => $line) {
@@ -626,6 +627,11 @@ class TransactionForm extends Component
             }
 
             if ($row['item'] !== null) {
+                $filled++;
+            }
+
+            // Services are not stock: the footer total adds up stock items only.
+            if ($row['item'] !== null && ! $row['item']['service']) {
                 $baseUnits[] = $row['item']['base'];
                 // Counts sum the difference with the system; everything else the quantity.
                 $total += $ui->hasLineColumn('counted') ? ($row['difference_base'] ?? 0) : ($row['base'] ?? 0);
@@ -647,7 +653,6 @@ class TransactionForm extends Component
         }
 
         $header = $this->checkHeader($ui);
-        $filled = count($baseUnits);
 
         if ($this->customerId === '') {
             array_unshift($problems, __('transactions.form.choose_customer'));
@@ -770,7 +775,8 @@ class TransactionForm extends Component
         } elseif ($converter !== null && $factor !== null) {
             $base = $converter->toBase($qty, $line['unit']);
 
-            if ($ui->limitedByStock() && $base > $remaining + 1e-9) {
+            // A service has no stock: never limited by it.
+            if ($ui->limitedByStock() && ! $item['service'] && $base > $remaining + 1e-9) {
                 $errors['qty'] = $this->stockDate() === null
                     ? __('transactions.form.errors.not_enough', ['qty' => $converter->breakdown($remaining, [$line['unit']])])
                     : __('transactions.form.errors.not_enough_on_date', ['qty' => $converter->breakdown($remaining, [$line['unit']]), 'date' => Format::date($this->stockDate())]);
@@ -791,7 +797,7 @@ class TransactionForm extends Component
             'base' => $base,
             'remaining' => $remaining,
             // "5 Box + 4 Piece" in the chosen unit and the base unit.
-            'available_text' => $converter && $factor ? $converter->breakdown($remaining, [$line['unit']]) : null,
+            'available_text' => $converter && $factor && ! $item['service'] ? $converter->breakdown($remaining, [$line['unit']]) : null,
             'conversion' => $base !== null && $factor > 1 ? Format::qtyUnit($base, $item['base']) : null,
             'approval_qty' => $counted ? abs($row['difference_base'] ?? 0) : ($base ?? 0),
         ];
@@ -881,6 +887,7 @@ class TransactionForm extends Component
             $this->chosenWarehouse()?->id,
             excludeExpired: $ui->limitedByStock() && ! $ui->usesExpired(),
             date: $this->stockDate(),
+            withServices: $ui->allowsServices(),
         );
 
         foreach ($missing as $id) {

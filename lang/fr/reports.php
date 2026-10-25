@@ -175,6 +175,7 @@ return [
             'units' => 'Unités',
             'track_expiry' => 'Suivi péremption',
             'track_serial' => 'Suivi numéros de série',
+            'is_service' => 'Est un service',
             'approval_threshold_qty' => 'Limite d’approbation',
             'active' => 'En service',
             'code' => 'Code',

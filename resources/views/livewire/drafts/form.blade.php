@@ -159,6 +159,7 @@
                     @endisset
                 </div>
 
+
                 <div class="md:col-span-2 xl:col-span-3">
                     <label for="field-reference" class="mb-1 block text-body font-semibold text-fg">
                         {{ __('transactions.form.reference') }}
@@ -226,6 +227,7 @@
                                             wire:model.live="lines.{{ $key }}.item"
                                             :customer="$customerId"
                                             :warehouse="$warehouseId"
+                                            :services="$kind->type->allowsServices()"
                                             :invalid="isset($errors['item'])"
                                             :input-id="$id.'-item'"
                                             :next="$id.'-unit'"
@@ -342,6 +344,8 @@
                                             </div>
                                             @isset($errors['qty'])
                                                 <p id="{{ $id }}-qty-error" class="mt-1 text-small text-danger" role="alert">{{ $errors['qty'] }}</p>
+                                            @elseif ($item['service'] ?? false)
+                                                <p class="mt-1 text-small text-muted">{{ __('transactions.form.service_hint') }}</p>
                                             @elseif ($row['available_text'] ?? null)
                                                 <p class="mt-1 text-small text-muted">
                                                     {{ __($receives ? 'transactions.form.in_stock_now' : 'transactions.form.available') }}
