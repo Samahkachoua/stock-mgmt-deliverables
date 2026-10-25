@@ -88,6 +88,12 @@ final class DraftUi
         return route($page === 'index' ? $this->slug() : $this->slug().'.'.$page, $parameters);
     }
 
+    /** The draft has a delivery date and a priority (orders). */
+    public function hasDelivery(): bool
+    {
+        return (bool) ($this->config['delivery'] ?? false);
+    }
+
     /** Stock comes in (receipt): expiry dates typed, serials typed. */
     public function receives(): bool
     {

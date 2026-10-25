@@ -1,7 +1,7 @@
 @use('App\Support\Format')
 
 @php
-    // Tablet: Items and Created by go. Phone card: reference + status, then customer, date, total quantity (or reason).
+    // Tablet: Items and Created by go. Phone card: reference + status, then customer, date (and reason).
     $columns = [
         'reference' => ['label' => __('transactions.list.reference'), 'card' => 'title'],
         'date' => ['label' => __('transactions.list.date')],
@@ -10,7 +10,6 @@
         // Users of several warehouses: where each document is (transfers show From → To instead).
         ...($warehouses !== null && ! $ui->requiresDestination() ? ['warehouse' => ['label' => __('transactions.list.warehouse'), 'priority' => 2]] : []),
         'items' => ['label' => __('transactions.list.items'), 'align' => 'end', 'priority' => 2, 'card' => 'hide'],
-        ...($ui->hasListColumn('total') ? ['total' => ['label' => __('transactions.list.total'), 'align' => 'end']] : []),
         ...($ui->hasListColumn('reason') ? ['reason' => ['label' => __('transactions.list.reason')]] : []),
         // The draft it was confirmed from (the Order of a Delivery note).
         ...($ui->hasListColumn('draft') ? ['draft' => ['label' => \App\Support\Drafts\DraftTypes::get($ui->code)->label('singular')]] : []),
@@ -80,11 +79,6 @@
                     </x-data-table.cell>
                 @endif
                 <x-data-table.cell col="items" align="end" class="whitespace-nowrap text-fg tabular">{{ trans_choice('transactions.summary.items', $row['items'], ['count' => Format::qty($row['items'])]) }}</x-data-table.cell>
-                @if ($ui->hasListColumn('total'))
-                    <x-data-table.cell col="total" align="end" class="whitespace-nowrap font-semibold text-fg tabular">
-                        {{ trans_choice('transactions.summary.units', (int) $row['total'], ['count' => Format::qty($row['total'])]) }}
-                    </x-data-table.cell>
-                @endif
                 @if ($ui->hasListColumn('reason'))
                     <x-data-table.cell col="reason" class="text-fg">
                         @if ($row['reason'])

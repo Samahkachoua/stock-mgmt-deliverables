@@ -16,6 +16,8 @@ final class DraftInput
      * @param  string|null  $requestId  UUID of the form that creates it (stock_draft.client_request_id)
      * @param  string|null  $version  stock_draft.updated_at as the form opened it (edits only):
      *                                a draft changed since is not overwritten
+     * @param  CarbonImmutable|null  $deliveryDate  when to deliver (orders; DraftUi::hasDelivery())
+     * @param  string|null  $priority  URGENT / NORMAL / LOW (orders)
      */
     public function __construct(
         public readonly string $type,
@@ -27,5 +29,7 @@ final class DraftInput
         public readonly array $lines,
         public readonly ?string $requestId = null,
         public readonly ?string $version = null,
+        public readonly ?CarbonImmutable $deliveryDate = null,
+        public readonly ?string $priority = null,
     ) {}
 }

@@ -21,7 +21,7 @@ beforeEach(function () {
 
 // Lists
 
-it('lists the documents of the current warehouse with their totals', function () {
+it('lists the documents of the current warehouse with their item count, and no total quantity', function () {
     $receipt = $this->stock->post('IN', [$this->stock->line('BEANS', 3, 'BOX'), $this->stock->line('BEANS', 4)]);
 
     $other = Warehouse::factory()->create(['name' => 'Tripoli']);
@@ -33,7 +33,7 @@ it('lists the documents of the current warehouse with their totals', function ()
         ->assertOk()
         ->assertSee($receipt->doc_no)
         ->assertSee('2 items')
-        ->assertSee('40 units')
+        ->assertDontSee('40 units')
         ->assertSee('Acme Foods')
         ->assertDontSee($elsewhere->doc_no);
 

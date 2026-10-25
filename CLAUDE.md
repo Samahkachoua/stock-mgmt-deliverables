@@ -220,7 +220,7 @@ per type. Only the colour, title and the type-specific columns differ.
 1. **List page** — title + "+ New <Type>" button; filters: search (reference
    or customer), Warehouse (users with several warehouses: starts on their
    default, or "All my warehouses"), Customer, Date range, Status; table:
-   Reference, Date, Customer, Items, Total quantity, Status, Created by
+   Reference, Date, Customer, Items, Status, Created by
    (Transfer adds From → To; several warehouses add a Warehouse column).
    The whole row links to the details page. Paginated.
 2. **New transaction form** — header card (Customer first and required;
@@ -296,7 +296,7 @@ components — never per page.
 - Desktop: full table. Tablet: table with low-priority columns hidden
   (e.g. Created by, Items); each list defines its column priority.
 - Phone: each row becomes a card — reference + status badge on top,
-  then customer, date, total quantity; the whole card is tappable.
+  then customer and date; the whole card is tappable.
 - Pagination becomes "Previous / Next" with "Page 2 of 9" on phone.
 
 **Transaction form**

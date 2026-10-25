@@ -121,30 +121,26 @@ it('maps statuses in one place and never shows Draft', function () {
         ->and(array_keys(Statuses::options()))->toBe(['PENDING_APPROVAL', 'DISPATCHED', 'POSTED', 'REJECTED', 'CANCELLED']);
 });
 
-it('shows the reason on the adjustment (instead of the total) and damage lists', function () {
+it('shows the reason on the adjustment and damage lists, and no total quantity on any list', function () {
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 3, 'BOX')]);
     $stock->post('ADJUSTMENT', [$stock->line('BEANS', 30)], reason: 'LOSS_THEFT');
 
     $adjustments = Livewire::actingAs($stock->user)->test(TransactionList::class, ['type' => 'ADJUSTMENT'])->call('loadRows');
-    expect($adjustments->viewData('rows')->first())->toMatchArray(['reason' => 'LOSS_THEFT', 'total' => null]);
+    expect($adjustments->viewData('rows')->first())->toMatchArray(['reason' => 'LOSS_THEFT'])->not->toHaveKey('total');
     $adjustments->assertSee(__('transactions.list.reason'))
-        ->assertSee(__('transactions.reasons.LOSS_THEFT'))
-        ->assertDontSee(__('transactions.list.total'));
+        ->assertSee(__('transactions.reasons.LOSS_THEFT'));
 
-    // Damage shows both its total quantity and its reason.
     $stock->post('DAMAGE', [$stock->line('BEANS', 2)], reason: 'TRANSPORT');
     $damages = Livewire::actingAs($stock->user)->test(TransactionList::class, ['type' => 'DAMAGE'])->call('loadRows')
-        ->assertSee(__('transactions.list.total'))
         ->assertSee(__('transactions.list.reason'))
         ->assertSee(__('transactions.reasons.TRANSPORT'));
-    expect($damages->viewData('rows')->first())->toMatchArray(['total' => 2.0, 'reason' => 'TRANSPORT']);
+    expect($damages->viewData('rows')->first())->toMatchArray(['reason' => 'TRANSPORT'])->not->toHaveKey('total');
 
-    // Other lists keep their total quantity and get no reason.
+    // Other lists get no reason.
     $receipts = Livewire::actingAs($stock->user)->test(TransactionList::class, ['type' => 'IN'])->call('loadRows')
-        ->assertSee(__('transactions.list.total'))
         ->assertDontSee(__('transactions.list.reason'));
-    expect($receipts->viewData('rows')->first())->toMatchArray(['total' => 36.0, 'reason' => null]);
+    expect($receipts->viewData('rows')->first())->toMatchArray(['reason' => null])->not->toHaveKey('total');
 });
 
 it('offers only the statuses a type can reach, from its transaction_type flags', function () {

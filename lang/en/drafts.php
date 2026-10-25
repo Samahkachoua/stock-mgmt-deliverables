@@ -26,6 +26,7 @@ return [
             'form_subtitle' => 'List what should go out. Stock changes only when the order is confirmed.',
             'branch' => 'To branch',
             'branch_hint' => 'The customer branch the goods go to.',
+            'delivery_date' => 'Delivery date',
             'warehouse_hint' => 'The warehouse the goods go out from.',
             'confirm' => 'Confirm and deliver',
             'created_heading' => 'Delivery notes created',
@@ -38,6 +39,14 @@ return [
         'draft' => 'Draft',
         'confirmed' => 'Confirmed',
         'cancelled' => 'Cancelled',
+    ],
+
+    // Orders: how urgent (stock_draft.priority).
+    'priority' => [
+        'label' => 'Priority',
+        'URGENT' => 'Urgent',
+        'NORMAL' => 'Normal',
+        'LOW' => 'Low',
     ],
 
     'filters' => [
@@ -105,6 +114,7 @@ return [
     // Email to the people who can confirm a draft that was added, changed or
     // cancelled (App\Mail\DraftEmail): texts per kind of draft, then shared labels.
     'mail' => [
+        'urgent_subject' => 'Urgent: :subject',
         'order' => [
             'subject' => [
                 'created' => 'New order :reference from :customer',
@@ -144,6 +154,9 @@ return [
     ],
 
     'errors' => [
+        'delivery_date_required' => 'Choose a delivery date.',
+        'delivery_date_before' => 'The delivery date can\'t be before the order date.',
+        'priority_required' => 'Choose a priority.',
         'already_confirmed' => 'This document was already confirmed by :name at :time.',
         'already_cancelled' => 'This document was cancelled.',
         'changed' => ':name changed this document meanwhile. Open it again to see the changes.',

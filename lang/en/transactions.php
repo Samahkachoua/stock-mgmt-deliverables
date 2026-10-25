@@ -124,7 +124,6 @@ return [
         'route' => 'From → To',
         'warehouse' => 'Warehouse',
         'items' => 'Items',
-        'total' => 'Total quantity',
         'reason' => 'Reason',
         'status' => 'Status',
         'created_by' => 'Created by',

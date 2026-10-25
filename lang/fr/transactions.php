@@ -123,7 +123,6 @@ return [
         'route' => 'De → Vers',
         'warehouse' => 'Entrepôt',
         'items' => 'Articles',
-        'total' => 'Quantité totale',
         'reason' => 'Motif',
         'status' => 'Statut',
         'created_by' => 'Créé par',

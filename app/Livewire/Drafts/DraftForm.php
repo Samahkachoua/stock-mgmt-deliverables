@@ -89,6 +89,12 @@ class DraftForm extends Component
 
     public string $note = '';
 
+    /** Orders (DraftUi::hasDelivery()): when to deliver, starting on the order date. */
+    public string $deliveryDate = '';
+
+    /** Orders: URGENT / NORMAL / LOW. */
+    public string $priority = '';
+
     /**
      * Rows keyed by a stable key ("r1", "r2", ...). `serials`: typed (receipt);
      * `picked`: chosen from stock in the draft's warehouse (order).
@@ -129,6 +135,8 @@ class DraftForm extends Component
                 'warehouseId' => (string) $draft['warehouse_id'],
                 'date' => $draft['date']->toDateString(),
                 'note' => (string) $draft['note'],
+                'deliveryDate' => $draft['delivery_date']?->toDateString() ?? '',
+                'priority' => (string) $draft['priority'],
             ]);
 
             foreach ($draft['lines'] as $line) {
@@ -146,6 +154,11 @@ class DraftForm extends Component
             $this->date = CompanyTime::today()->toDateString();
             $this->requestId = (string) Str::uuid();
             $this->warehouseId = (string) $user->defaultWarehouseId();
+
+            if ($kind->hasDelivery()) {
+                $this->deliveryDate = $this->date;
+                $this->priority = DraftTypes::defaultPriority();
+            }
 
             // A customer user works for their own customer only.
             if ($user->isCustomerUser()) {
@@ -244,6 +257,14 @@ class DraftForm extends Component
     public function updated(): void
     {
         $this->resetErrorBag();
+    }
+
+    /** An order is never delivered before its date: the delivery date follows a later order date. */
+    public function updatedDate(): void
+    {
+        if ($this->kind()->hasDelivery() && strtotime($this->date) && ($this->deliveryDate === '' || $this->deliveryDate < $this->date)) {
+            $this->deliveryDate = $this->date;
+        }
     }
 
     public function updatedLines(mixed $value, string $path): void
@@ -358,7 +379,7 @@ class DraftForm extends Component
 
             if ($row !== null && isset($this->lines[$row])) {
                 $this->addError('lines.'.$row.'.'.($e->field ?? 'qty'), $e->getMessage());
-            } elseif ($row === null && in_array($e->field, ['customer', 'branch', 'warehouse', 'date', 'reference'], true)) {
+            } elseif ($row === null && in_array($e->field, ['customer', 'branch', 'warehouse', 'date', 'delivery_date', 'priority', 'reference'], true)) {
                 $this->addError($e->field, $e->getMessage());
             } else {
                 $this->addError('posting', $e->getMessage());
@@ -416,6 +437,8 @@ class DraftForm extends Component
             lines: $lines,
             requestId: $this->requestId ?: null,
             version: $this->version ?: null,
+            deliveryDate: $this->kind()->hasDelivery() && strtotime($this->deliveryDate) ? CarbonImmutable::parse($this->deliveryDate) : null,
+            priority: $this->kind()->hasDelivery() ? ($this->priority ?: null) : null,
         );
     }
 
@@ -434,6 +457,7 @@ class DraftForm extends Component
             // One warehouse: nothing to choose (unless the draft's isn't one of the user's).
             'showWarehouse' => count($this->warehouseOptions()) > 1 || ! $this->warehouseOk(),
             'customerUser' => $this->user()->isCustomerUser(),
+            'priorities' => DraftTypes::priorityOptions(),
             'canConfirm' => $this->reference !== '' && Gate::allows($kind->confirmPermission()),
         ])->title($title);
     }
@@ -708,12 +732,26 @@ class DraftForm extends Component
             $errors['date'] = __('transactions.form.errors.date_future');
         }
 
+        if ($this->kind()->hasDelivery()) {
+            if ($this->deliveryDate === '') {
+                $missing['delivery_date'] = __('drafts.errors.delivery_date_required');
+            } elseif (! strtotime($this->deliveryDate)) {
+                $errors['delivery_date'] = __('transactions.form.errors.date_invalid');
+            } elseif (strtotime($this->date) && $this->deliveryDate < CarbonImmutable::parse($this->date)->toDateString()) {
+                $errors['delivery_date'] = __('drafts.errors.delivery_date_before');
+            }
+
+            if (! array_key_exists($this->priority, DraftTypes::priorityOptions())) {
+                $missing['priority'] = __('drafts.errors.priority_required');
+            }
+        }
+
         if (mb_strlen($this->note) > DraftService::MAX_NOTE) {
             $errors['reference'] = __('settings.errors.too_long', ['max' => DraftService::MAX_NOTE]);
         }
 
         // Refusals from the last save about the header.
-        foreach (['customer', 'branch', 'warehouse', 'date', 'reference'] as $field) {
+        foreach (['customer', 'branch', 'warehouse', 'date', 'delivery_date', 'priority', 'reference'] as $field) {
             if ($message = $this->getErrorBag()->first($field)) {
                 $errors[$field] = $message;
             }
@@ -908,6 +946,8 @@ class DraftForm extends Component
             'warehouse' => $this->warehouseId,
             'date' => $this->date,
             'note' => trim($this->note),
+            'delivery_date' => $this->deliveryDate,
+            'priority' => $this->priority,
             'lines' => array_values(array_map(fn (array $line) => [
                 $line['item'], $line['unit'], trim($line['qty']), $line['expiry'], trim($line['serials']), $line['picked'],
             ], $this->filledLines())),

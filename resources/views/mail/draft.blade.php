@@ -21,6 +21,8 @@
                         $draft['branch_label'] => $draft['branch'],
                         __('drafts.mail.warehouse') => $draft['warehouse'],
                         __('drafts.mail.date') => $draft['date'],
+                        (string) $draft['delivery_label'] => $draft['delivery_date'],
+                        __('drafts.priority.label') => $draft['priority'],
                         __('drafts.mail.items') => $draft['summary'],
                         __('drafts.mail.note') => $draft['note'],
                     ] as $label => $value)

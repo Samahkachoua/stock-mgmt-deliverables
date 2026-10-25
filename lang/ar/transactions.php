@@ -123,7 +123,6 @@ return [
         'route' => 'من ← إلى',
         'warehouse' => 'المستودع',
         'items' => 'الأصناف',
-        'total' => 'إجمالي الكمية',
         'reason' => 'السبب',
         'status' => 'الحالة',
         'created_by' => 'أنشأه',

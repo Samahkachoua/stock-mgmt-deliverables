@@ -159,6 +159,50 @@
                     @endisset
                 </div>
 
+                {{-- Orders: when to deliver (not before the order date) and how urgent. --}}
+                @if ($kind->hasDelivery())
+                    <div>
+                        <label for="field-delivery-date" class="mb-1 block text-body font-semibold text-fg">
+                            {{ $kind->label('delivery_date') }} <span class="text-danger" aria-hidden="true">*</span>
+                        </label>
+                        <input
+                            id="field-delivery-date"
+                            type="date"
+                            wire:model.live="deliveryDate"
+                            min="{{ $date }}"
+                            required
+                            @disabled($locked)
+                            @isset($header['delivery_date']) aria-invalid="true" aria-describedby="field-delivery-date-error" @endisset
+                            class="{{ $control }} {{ isset($header['delivery_date']) ? $bad : $ok }}"
+                        >
+                        @isset($header['delivery_date'])
+                            <p id="field-delivery-date-error" class="mt-1 text-small text-danger" role="alert">{{ $header['delivery_date'] }}</p>
+                        @endisset
+                    </div>
+
+                    <div>
+                        <label for="field-priority" class="mb-1 block text-body font-semibold text-fg">
+                            {{ __('drafts.priority.label') }} <span class="text-danger" aria-hidden="true">*</span>
+                        </label>
+                        <div class="relative">
+                            <select
+                                id="field-priority"
+                                wire:model.live="priority"
+                                @disabled($locked)
+                                @isset($header['priority']) aria-invalid="true" aria-describedby="field-priority-error" @endisset
+                                class="{{ $control }} {{ isset($header['priority']) ? $bad : $ok }} appearance-none pe-10"
+                            >
+                                @foreach ($priorities as $code => $label)
+                                    <option value="{{ $code }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <x-icon name="keyboard_arrow_down" class="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-muted" />
+                        </div>
+                        @isset($header['priority'])
+                            <p id="field-priority-error" class="mt-1 text-small text-danger" role="alert">{{ $header['priority'] }}</p>
+                        @endisset
+                    </div>
+                @endif
 
                 <div class="md:col-span-2 xl:col-span-3">
                     <label for="field-reference" class="mb-1 block text-body font-semibold text-fg">

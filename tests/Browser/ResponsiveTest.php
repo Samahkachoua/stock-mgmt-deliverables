@@ -72,7 +72,7 @@ class ResponsiveTest extends DuskTestCase
             self::$draft = app(DraftService::class)->save(new DraftInput('OUT', $stock->customer->id, $branch->id, $stock->warehouse->id, CarbonImmutable::today(), 'PO 77', [
                 'r1' => new DraftLineInput($stock->id('BEANS'), 'BOX', 2),
                 'r2' => new DraftLineInput($stock->id('BEANS'), 'PC', 5),
-            ]), $stock->user)->doc_no;
+            ], deliveryDate: CarbonImmutable::today(), priority: 'NORMAL'), $stock->user)->doc_no;
 
             self::$seeded = true;
         }

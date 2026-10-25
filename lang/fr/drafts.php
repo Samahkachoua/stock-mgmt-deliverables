@@ -26,6 +26,7 @@ return [
             'form_subtitle' => 'Indiquez ce qui doit sortir. Le stock change seulement à la confirmation.',
             'branch' => 'Agence de destination',
             'branch_hint' => 'L’agence du client où vont les marchandises.',
+            'delivery_date' => 'Date de livraison',
             'warehouse_hint' => 'L’entrepôt d’où sortent les marchandises.',
             'confirm' => 'Confirmer et livrer',
             'created_heading' => 'Bons de livraison créés',
@@ -38,6 +39,14 @@ return [
         'draft' => 'Brouillon',
         'confirmed' => 'Confirmé',
         'cancelled' => 'Annulé',
+    ],
+
+    // Orders: how urgent (stock_draft.priority).
+    'priority' => [
+        'label' => 'Priorité',
+        'URGENT' => 'Urgente',
+        'NORMAL' => 'Normale',
+        'LOW' => 'Basse',
     ],
 
     'filters' => [
@@ -105,6 +114,7 @@ return [
     // E-mail aux personnes qui peuvent confirmer un brouillon ajouté, modifié ou
     // annulé (App\Mail\DraftEmail) : textes par type de brouillon, puis libellés communs.
     'mail' => [
+        'urgent_subject' => 'Urgent : :subject',
         'order' => [
             'subject' => [
                 'created' => 'Nouvelle commande :reference de :customer',
@@ -144,6 +154,9 @@ return [
     ],
 
     'errors' => [
+        'delivery_date_required' => 'Choisissez une date de livraison.',
+        'delivery_date_before' => 'La date de livraison ne peut pas précéder la date de la commande.',
+        'priority_required' => 'Choisissez une priorité.',
         'already_confirmed' => 'Ce document a déjà été confirmé par :name à :time.',
         'already_cancelled' => 'Ce document a été annulé.',
         'changed' => ':name a modifié ce document entre-temps. Rouvrez-le pour voir les modifications.',

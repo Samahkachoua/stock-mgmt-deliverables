@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
  * Reads go through StockTransaction, so the warehouse scope (user_warehouse)
  * and the customer scope (customer portal users) always apply.
  *
- * @phpstan-type ListRow array{id: string, reference: string, date: CarbonImmutable, customer_id: string|null, customer: string, status: string, created_by: string, items: int, total: float|null, reason: string|null, draft: string|null, from: string, to_warehouse: string|null, incoming: bool}
+ * @phpstan-type ListRow array{id: string, reference: string, date: CarbonImmutable, customer_id: string|null, customer: string, status: string, created_by: string, items: int, reason: string|null, draft: string|null, from: string, to_warehouse: string|null, incoming: bool}
  */
 final class Documents
 {
@@ -69,7 +69,6 @@ final class Documents
             ])
             ->when($type->hasListColumn('draft'), fn ($query) => $query->addSelect('draft.doc_no as draft_reference'))
             ->selectSub(DB::table('stock_transaction_line')->selectRaw('count(*)')->whereColumn('transaction_id', 'stock_transaction.id'), 'line_count')
-            ->when($type->hasListColumn('total'), fn ($query) => $query->selectSub(DB::table('stock_transaction_line')->selectRaw('coalesce(sum(qty_base), 0)')->whereColumn('transaction_id', 'stock_transaction.id'), 'total_base'))
             ->when($filters['pending_first'] ?? false, fn ($query) => $query->orderByRaw("(stock_transaction.status = 'PENDING_APPROVAL') DESC"))
             ->orderByDesc('stock_transaction.document_date')
             ->orderByDesc('stock_transaction.created_at');
@@ -84,7 +83,6 @@ final class Documents
             'created_by' => (string) $row->getAttribute('creator_name'),
             'items' => (int) $row->getAttribute('line_count'),
             // Only for types whose list shows the column.
-            'total' => $type->hasListColumn('total') ? (float) $row->getAttribute('total_base') : null,
             'reason' => $type->hasListColumn('reason') ? $row->reason_code : null,
             'draft' => $type->hasListColumn('draft') && $row->getAttribute('draft_reference') !== null ? (string) $row->getAttribute('draft_reference') : null,
             'from' => (string) $row->getAttribute('from_name'),

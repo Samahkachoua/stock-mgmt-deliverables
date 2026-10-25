@@ -26,6 +26,7 @@ return [
             'form_subtitle' => 'اذكر ما يجب تسليمه. يتغيّر المخزون فقط عند تأكيد الطلبية.',
             'branch' => 'إلى الفرع',
             'branch_hint' => 'فرع العميل الذي تذهب إليه البضاعة.',
+            'delivery_date' => 'تاريخ التسليم',
             'warehouse_hint' => 'المستودع الذي تخرج منه البضاعة.',
             'confirm' => 'تأكيد وتسليم',
             'created_heading' => 'أذونات التسليم المنشأة',
@@ -38,6 +39,14 @@ return [
         'draft' => 'مسودة',
         'confirmed' => 'مؤكَّدة',
         'cancelled' => 'ملغاة',
+    ],
+
+    // Orders: how urgent (stock_draft.priority).
+    'priority' => [
+        'label' => 'الأولوية',
+        'URGENT' => 'عاجل',
+        'NORMAL' => 'عادي',
+        'LOW' => 'منخفضة',
     ],
 
     'filters' => [
@@ -105,6 +114,7 @@ return [
     // بريد إلى من يستطيع تأكيد مسودة أُضيفت أو عُدّلت أو أُلغيت
     // (App\Mail\DraftEmail): نصوص لكل نوع مسودة، ثم التسميات المشتركة.
     'mail' => [
+        'urgent_subject' => 'عاجل: :subject',
         'order' => [
             'subject' => [
                 'created' => 'طلبية جديدة :reference من :customer',
@@ -144,6 +154,9 @@ return [
     ],
 
     'errors' => [
+        'delivery_date_required' => 'اختر تاريخ التسليم.',
+        'delivery_date_before' => 'لا يمكن أن يكون تاريخ التسليم قبل تاريخ الطلب.',
+        'priority_required' => 'اختر الأولوية.',
         'already_confirmed' => 'أكّد :name هذا المستند مسبقًا في :time.',
         'already_cancelled' => 'هذا المستند ملغى.',
         'changed' => 'عدّل :name هذا المستند في هذه الأثناء. افتحه مجددًا لرؤية التعديلات.',

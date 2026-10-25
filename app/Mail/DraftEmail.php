@@ -71,15 +71,19 @@ class DraftEmail extends Mailable implements ShouldQueue
             // Who did it: the creator for a new draft, else the last person who changed or cancelled it.
             ->join('app_user as u', 'u.id', '=', DB::raw($this->event === self::CREATED ? 'd.created_by' : 'coalesce(d.updated_by, d.created_by)'))
             ->where('d.id', $draft->id)
-            ->first(['c.name as customer', 'b.name as branch', 'u.full_name as by', 'd.document_date', 'd.reference_note', 'd.cancel_reason']);
+            ->first(['c.name as customer', 'b.name as branch', 'u.full_name as by', 'd.document_date', 'd.reference_note', 'd.cancel_reason', 'd.delivery_date', 'd.priority']);
         $lines = DB::table('stock_draft_line as l')
             ->join('product as p', 'p.id', '=', 'l.product_id')
             ->join('unit as u', 'u.id', '=', 'p.base_unit_id')
             ->where('l.draft_id', $draft->id)
             ->get(['l.qty_base', 'u.code as base_unit']);
 
+        $subject = $kind->mailText('subject.'.$this->event, ['reference' => $draft->doc_no, 'customer' => $header->customer]);
+        $delivery = $kind->hasDelivery() && $header->priority !== null;
+
         return $this->draft = [
-            'subject' => $kind->mailText('subject.'.$this->event, ['reference' => $draft->doc_no, 'customer' => $header->customer]),
+            // An urgent order says so first, to stand out in the inbox.
+            'subject' => $delivery && $header->priority === 'URGENT' ? __('drafts.mail.urgent_subject', ['subject' => $subject]) : $subject,
             'intro' => $kind->mailText('intro.'.$this->event, ['name' => $header->by]),
             'branch_label' => $kind->mailText('branch'),
             'open' => $kind->mailText('open'),
@@ -89,6 +93,10 @@ class DraftEmail extends Mailable implements ShouldQueue
             'branch' => $header->branch,
             'warehouse' => (string) DB::table('warehouse')->where('id', $draft->warehouse_id)->value('name'),
             'date' => Format::date(CarbonImmutable::parse($header->document_date)),
+            // Orders only; empty rows are left out of the email.
+            'delivery_label' => $kind->hasDelivery() ? $kind->label('delivery_date') : null,
+            'delivery_date' => $delivery && $header->delivery_date !== null ? Format::date(CarbonImmutable::parse($header->delivery_date)) : null,
+            'priority' => $delivery ? DraftTypes::priorityLabel($header->priority) : null,
             'summary' => Format::itemsTotal($lines->count(), (float) $lines->sum('qty_base'), $lines->pluck('base_unit')->all()),
             'note' => $header->reference_note,
             'reason' => $this->event === self::CANCELLED ? $header->cancel_reason : null,

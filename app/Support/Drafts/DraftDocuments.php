@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  * Drafts for the list and details pages. Reads go through StockDraft, so the
  * customer scope and DraftScope (warehouse / branches) always apply.
  *
- * @phpstan-type DraftRow array{id: string, reference: string, date: CarbonImmutable, customer: string, branch: string, warehouse: string, status: string, created_by: string, items: int, total: float}
+ * @phpstan-type DraftRow array{id: string, reference: string, date: CarbonImmutable, customer: string, branch: string, warehouse: string, status: string, created_by: string, items: int, delivery_date: CarbonImmutable|null, priority: string|null}
  */
 final class DraftDocuments
 {
@@ -55,7 +55,6 @@ final class DraftDocuments
                 'app_user.full_name as creator_name',
             ])
             ->selectSub(DB::table('stock_draft_line')->selectRaw('count(*)')->whereColumn('draft_id', 'stock_draft.id'), 'line_count')
-            ->selectSub(DB::table('stock_draft_line')->selectRaw('coalesce(sum(qty_base), 0)')->whereColumn('draft_id', 'stock_draft.id'), 'total_base')
             ->when($filters['drafts_first'] ?? false, fn ($query) => $query->orderByRaw("(stock_draft.status = 'DRAFT') DESC"))
             ->orderByDesc('stock_draft.document_date')
             ->orderByDesc('stock_draft.created_at')
@@ -70,7 +69,9 @@ final class DraftDocuments
                 'status' => $row->status,
                 'created_by' => (string) $row->getAttribute('creator_name'),
                 'items' => (int) $row->getAttribute('line_count'),
-                'total' => (float) $row->getAttribute('total_base'),
+                // Orders only.
+                'delivery_date' => $row->delivery_date === null ? null : CarbonImmutable::parse($row->delivery_date),
+                'priority' => $row->priority,
             ]);
     }
 
@@ -115,6 +116,8 @@ final class DraftDocuments
             'warehouse_id' => $header->warehouse_id,
             'warehouse' => $header->warehouse_name,
             'note' => $header->reference_note,
+            'delivery_date' => $header->delivery_date === null ? null : CarbonImmutable::parse($header->delivery_date),
+            'priority' => $header->priority,
             'created_by_id' => $header->created_by,
             'created_by' => $header->creator_name,
             'created_at' => CarbonImmutable::parse($header->created_at)->setTimezone($timezone),
@@ -142,6 +145,10 @@ final class DraftDocuments
             ['label' => __('transactions.details.customer'), 'value' => $draft['customer']],
             ['label' => $kind->label('branch'), 'value' => $draft['branch']],
             ['label' => __('transactions.details.date'), 'value' => Format::date($draft['date'])],
+            ...($kind->hasDelivery() ? [
+                ['label' => $kind->label('delivery_date'), 'value' => $draft['delivery_date'] ? Format::date($draft['delivery_date']) : null],
+                ['label' => __('drafts.priority.label'), 'value' => $draft['priority'] ? DraftTypes::priorityLabel($draft['priority']) : null],
+            ] : []),
             ['label' => __('drafts.details.warehouse'), 'value' => $draft['warehouse']],
             ['label' => __('transactions.details.reference_note'), 'value' => $draft['note']],
             ...($print ? [] : [

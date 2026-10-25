@@ -65,6 +65,38 @@ final class DraftTypes
     }
 
     /**
+     * Priorities of an order, code => label (Urgent, Normal, Low).
+     *
+     * @return array<string, string>
+     */
+    public static function priorityOptions(): array
+    {
+        return collect(config('transactions.draft_priorities'))
+            ->map(fn ($token, string $code) => __('drafts.priority.'.$code))
+            ->all();
+    }
+
+    public static function defaultPriority(): string
+    {
+        return config('transactions.draft_default_priority');
+    }
+
+    public static function priorityLabel(string $code): string
+    {
+        return array_key_exists($code, config('transactions.draft_priorities')) ? __('drafts.priority.'.$code) : $code;
+    }
+
+    /**
+     * Badge colour classes of a priority; null when it shows as plain text (Normal).
+     */
+    public static function priorityClasses(string $code): ?string
+    {
+        $token = config('transactions.draft_priorities.'.$code);
+
+        return $token === null ? null : config('ui.statuses.'.$token);
+    }
+
+    /**
      * Statuses offered in the list filter, code => label.
      *
      * @return array<string, string>

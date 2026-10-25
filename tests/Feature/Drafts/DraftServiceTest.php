@@ -47,7 +47,7 @@ function draftOf(object $test, string $type, array $lines, ?string $requestId = 
         $keyed['r'.($i + 1)] = $line;
     }
 
-    return new DraftInput($type, $test->stock->customer->id, ($branch ?? $test->branch)->id, ($warehouse ?? $test->stock->warehouse)->id, CarbonImmutable::today(), 'PO 77', $keyed, $requestId, $version);
+    return new DraftInput($type, $test->stock->customer->id, ($branch ?? $test->branch)->id, ($warehouse ?? $test->stock->warehouse)->id, CarbonImmutable::today(), 'PO 77', $keyed, $requestId, $version, deliveryDate: CarbonImmutable::today(), priority: 'NORMAL');
 }
 
 function stockCounts(): array
@@ -284,4 +284,62 @@ it('lets staff use any branch and treats a user without a customer as staff', fu
 
     expect($staff->isCustomerUser())->toBeFalse()
         ->and($staff->canUseBranch($this->branch->id, $this->stock->customer->id))->toBeTrue();
+});
+
+/**
+ * An order of 4 Piece of Canned Beans from Beirut Main dated today, with the
+ * given delivery date and priority.
+ */
+function deliveryOrder(object $test, ?CarbonImmutable $deliveryDate, ?string $priority, string $type = 'OUT', ?string $version = null): DraftInput
+{
+    return new DraftInput($type, $test->stock->customer->id, $test->branch->id, $test->stock->warehouse->id, CarbonImmutable::today(), null,
+        ['r1' => draftLine($test->stock, 'BEANS', 4)], version: $version, deliveryDate: $deliveryDate, priority: $priority);
+}
+
+it('saves and edits an order\'s delivery date and priority, and records the change', function () {
+    $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);
+
+    $draft = $this->drafts->save(deliveryOrder($this, CarbonImmutable::today()->addDays(3), 'URGENT'), $this->stock->user);
+
+    expect(DB::table('stock_draft')->where('id', $draft->id)->first(['delivery_date', 'priority']))
+        ->toEqual((object) ['delivery_date' => CarbonImmutable::today()->addDays(3)->toDateString(), 'priority' => 'URGENT']);
+
+    $this->drafts->save(deliveryOrder($this, CarbonImmutable::today()->addDays(5), 'LOW', version: version($draft)), $this->stock->user, $draft);
+
+    $update = DB::table('audit_log')->where('entity', 'stock_draft')->where('entity_id', $draft->id)->where('action', 'UPDATE')->latest('id')->first();
+    expect(json_decode($update->after_data, true))->toMatchArray(['delivery_date' => CarbonImmutable::today()->addDays(5)->toDateString(), 'priority' => 'LOW'])
+        ->and(json_decode($update->before_data, true))->toMatchArray(['priority' => 'URGENT']);
+});
+
+it('refuses an order without a delivery date, with one before the order date, or with an unknown priority', function (?int $days, ?string $priority, string $key, string $field) {
+    $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);
+
+    try {
+        $this->drafts->save(deliveryOrder($this, $days === null ? null : CarbonImmutable::today()->addDays($days), $priority), $this->stock->user);
+        $this->fail('The order was saved.');
+    } catch (PostingRejected $e) {
+        expect($e->getMessage())->toBe(__($key))->and($e->field)->toBe($field);
+    }
+
+    expect(DB::table('stock_draft')->count())->toBe(0);
+})->with([
+    'no delivery date' => [null, 'NORMAL', 'drafts.errors.delivery_date_required', 'delivery_date'],
+    'before the order date' => [-1, 'NORMAL', 'drafts.errors.delivery_date_before', 'delivery_date'],
+    'unknown priority' => [0, 'SOON', 'drafts.errors.priority_required', 'priority'],
+    'no priority' => [0, null, 'drafts.errors.priority_required', 'priority'],
+]);
+
+it('keeps no delivery date or priority on a draft receipt', function () {
+    $draft = $this->drafts->save(deliveryOrder($this, CarbonImmutable::today(), 'URGENT', type: 'IN'), $this->stock->user);
+
+    expect(DB::table('stock_draft')->where('id', $draft->id)->first(['delivery_date', 'priority']))
+        ->toEqual((object) ['delivery_date' => null, 'priority' => null]);
+});
+
+it('has the database refuse an order without a priority or delivered before its date', function () {
+    $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);
+    $draft = $this->drafts->save(deliveryOrder($this, CarbonImmutable::today(), 'NORMAL'), $this->stock->user);
+
+    expect(fn () => DB::transaction(fn () => DB::table('stock_draft')->where('id', $draft->id)->update(['priority' => null])))->toThrow(QueryException::class)
+        ->and(fn () => DB::transaction(fn () => DB::table('stock_draft')->where('id', $draft->id)->update(['delivery_date' => CarbonImmutable::today()->subDay()->toDateString()])))->toThrow(QueryException::class);
 });

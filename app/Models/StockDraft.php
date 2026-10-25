@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $customer_id
  * @property string $customer_branch_id
  * @property string $warehouse_id where the stock comes in / goes out when confirmed
+ * @property string|null $delivery_date orders: when to deliver (Y-m-d)
+ * @property string|null $priority orders: URGENT, NORMAL or LOW
  * @property string $created_by
  * @property string|null $confirmed_by
  * @property string $updated_at

@@ -233,11 +233,11 @@ final class TypeUi
     }
 
     /**
-     * Optional list page columns: total (default), reason and draft.
+     * Optional list page columns: reason and draft.
      */
     public function hasListColumn(string $column): bool
     {
-        return in_array($column, $this->config['list_columns'] ?? ['total'], true);
+        return in_array($column, $this->config['list_columns'] ?? [], true);
     }
 
     public function hasLineColumn(string $column): bool

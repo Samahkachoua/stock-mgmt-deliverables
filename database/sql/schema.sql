@@ -513,6 +513,10 @@ CREATE TABLE stock_draft (
     customer_id        BIGINT NOT NULL REFERENCES customer(id),
     customer_branch_id BIGINT NOT NULL,
     document_date      DATE NOT NULL DEFAULT CURRENT_DATE,
+    -- Orders only (draft receipts leave them empty): when to deliver, how urgent.
+    delivery_date      DATE,
+    priority           VARCHAR(10)
+        CONSTRAINT ck_stock_draft_priority CHECK (priority IN ('URGENT', 'NORMAL', 'LOW')),
     reference_note     TEXT,
     client_request_id  UUID UNIQUE,                      -- submission token of the form that created it
     -- Stock comes into / goes out of this warehouse when confirmed.
@@ -526,7 +530,11 @@ CREATE TABLE stock_draft (
     updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- The branch is one of the draft's customer's.
     CONSTRAINT fk_stock_draft_branch FOREIGN KEY (customer_branch_id, customer_id)
-        REFERENCES customer_branch (id, customer_id)
+        REFERENCES customer_branch (id, customer_id),
+    CONSTRAINT ck_stock_draft_delivery
+        CHECK (transaction_type <> 'OUT' OR (delivery_date IS NOT NULL AND priority IS NOT NULL)),
+    CONSTRAINT ck_stock_draft_delivery_date
+        CHECK (delivery_date IS NULL OR delivery_date >= document_date)
 );
 
 CREATE INDEX idx_stock_draft_list ON stock_draft (transaction_type, customer_id, document_date DESC);

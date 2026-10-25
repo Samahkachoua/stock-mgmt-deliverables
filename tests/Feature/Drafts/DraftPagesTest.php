@@ -46,7 +46,7 @@ function savedDraft(object $test, string $type, array $lines, ?Warehouse $wareho
     }
 
     return app(DraftService::class)->save(
-        new DraftInput($type, $test->stock->customer->id, $test->branch->id, ($warehouse ?? $test->stock->warehouse)->id, CarbonImmutable::today(), null, $keyed),
+        new DraftInput($type, $test->stock->customer->id, $test->branch->id, ($warehouse ?? $test->stock->warehouse)->id, CarbonImmutable::today(), null, $keyed, deliveryDate: CarbonImmutable::today(), priority: 'NORMAL'),
         $test->stock->user,
     );
 }
@@ -411,3 +411,52 @@ it('shows on the list the draft each document came from, and finds it by that nu
     'delivery note: its order' => ['OUT', 'drafts.types.order.singular'],
     'receipt: its draft receipt' => ['IN', 'drafts.types.receipt.singular'],
 ]);
+
+it('asks an order for a delivery date and a priority, and shows them on the list and details', function () {
+    $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);
+    $today = CarbonImmutable::today()->toDateString();
+
+    $form = draftForm($this, 'OUT')
+        // Delivered on the order date at Normal priority unless changed.
+        ->assertSet('deliveryDate', $today)
+        ->assertSet('priority', 'NORMAL')
+        ->assertSee(__('drafts.types.order.delivery_date'))
+        ->call('chooseCustomer', $this->stock->customer->id);
+
+    [$first] = array_keys($form->get('lines'));
+    $form->set("lines.$first.item", $this->stock->id('BEANS'))
+        ->set("lines.$first.qty", '2')
+        ->set('deliveryDate', CarbonImmutable::today()->subDay()->toDateString())
+        ->assertSee(__('drafts.errors.delivery_date_before'))
+        ->set('deliveryDate', CarbonImmutable::today()->addDays(2)->toDateString())
+        ->set('priority', 'URGENT')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $draft = StockDraft::query()->where('transaction_type', 'OUT')->sole();
+    expect($draft->priority)->toBe('URGENT')
+        ->and($draft->delivery_date)->toBe(CarbonImmutable::today()->addDays(2)->toDateString());
+
+    $rows = Livewire::actingAs($this->stock->user)->test(DraftList::class, ['type' => 'OUT'])->call('loadRows')
+        ->assertSee(__('drafts.types.order.delivery_date'))
+        ->assertSee(__('drafts.priority.URGENT'))
+        ->assertSee(Format::date(CarbonImmutable::today()->addDays(2)));
+    expect($rows->viewData('rows')->first())->toMatchArray(['priority' => 'URGENT']);
+
+    $this->actingAs($this->stock->user)->get(route('orders.show', $draft->doc_no))
+        ->assertSee(__('drafts.priority.label'))
+        ->assertSee(__('drafts.priority.URGENT'));
+
+    // Editing keeps them.
+    draftForm($this, 'OUT', $draft->doc_no)
+        ->assertSet('priority', 'URGENT')
+        ->assertSet('deliveryDate', CarbonImmutable::today()->addDays(2)->toDateString());
+});
+
+it('asks a draft receipt for neither a delivery date nor a priority', function () {
+    savedDraft($this, 'IN', [1]);
+
+    draftForm($this)->assertDontSee(__('drafts.types.order.delivery_date'))->assertDontSee(__('drafts.priority.label'));
+    Livewire::actingAs($this->stock->user)->test(DraftList::class, ['type' => 'IN'])->call('loadRows')
+        ->assertDontSee(__('drafts.priority.label'));
+});

@@ -207,7 +207,7 @@ final class DraftService
             throw new NotAllowed('drafts.errors.cannot_create');
         }
 
-        $this->checkHeader($input, $by);
+        $this->checkHeader($kind, $input, $by);
 
         if ($input->lines === []) {
             throw new PostingRejected('transactions.form.add_a_line');
@@ -220,6 +220,9 @@ final class DraftService
             'warehouse_id' => $input->warehouseId,
             'document_date' => $input->date->toDateString(),
             'reference_note' => filled($input->note) ? trim((string) $input->note) : null,
+            // Orders only (DraftUi::hasDelivery()).
+            'delivery_date' => $kind->hasDelivery() ? $input->deliveryDate?->toDateString() : null,
+            'priority' => $kind->hasDelivery() ? $input->priority : null,
             'updated_at' => now(),
         ];
 
@@ -270,7 +273,7 @@ final class DraftService
      * user may use, an active warehouse of theirs, date not in the future, a
      * reference note that fits.
      */
-    private function checkHeader(DraftInput $input, User $by): void
+    private function checkHeader(DraftUi $kind, DraftInput $input, User $by): void
     {
         if (! DB::table('customer')->where('id', $input->customerId)->where('active', true)->exists()
             || ($by->isCustomerUser() && $input->customerId !== $by->customer_id)) {
@@ -299,6 +302,22 @@ final class DraftService
 
         if (mb_strlen((string) $input->note) > self::MAX_NOTE) {
             throw new PostingRejected('settings.errors.too_long', ['max' => self::MAX_NOTE], null, 'reference');
+        }
+
+        if (! $kind->hasDelivery()) {
+            return;
+        }
+
+        if ($input->deliveryDate === null) {
+            throw new PostingRejected('drafts.errors.delivery_date_required', [], null, 'delivery_date');
+        }
+
+        if ($input->deliveryDate->toDateString() < $input->date->toDateString()) {
+            throw new PostingRejected('drafts.errors.delivery_date_before', [], null, 'delivery_date');
+        }
+
+        if (! array_key_exists((string) $input->priority, DraftTypes::priorityOptions())) {
+            throw new PostingRejected('drafts.errors.priority_required', [], null, 'priority');
         }
     }
 
@@ -544,6 +563,7 @@ final class DraftService
             'warehouse_id' => $header->warehouse_id,
             'date' => $header->document_date,
             'note' => $header->reference_note,
+            ...($header->priority === null ? [] : ['delivery_date' => $header->delivery_date, 'priority' => $header->priority]),
             'lines' => DB::table('stock_draft_line as l')
                 ->join('unit as u', 'u.id', '=', 'l.unit_id')
                 ->where('l.draft_id', $id)

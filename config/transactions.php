@@ -28,9 +28,9 @@
 |                  expiry-tracked items), expiry_pick (expiry date chosen from
 |                  those in stock, nearest pre-selected),
 |                  counted (In system | Counted | Difference instead of Quantity)
-|   list_columns   optional list page columns: total (Total quantity), reason
-|                  (the document's reason), draft (the draft it was confirmed
-|                  from, e.g. the Order of a Delivery note); default ['total']
+|   list_columns   optional list page columns: reason (the document's reason),
+|                  draft (the draft it was confirmed from, e.g. the Order of a
+|                  Delivery note); default none
 |   hint           available = "Available: N" and quantity may not exceed it;
 |                  in_stock  = "In stock now: N" and no maximum
 |   reasons        reason codes (database enum values) for the `reason` field
@@ -58,7 +58,7 @@ return [
             'create' => 'stock.in.create',
             'header_fields' => [],
             // The Draft receipt it was confirmed from, if any.
-            'list_columns' => ['total', 'draft'],
+            'list_columns' => ['draft'],
             'line_columns' => ['expiry'],
             'hint' => 'in_stock',
             'line_key' => ['unit', 'expiry'],
@@ -74,7 +74,7 @@ return [
             'create' => 'stock.out.create',
             'header_fields' => [],
             // The Order it was confirmed from, if any.
-            'list_columns' => ['total', 'draft'],
+            'list_columns' => ['draft'],
             'line_columns' => ['expiry_pick'],
             'hint' => 'available',
             'line_key' => ['unit', 'expiry'],
@@ -106,7 +106,6 @@ return [
             'approve' => 'stock.adjustment.approve',
             'header_fields' => ['reason'],
             'line_columns' => ['counted'],
-            // A sum of counted quantities means nothing; the reason says why the stock was counted.
             'list_columns' => ['reason'],
             'hint' => 'in_stock',
             // A count is per item (and expiry date) in any unit: two units would adjust it twice.
@@ -124,7 +123,7 @@ return [
             'approve' => 'stock.damage.approve',
             'header_fields' => ['reason'],
             'line_columns' => ['expiry_pick'],
-            'list_columns' => ['total', 'reason'],
+            'list_columns' => ['reason'],
             'hint' => 'available',
             'line_key' => ['unit', 'expiry'],
             'reasons' => ['HANDLING', 'TRANSPORT', 'EXPIRED', 'WAREHOUSE_INCIDENT', 'OTHER'],
@@ -166,6 +165,7 @@ return [
     |   lang      key under lang/<locale>/drafts.php `types` and `mail`
     |   notify    app_user column: whether a confirmer gets an email when one is
     |             added, changed or cancelled (Settings › Users)
+    |   delivery  true: the draft has a delivery date and a priority (orders)
     |
     */
     'drafts' => [
@@ -190,8 +190,19 @@ return [
             'confirm' => 'draft.out.confirm',
             'lang' => 'order',
             'notify' => 'notify_new_orders',
+            // Asks for a delivery date and a priority.
+            'delivery' => true,
         ],
     ],
+
+    // Priority of an order (stock_draft.priority, checked by the database too) => badge colour
+    // token in config('ui.statuses'); null = plain text. Labels: lang/<locale>/drafts.php `priority`.
+    'draft_priorities' => [
+        'URGENT' => 'rejected',
+        'NORMAL' => null,
+        'LOW' => 'cancelled',
+    ],
+    'draft_default_priority' => 'NORMAL',
 
     // Status of a draft (stock_draft.status, a transaction_status.code) as the UI shows it.
     'draft_statuses' => [

@@ -107,7 +107,7 @@ it('saves and confirms an order with a service line', function () {
         'OUT', $this->stock->customer->id, $branch->id, $this->stock->warehouse->id, CarbonImmutable::today(), 'PO 1', [
             'r1' => new DraftLineInput($this->stock->id('BEANS'), 'PC', 2),
             'r2' => new DraftLineInput($this->stock->id('PACK'), 'HR', 5),
-        ]), $this->stock->user);
+        ], deliveryDate: CarbonImmutable::today(), priority: 'NORMAL'), $this->stock->user);
 
     app(PostingService::class)->confirmDraft($draft, $this->stock->user);
 

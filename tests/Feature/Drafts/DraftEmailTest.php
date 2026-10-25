@@ -4,11 +4,13 @@ use App\Livewire\Settings\Users;
 use App\Mail\DraftEmail;
 use App\Models\CustomerBranch;
 use App\Models\StockDraft;
+use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Stock\DraftInput;
 use App\Services\Stock\DraftLineInput;
 use App\Services\Stock\DraftService;
 use App\Services\Stock\Exceptions\InsufficientStock;
+use App\Support\Format;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -34,7 +36,7 @@ beforeEach(function () {
 function orderInput(object $test, int $qty = 4, string $type = 'OUT', ?string $requestId = null, ?string $version = null): DraftInput
 {
     return new DraftInput($type, $test->stock->customer->id, $test->branch->id, $test->stock->warehouse->id, CarbonImmutable::today(), 'PO 77',
-        ['r1' => new DraftLineInput($test->stock->id('BEANS'), 'PC', $qty, null, [])], $requestId, $version);
+        ['r1' => new DraftLineInput($test->stock->id('BEANS'), 'PC', $qty, null, [])], $requestId, $version, deliveryDate: CarbonImmutable::today(), priority: 'NORMAL');
 }
 
 function draftVersion(StockDraft $draft): string
@@ -185,4 +187,70 @@ it('lets an administrator turn the draft receipt emails off on their own', funct
     Livewire::actingAs($this->stock->user)->test(Users::class)
         ->call('edit', userWithRole('OPERATOR', $this->stock->warehouse)->id)
         ->assertDontSee(__('settings.users.notify_draft_receipts'));
+});
+
+it('puts an order\'s delivery date and priority in the email, and says Urgent first in the subject', function () {
+    $input = orderInput($this);
+    $urgent = new DraftInput('OUT', $input->customerId, $input->branchId, $input->warehouseId, $input->date, $input->note, $input->lines,
+        deliveryDate: CarbonImmutable::today()->addDays(2), priority: 'URGENT');
+    $draft = $this->drafts->save($urgent, $this->portal);
+
+    $mail = new DraftEmail($draft->id, DraftEmail::CREATED);
+    expect($mail->render())->toContain('Delivery date', Format::date(CarbonImmutable::today()->addDays(2)), 'Priority', 'Urgent')
+        ->and($mail->envelope()->subject)->toBe('Urgent: New order '.$draft->doc_no.' from Acme Foods');
+
+    $normal = $this->drafts->save(orderInput($this), $this->portal);
+    expect((new DraftEmail($normal->id, DraftEmail::CREATED))->envelope()->subject)->toBe('New order '.$normal->doc_no.' from Acme Foods');
+
+    // A draft receipt's email is as before.
+    $receipt = $this->drafts->save(orderInput($this, type: 'IN'), $this->stock->user);
+    expect((new DraftEmail($receipt->id, DraftEmail::CREATED))->render())->not->toContain('Delivery date', 'Priority');
+});
+
+it('turns the email settings on and off with the roles that may confirm drafts', function () {
+    $form = Livewire::actingAs($this->stock->user)->test(Users::class)
+        ->call('add')
+        ->assertSet('notifyNewOrders', false)
+        ->assertSet('notifyDraftReceipts', false)
+        ->set('full_name', 'Rami Khoury')
+        ->set('email', 'rami@example.test')
+        ->set('password', 'secret-pass')
+        ->set('warehouseIds', [$this->stock->warehouse->id])
+        ->set('roleIds', [DB::table('role')->where('code', 'OPERATOR')->value('id')])
+        ->assertSet('notifyNewOrders', false)
+        ->assertSet('notifyDraftReceipts', false);
+
+    // A role that may confirm them: offered, and on.
+    $form->set('roleIds', [DB::table('role')->where('code', 'OPERATOR')->value('id'), DB::table('role')->where('code', 'MANAGER')->value('id')])
+        ->assertSet('notifyNewOrders', true)
+        ->assertSet('notifyDraftReceipts', true)
+        ->set('notifyNewOrders', false);
+
+    // Another role change keeps what was chosen; taking the role away turns them off.
+    $form->set('roleIds', [DB::table('role')->where('code', 'MANAGER')->value('id')])->assertSet('notifyNewOrders', false)->assertSet('notifyDraftReceipts', true);
+    $form->set('roleIds', [DB::table('role')->where('code', 'OPERATOR')->value('id')])->assertSet('notifyDraftReceipts', false)
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $user = User::where('email', 'rami@example.test')->firstOrFail();
+    expect($user->notify_new_orders)->toBeFalse()
+        ->and($user->notify_draft_receipts)->toBeFalse();
+});
+
+it('saves the email settings off for a new user who may not confirm drafts', function () {
+    Livewire::actingAs($this->stock->user)->test(Users::class)
+        ->call('add')
+        ->set('full_name', 'Rami Khoury')
+        ->set('email', 'rami@example.test')
+        ->set('password', 'secret-pass')
+        ->set('warehouseIds', [$this->stock->warehouse->id])
+        ->set('roleIds', [DB::table('role')->where('code', 'OPERATOR')->value('id')])
+        // Even if the browser sends the hidden setting anyway.
+        ->set('notifyNewOrders', true)
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $user = User::where('email', 'rami@example.test')->firstOrFail();
+    expect($user->notify_new_orders)->toBeFalse()
+        ->and($user->notify_draft_receipts)->toBeFalse();
 });
