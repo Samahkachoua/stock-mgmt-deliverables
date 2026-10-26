@@ -5,6 +5,7 @@ namespace App\Reports;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\Stock\Availability;
+use App\Support\Batches;
 use App\Support\Format;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -39,6 +40,7 @@ final class StockCardReport extends Report
             Filter::customer(),
             Filter::item(),
             Filter::warehouse(allowAll: false),
+            Filter::search('reports.filters.batch'),
             ...Filter::dates(),
         ];
     }
@@ -50,6 +52,7 @@ final class StockCardReport extends Report
             'type' => ['label' => 'reports.columns.type', 'card' => 'badge'],
             'reference' => ['label' => 'reports.columns.reference', 'card' => 'title'],
             'expiry_date' => ['label' => 'reports.columns.expiry_date', 'priority' => 2],
+            'batch' => ['label' => 'reports.columns.batch', 'priority' => 2],
             'in' => ['label' => 'reports.columns.in', 'align' => 'end'],
             'out' => ['label' => 'reports.columns.out', 'align' => 'end'],
             'balance' => ['label' => 'reports.columns.balance', 'align' => 'end'],
@@ -70,7 +73,7 @@ final class StockCardReport extends Report
         return $this->inPeriod($filters)
             ->select([
                 'stock_movement.id', 'stock_movement.product_id', 'stock_movement.direction', 'stock_movement.qty_base',
-                't.doc_no', 't.transaction_type', 'stock_movement.expiry_date',
+                't.doc_no', 't.transaction_type', 'stock_movement.expiry_date', 'stock_movement.batch_no',
             ])
             ->selectRaw("$day as movement_day")
             // The balance after each movement: the opening balance plus every movement up to it.
@@ -89,6 +92,7 @@ final class StockCardReport extends Report
             'type' => ['text' => __('types.'.config("transactions.types.$type.token")), 'type' => $type],
             'reference' => $this->referenceCell($row->doc_no),
             'expiry_date' => ['text' => $row->expiry_date === null ? '' : Format::date(CarbonImmutable::parse($row->expiry_date))],
+            'batch' => ['text' => (string) $row->batch_no, 'ltr' => true],
             'in' => $in ? $this->qtyCell($row->qty_base, $row->product_id) + ['tone' => 'completed'] : ['text' => '', 'value' => null],
             'out' => $in ? ['text' => '', 'value' => null] : $this->qtyCell($row->qty_base, $row->product_id) + ['tone' => 'rejected'],
             'balance' => $this->qtyCell($row->balance, $row->product_id) + ['strong' => true],
@@ -136,7 +140,9 @@ final class StockCardReport extends Report
         return StockMovement::query()
             ->join('stock_transaction as t', 't.id', '=', 'stock_movement.transaction_id')
             ->where('stock_movement.product_id', $filters['item'])
-            ->where('stock_movement.warehouse_id', $filters['warehouse']);
+            ->where('stock_movement.warehouse_id', $filters['warehouse'])
+            // The batch filter: that batch only (the balance column is then that batch's).
+            ->when($filters['search'] !== '', fn ($query) => $query->where('stock_movement.batch_no', Batches::normalize($filters['search'])));
     }
 
     /**

@@ -7,6 +7,7 @@ return [
     'lines' => '{0} :count ligne|{1} :count ligne|[2,*] :count lignes',
 
     'filters' => [
+        'batch' => 'Lot',
         'search' => 'Recherche',
         'search_item' => 'Article',
         'search_placeholder' => 'Rechercher par nom ou code…',
@@ -40,6 +41,7 @@ return [
         'out' => 'Sortie',
         'balance' => 'Solde après',
         'expiry_date' => 'Date de péremption',
+        'batch' => 'Lot',
         'days_left' => 'Jours restants',
         'status' => 'Statut',
         'approved_by' => 'Approuvé par',

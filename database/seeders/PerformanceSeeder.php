@@ -93,14 +93,14 @@ class PerformanceSeeder extends Seeder
                 DECLARE r record;
                 BEGIN
                     FOR r IN
-                        SELECT t.id AS transaction_id, l.id AS line_id, t.warehouse_id, t.customer_id, l.product_id, l.expiry_date, l.qty_base,
+                        SELECT t.id AS transaction_id, l.id AS line_id, t.warehouse_id, t.customer_id, l.product_id, l.expiry_date, l.batch_no, l.qty_base,
                                CASE WHEN t.transaction_type = 'IN' THEN 'IN' ELSE 'OUT' END AS direction
                           FROM stock_transaction t
                           JOIN stock_transaction_line l ON l.transaction_id = t.id
                          WHERE t.doc_no LIKE '%-9%' AND NOT EXISTS (SELECT 1 FROM stock_movement m WHERE m.line_id = l.id)
                          ORDER BY t.created_at, t.doc_no, l.line_no
                     LOOP
-                        PERFORM fn_post_movement(r.transaction_id, r.line_id, r.warehouse_id, r.customer_id, r.product_id, r.expiry_date, r.direction::movement_direction, r.qty_base);
+                        PERFORM fn_post_movement(r.transaction_id, r.line_id, r.warehouse_id, r.customer_id, r.product_id, r.expiry_date, r.batch_no, r.direction::movement_direction, r.qty_base);
                     END LOOP;
                 END $$;
             SQL);

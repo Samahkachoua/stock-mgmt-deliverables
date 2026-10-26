@@ -27,6 +27,12 @@ return [
         'keep' => 'Le garder',
     ],
 
+    // A lot: batch number and expiry date (App\Support\Batches).
+    'batch' => [
+        'label' => ':batch · :date',
+        'none' => 'Sans lot',
+    ],
+
     'errors' => [
         'not_enough' => 'Seulement :qty de :item disponible à :warehouse.',
         'not_enough_on_date' => 'Le :date, seulement :qty de :item était disponible à :warehouse. Le stock arrivé plus tard ne peut pas sortir à cette date.',
@@ -44,6 +50,7 @@ return [
         'serial_in_stock' => 'Le numéro de série :serial est déjà en stock.',
         'serial_not_in_stock' => 'Le numéro de série :serial n’est pas en stock dans cet entrepôt.',
         'serial_not_on_date' => 'Le numéro de série :serial est arrivé dans cet entrepôt après le :date ; il ne peut pas sortir à cette date.',
+        'batch_other_date' => 'Le lot :batch de :item périme le :date — saisissez cette date ou un autre numéro de lot.',
         'expiry_expired' => 'Le stock qui expire le :date est périmé. Le stock périmé ne peut pas sortir ainsi.',
         'cannot_cancel_status' => 'Seuls les documents terminés peuvent être annulés.',
         'already_used' => 'Une partie de ce stock est déjà sortie : :item reçu :received, il ne reste que :left. Il ne peut pas être annulé.',

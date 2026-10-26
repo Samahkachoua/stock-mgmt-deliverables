@@ -9,6 +9,7 @@ use App\Services\Stock\DraftInput;
 use App\Services\Stock\DraftLineInput;
 use App\Services\Stock\DraftService;
 use App\Services\Stock\Exceptions\AlreadyProcessed;
+use App\Services\Stock\Exceptions\BatchDateMismatch;
 use App\Services\Stock\Exceptions\InsufficientStock;
 use App\Services\Stock\Exceptions\NotAllowed;
 use App\Services\Stock\Exceptions\PostingRejected;
@@ -30,9 +31,9 @@ afterEach(function () {
     expect(Stock::ledgerMismatches())->toBe([]);
 });
 
-function draftLine(Stock $stock, string $code, int|string $qty, string $unit = 'PC', ?string $expiry = null, array $serials = []): DraftLineInput
+function draftLine(Stock $stock, string $code, int|string $qty, string $unit = 'PC', ?string $expiry = null, array $serials = [], ?string $batch = null): DraftLineInput
 {
-    return new DraftLineInput($stock->id($code), $unit, $qty, $expiry, $serials);
+    return new DraftLineInput($stock->id($code), $unit, $qty, $expiry, $serials, $batch);
 }
 
 /**
@@ -44,7 +45,10 @@ function draftOf(object $test, string $type, array $lines, ?string $requestId = 
 {
     $keyed = [];
     foreach ($lines as $i => $line) {
-        $keyed['r'.($i + 1)] = $line;
+        // A draft receipt line of an expiry item without a batch gets the date's own (Stock::batch()).
+        $keyed['r'.($i + 1)] = $type === 'IN' && $line->batch === null && $line->expiry !== null
+            ? new DraftLineInput($line->productId, $line->unit, $line->qty, $line->expiry, $line->serials, Stock::batch($line->expiry))
+            : $line;
     }
 
     return new DraftInput($type, $test->stock->customer->id, ($branch ?? $test->branch)->id, ($warehouse ?? $test->stock->warehouse)->id, CarbonImmutable::today(), 'PO 77', $keyed, $requestId, $version, deliveryDate: CarbonImmutable::today(), priority: 'NORMAL');
@@ -342,4 +346,36 @@ it('has the database refuse an order without a priority or delivered before its 
 
     expect(fn () => DB::transaction(fn () => DB::table('stock_draft')->where('id', $draft->id)->update(['priority' => null])))->toThrow(QueryException::class)
         ->and(fn () => DB::transaction(fn () => DB::table('stock_draft')->where('id', $draft->id)->update(['delivery_date' => CarbonImmutable::today()->subDay()->toDateString()])))->toThrow(QueryException::class);
+});
+
+it('needs a batch on a draft receipt line of an expiry item, with the date the batch already has', function () {
+    $soon = now()->addDays(10)->toDateString();
+    $this->stock->post('IN', [$this->stock->line('YOGURT', 6, expiry: $soon, batch: 'B-1042')]);
+
+    expect(fn () => $this->drafts->save(draftOf($this, 'IN', [draftLine($this->stock, 'YOGURT', 6, expiry: $soon, batch: '')]), $this->stock->user))
+        ->toThrow(PostingRejected::class, __('transactions.form.errors.batch_required'));
+
+    expect(fn () => $this->drafts->save(draftOf($this, 'IN', [draftLine($this->stock, 'YOGURT', 6, expiry: now()->addDays(20)->toDateString(), batch: 'b-1042')]), $this->stock->user))
+        ->toThrow(BatchDateMismatch::class);
+
+    $draft = $this->drafts->save(draftOf($this, 'IN', [draftLine($this->stock, 'YOGURT', 6, expiry: $soon, batch: 'b-1042')]), $this->stock->user);
+    expect(DB::table('stock_draft_line')->where('draft_id', $draft->id)->value('batch_no'))->toBe('B-1042');
+});
+
+it('keeps the batch picked on an order and delivers from it', function () {
+    $soon = now()->addDays(10)->toDateString();
+    $this->stock->post('IN', [
+        $this->stock->line('YOGURT', 6, expiry: $soon, batch: 'A1'),
+        $this->stock->line('YOGURT', 6, expiry: $soon, batch: 'B2'),
+    ]);
+
+    // Two batches on that date: the order must say which.
+    expect(fn () => $this->drafts->save(draftOf($this, 'OUT', [draftLine($this->stock, 'YOGURT', 2, expiry: $soon)]), $this->stock->user))
+        ->toThrow(PostingRejected::class, __('transactions.form.errors.batch_choose'));
+
+    $draft = $this->drafts->save(draftOf($this, 'OUT', [draftLine($this->stock, 'YOGURT', 2, expiry: $soon, batch: 'B2')]), $this->stock->user);
+    $this->drafts->confirm($draft, $this->stock->user);
+
+    expect($this->stock->balance('YOGURT', $soon, batch: 'A1'))->toBe(6.0)
+        ->and($this->stock->balance('YOGURT', $soon, batch: 'B2'))->toBe(4.0);
 });

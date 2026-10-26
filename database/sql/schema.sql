@@ -329,9 +329,38 @@ CREATE TRIGGER trg_validate_product_unit
 -- ----------------------------------------------------------------------------
 -- EXPIRY (for expiry-tracked products)
 -- ----------------------------------------------------------------------------
--- There are no batch / lot numbers: stock of an expiry-tracked product is kept
--- per expiry date. Lines, movements, balances and in-transit rows carry
--- expiry_date themselves (NULL for products that don't track expiry).
+-- Stock of an expiry-tracked product is kept per expiry date AND batch number.
+-- Lines, movements, balances and in-transit rows carry expiry_date and batch_no
+-- themselves (both NULL for products that don't track expiry; batch_no NULL =
+-- "no batch", stock from before batches existed).
+--
+-- product_batch: one row per item and batch number, with its one expiry date
+-- (a batch never has two dates). Lines and movements reference it through
+-- (product_id, batch_no, expiry_date); a NULL batch_no skips the reference.
+CREATE TABLE product_batch (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    product_id  BIGINT NOT NULL REFERENCES product(id),
+    batch_no    VARCHAR(40) NOT NULL CHECK (batch_no <> '' AND batch_no = upper(btrim(batch_no))),
+    expiry_date DATE NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT uq_product_batch UNIQUE (product_id, batch_no),
+    CONSTRAINT uq_product_batch_expiry UNIQUE (product_id, batch_no, expiry_date)
+);
+
+-- Only items that track expiry have batches.
+CREATE OR REPLACE FUNCTION fn_validate_product_batch() RETURNS TRIGGER AS $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM product WHERE id = NEW.product_id AND track_expiry) THEN
+        RAISE EXCEPTION 'Only expiry-tracked products have batches (product_id=%)', NEW.product_id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_validate_product_batch
+    BEFORE INSERT OR UPDATE ON product_batch
+    FOR EACH ROW EXECUTE FUNCTION fn_validate_product_batch();
 
 -- ----------------------------------------------------------------------------
 -- SERIAL NUMBERS (for serial-tracked products)
@@ -460,6 +489,7 @@ CREATE TABLE stock_transaction_line (
     line_no         INT NOT NULL,
     product_id      BIGINT NOT NULL REFERENCES product(id),
     expiry_date     DATE,               -- expiry-tracked products: received, or chosen when going out
+    batch_no        VARCHAR(40),        -- expiry-tracked products: the batch of that expiry date
     unit_id         BIGINT NOT NULL REFERENCES unit(id),
     qty_entered     NUMERIC(18,4) NOT NULL CHECK (qty_entered > 0),
     qty_base        NUMERIC(18,4) NOT NULL CHECK (qty_base > 0),  -- computed: qty_entered * factor_to_base
@@ -483,13 +513,16 @@ CREATE TABLE stock_transaction_line (
             OR (qty_counted IS NOT NULL AND qty_system IS NOT NULL AND direction IS NOT NULL
                 AND qty_base = abs(qty_counted - qty_system))),
     CONSTRAINT chk_shortage_reason
-        CHECK (shortage_reason IS NULL OR shortage_reason IN ('DAMAGED_IN_TRANSIT', 'MISSING', 'COUNTING_ERROR'))
+        CHECK (shortage_reason IS NULL OR shortage_reason IN ('DAMAGED_IN_TRANSIT', 'MISSING', 'COUNTING_ERROR')),
+    CONSTRAINT fk_transaction_line_batch FOREIGN KEY (product_id, batch_no, expiry_date)
+        REFERENCES product_batch (product_id, batch_no, expiry_date)
 );
 
 -- No duplicate lines (CLAUDE.md rule 12): one line per item + unit + expiry date
--- in a document, "no expiry" as one value. The app refuses them first, with a message.
+-- + batch in a document, "no expiry" / "no batch" as one value each. The app
+-- refuses them first, with a message.
 CREATE UNIQUE INDEX uq_transaction_line_key
-    ON stock_transaction_line (transaction_id, product_id, unit_id, COALESCE(expiry_date, DATE '0001-01-01'));
+    ON stock_transaction_line (transaction_id, product_id, unit_id, COALESCE(expiry_date, DATE '0001-01-01'), COALESCE(batch_no, ''));
 
 CREATE TABLE stock_transaction_line_serial (   -- serials attached to a transaction line
     line_id         BIGINT NOT NULL REFERENCES stock_transaction_line(id) ON DELETE CASCADE,
@@ -550,6 +583,7 @@ CREATE TABLE stock_draft_line (
     qty_entered  NUMERIC(18,4) NOT NULL CHECK (qty_entered > 0),
     qty_base     NUMERIC(18,4) NOT NULL CHECK (qty_base > 0),
     expiry_date  DATE,                                  -- typed (receipt) or picked (order) for expiry items
+    batch_no     VARCHAR(40),                           -- with the expiry date: typed (receipt) or picked (order)
     serials      JSONB NOT NULL DEFAULT '[]'::jsonb,    -- serial numbers, for serial-numbered items
     UNIQUE (draft_id, line_no)
 );
@@ -573,15 +607,18 @@ CREATE TABLE stock_movement (
     customer_id  BIGINT NOT NULL REFERENCES customer(id),
     product_id   BIGINT NOT NULL REFERENCES product(id),
     expiry_date  DATE,
+    batch_no     VARCHAR(40),
     direction    movement_direction NOT NULL,
     qty_base     NUMERIC(18,4) NOT NULL CHECK (qty_base > 0),
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    seq          BIGINT NOT NULL DEFAULT nextval('stock_movement_seq_seq')
+    seq          BIGINT NOT NULL DEFAULT nextval('stock_movement_seq_seq'),
+    CONSTRAINT fk_movement_batch FOREIGN KEY (product_id, batch_no, expiry_date)
+        REFERENCES product_batch (product_id, batch_no, expiry_date)
 );
 
 ALTER SEQUENCE stock_movement_seq_seq OWNED BY stock_movement.seq;
 
-CREATE INDEX idx_movement_lookup ON stock_movement (warehouse_id, customer_id, product_id, expiry_date);
+CREATE INDEX idx_movement_lookup ON stock_movement (warehouse_id, customer_id, product_id, expiry_date, batch_no);
 CREATE INDEX idx_movement_transaction ON stock_movement (transaction_id);
 CREATE UNIQUE INDEX uq_stock_movement_seq ON stock_movement (seq);
 CREATE INDEX idx_movement_card ON stock_movement (product_id, warehouse_id, seq);
@@ -589,18 +626,21 @@ CREATE INDEX idx_movement_card ON stock_movement (product_id, warehouse_id, seq)
 CREATE INDEX idx_movement_line ON stock_movement (line_id);
 
 -- Cached balance, kept in sync with stock_movement in the same transaction (see fn_post_movement).
--- expiry_date is NULL for products that don't track expiry. A generated column
--- collapses NULL to a fixed sentinel date so the primary key still enforces one row
--- per (warehouse, customer, product, expiry-date-or-none).
+-- expiry_date / batch_no are NULL for products that don't track expiry (batch_no
+-- also for stock from before batches). Generated columns collapse NULL to a fixed
+-- sentinel so the primary key still enforces one row per (warehouse, customer,
+-- product, expiry-date-or-none, batch-or-none).
 CREATE TABLE stock_balance (
     warehouse_id BIGINT NOT NULL REFERENCES warehouse(id),
     customer_id  BIGINT NOT NULL REFERENCES customer(id),
     product_id   BIGINT NOT NULL REFERENCES product(id),
     expiry_date  DATE,
     expiry_key   DATE GENERATED ALWAYS AS (COALESCE(expiry_date, DATE '0001-01-01')) STORED,
+    batch_no     VARCHAR(40),
+    batch_key    VARCHAR(40) GENERATED ALWAYS AS (COALESCE(batch_no, '')) STORED,
     qty_base     NUMERIC(18,4) NOT NULL DEFAULT 0 CHECK (qty_base >= 0),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (warehouse_id, customer_id, product_id, expiry_key)
+    PRIMARY KEY (warehouse_id, customer_id, product_id, expiry_key, batch_key)
 );
 
 -- In-transit balance while a TRANSFER is dispatched but not yet received.
@@ -609,8 +649,10 @@ CREATE TABLE in_transit_balance (
     product_id   BIGINT NOT NULL REFERENCES product(id),
     expiry_date  DATE,
     expiry_key   DATE GENERATED ALWAYS AS (COALESCE(expiry_date, DATE '0001-01-01')) STORED,
+    batch_no     VARCHAR(40),
+    batch_key    VARCHAR(40) GENERATED ALWAYS AS (COALESCE(batch_no, '')) STORED,
     qty_base     NUMERIC(18,4) NOT NULL CHECK (qty_base >= 0),
-    PRIMARY KEY (transaction_id, product_id, expiry_key)
+    PRIMARY KEY (transaction_id, product_id, expiry_key, batch_key)
 );
 
 -- ----------------------------------------------------------------------------
@@ -792,6 +834,7 @@ CREATE OR REPLACE FUNCTION fn_apply_balance(
     p_customer_id  BIGINT,
     p_product_id   BIGINT,
     p_expiry_date  DATE,
+    p_batch_no     VARCHAR,
     p_direction    movement_direction,
     p_qty_base     NUMERIC
 ) RETURNS VOID AS $$
@@ -803,35 +846,38 @@ BEGIN
 
     -- Lock the balance row (or create it) before checking/adjusting, to prevent
     -- two concurrent postings from both passing the negative-stock check.
-    -- ON CONFLICT targets the generated expiry_key column via the primary key.
-    INSERT INTO stock_balance (warehouse_id, customer_id, product_id, expiry_date, qty_base)
-    VALUES (p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, 0)
-    ON CONFLICT (warehouse_id, customer_id, product_id, expiry_key) DO NOTHING;
+    -- ON CONFLICT targets the generated expiry_key / batch_key columns via the primary key.
+    INSERT INTO stock_balance (warehouse_id, customer_id, product_id, expiry_date, batch_no, qty_base)
+    VALUES (p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, p_batch_no, 0)
+    ON CONFLICT (warehouse_id, customer_id, product_id, expiry_key, batch_key) DO NOTHING;
 
     SELECT qty_base INTO v_current
     FROM stock_balance
     WHERE warehouse_id = p_warehouse_id AND customer_id = p_customer_id
       AND product_id = p_product_id
       AND expiry_key = COALESCE(p_expiry_date, DATE '0001-01-01')
+      AND batch_key = COALESCE(p_batch_no, '')
     FOR UPDATE;
 
     IF v_current + v_delta < 0 THEN
-        RAISE EXCEPTION 'Negative stock blocked: warehouse=%, customer=%, product=%, expiry=%, available=%, requested_out=%',
-            p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, v_current, p_qty_base;
+        RAISE EXCEPTION 'Negative stock blocked: warehouse=%, customer=%, product=%, expiry=%, batch=%, available=%, requested_out=%',
+            p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, p_batch_no, v_current, p_qty_base;
     END IF;
 
     UPDATE stock_balance
        SET qty_base = v_current + v_delta, updated_at = now()
      WHERE warehouse_id = p_warehouse_id AND customer_id = p_customer_id
        AND product_id = p_product_id
-       AND expiry_key = COALESCE(p_expiry_date, DATE '0001-01-01');
+       AND expiry_key = COALESCE(p_expiry_date, DATE '0001-01-01')
+       AND batch_key = COALESCE(p_batch_no, '');
 END;
 $$ LANGUAGE plpgsql;
 
 -- Posts a stock_transaction: for every line, writes an immutable stock_movement
 -- and updates stock_balance. Called by the application after status checks
--- and approval (if required) have passed. p_expiry_date is NULL for products
--- that don't track expiry (stock_balance.expiry_key turns it into a sentinel).
+-- and approval (if required) have passed. p_expiry_date / p_batch_no are NULL
+-- for products that don't track expiry (stock_balance.expiry_key / batch_key
+-- turn them into sentinels); p_batch_no is NULL for stock without a batch.
 CREATE OR REPLACE FUNCTION fn_post_movement(
     p_transaction_id BIGINT,
     p_line_id     BIGINT,
@@ -839,6 +885,7 @@ CREATE OR REPLACE FUNCTION fn_post_movement(
     p_customer_id  BIGINT,
     p_product_id   BIGINT,
     p_expiry_date  DATE,
+    p_batch_no     VARCHAR,
     p_direction    movement_direction,
     p_qty_base     NUMERIC
 ) RETURNS BIGINT AS $$
@@ -849,10 +896,10 @@ BEGIN
         RAISE EXCEPTION 'Service item has no stock (product_id=%)', p_product_id;
     END IF;
 
-    PERFORM fn_apply_balance(p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, p_direction, p_qty_base);
+    PERFORM fn_apply_balance(p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, p_batch_no, p_direction, p_qty_base);
 
-    INSERT INTO stock_movement (transaction_id, line_id, warehouse_id, customer_id, product_id, expiry_date, direction, qty_base)
-    VALUES (p_transaction_id, p_line_id, p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, p_direction, p_qty_base)
+    INSERT INTO stock_movement (transaction_id, line_id, warehouse_id, customer_id, product_id, expiry_date, batch_no, direction, qty_base)
+    VALUES (p_transaction_id, p_line_id, p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, p_batch_no, p_direction, p_qty_base)
     RETURNING id INTO v_movement_id;
 
     RETURN v_movement_id;

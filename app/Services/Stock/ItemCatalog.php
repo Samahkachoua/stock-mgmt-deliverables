@@ -3,6 +3,7 @@
 namespace App\Services\Stock;
 
 use App\Models\Product;
+use App\Support\Batches;
 use App\Support\Ids;
 use App\Support\StorageStatuses;
 use Carbon\CarbonInterface;
@@ -16,11 +17,12 @@ use Illuminate\Support\Facades\DB;
  *
  * With $excludeExpired (types that skip expired stock, e.g. Delivery note), `available`
  * counts only stock that has not expired; `expired` says how much has.
- * `expiries` is the stock of an expiry item per expiry date, nearest first.
+ * `expiries` is the stock of an expiry item per lot (expiry date + batch, `lot`
+ * = Batches::key(); batch '' = stock without a batch), nearest expiry first.
  * Services (no stock) are left out unless $withServices (types that take them,
  * TypeUi::allowsServices()); a service has `service` true and no stock.
  *
- * @phpstan-type CatalogItem array{id: string, code: string, name: string, storage: ?string, base: string, units: array<string, float>, available: float, expired: float, expiry: bool, serial: bool, service: bool, expiries: list<array{expiry: string, qty: float, expired: bool}>}
+ * @phpstan-type CatalogItem array{id: string, code: string, name: string, storage: ?string, base: string, units: array<string, float>, available: float, expired: float, expiry: bool, serial: bool, service: bool, expiries: list<array{expiry: string, batch: string, lot: string, qty: float, expired: bool}>}
  */
 final class ItemCatalog
 {
@@ -104,14 +106,14 @@ final class ItemCatalog
 
         $today = $warehouseId === null ? null : app(Availability::class)->today($warehouseId)->toDateString();
 
-        // Stock here, per item and expiry date (base units), nearest expiry first.
+        // Stock here, per item and lot (base units), nearest expiry first.
         $balances = $warehouseId === null ? collect() : DB::table('stock_balance')
             ->where('warehouse_id', $warehouseId)
             ->where('customer_id', $customerId)
             ->whereIn('product_id', $products->modelKeys())
             ->where('qty_base', '>', 0)
-            ->orderByRaw('expiry_date ASC NULLS LAST')
-            ->get(['product_id', 'qty_base', 'expiry_date'])
+            ->orderByRaw('expiry_date ASC NULLS LAST, batch_key ASC')
+            ->get(['product_id', 'qty_base', 'expiry_date', 'batch_key'])
             ->groupBy('product_id');
 
         // Dated back: what each item had on that day, all items in one query.
@@ -130,7 +132,8 @@ final class ItemCatalog
 
             foreach ($balances->get($product->id, collect()) as $row) {
                 $isExpired = $row->expiry_date !== null && $row->expiry_date < $today;
-                $qty = $then === null ? (float) $row->qty_base : min((float) $row->qty_base, $then[$row->expiry_date ?? ''] ?? 0.0);
+                $lot = Batches::key($row->expiry_date, $row->batch_key);
+                $qty = $then === null ? (float) $row->qty_base : min((float) $row->qty_base, $then[$lot] ?? 0.0);
 
                 if ($qty <= 0) {
                     continue;
@@ -143,7 +146,7 @@ final class ItemCatalog
                 }
 
                 if ($row->expiry_date !== null) {
-                    $expiries[] = ['expiry' => $row->expiry_date, 'qty' => $qty, 'expired' => $isExpired];
+                    $expiries[] = ['expiry' => $row->expiry_date, 'batch' => (string) $row->batch_key, 'lot' => $lot, 'qty' => $qty, 'expired' => $isExpired];
                 }
             }
 

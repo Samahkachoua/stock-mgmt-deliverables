@@ -51,6 +51,7 @@ final class AdjustmentsReport extends PostedLinesReport
             'item' => ['label' => 'reports.columns.item'],
             'code' => ['label' => 'reports.columns.code', 'priority' => 2, 'card' => 'hide'],
             'expiry_date' => ['label' => 'reports.columns.expiry_date', 'priority' => 2],
+            'batch' => ['label' => 'reports.columns.batch', 'priority' => 2],
             'system' => ['label' => 'reports.columns.in_system', 'align' => 'end', 'priority' => 2],
             'counted' => ['label' => 'reports.columns.counted', 'align' => 'end'],
             'difference' => ['label' => 'reports.columns.difference', 'align' => 'end', 'card' => 'badge'],
@@ -71,6 +72,7 @@ final class AdjustmentsReport extends PostedLinesReport
 
         return $this->commonCells($row) + [
             'expiry_date' => ['text' => $row->expiry_date === null ? '' : Format::date(CarbonImmutable::parse($row->expiry_date))],
+            'batch' => ['text' => (string) $row->batch_no, 'ltr' => true],
             'system' => $this->qtyCell($row->qty_system, $row->product_id),
             'counted' => $this->qtyCell($row->qty_counted, $row->product_id) + ['strong' => true],
             'difference' => $this->qtyCell($difference, $row->product_id, signed: true) + ['tone' => $difference > 0 ? 'completed' : 'rejected'],

@@ -248,7 +248,10 @@
                                 <th scope="col" class="w-12 ps-edge text-start">#</th>
                                 <th scope="col" class="min-w-56 px-cell text-start xl:min-w-72">{{ __('transactions.lines.item') }}</th>
                                 <th scope="col" class="w-36 px-cell text-start">{{ __('transactions.lines.unit') }}</th>
-                                <th scope="col" @class(['px-cell text-start', 'w-44' => $receives, 'w-60' => ! $receives])>{{ __('transactions.lines.expiry') }}</th>
+                                @if ($receives)
+                                    <th scope="col" class="w-40 px-cell text-start">{{ __('transactions.lines.batch') }}</th>
+                                @endif
+                                <th scope="col" @class(['px-cell text-start', 'w-44' => $receives, 'w-72' => ! $receives])>{{ $receives ? __('transactions.lines.expiry') : __('transactions.lines.lot') }}</th>
                                 <th scope="col" class="w-48 px-cell text-start xl:w-64">{{ __('transactions.lines.quantity') }}</th>
                                 <th scope="col" class="w-14 pe-edge"><span class="sr-only">{{ __('transactions.form.delete_row') }}</span></th>
                             </tr>
@@ -306,26 +309,56 @@
                                         @endisset
                                     </td>
 
-                                    {{-- Expiry date: only on rows whose item tracks expiry --}}
-                                    <td data-card="{{ $item && $item['expiry'] ? 'half' : 'hide' }}" data-label="{{ __('transactions.lines.expiry') }}" class="px-cell py-cell-y">
+                                    {{-- Batch number (draft receipts): only on rows whose item tracks expiry --}}
+                                    @if ($receives)
+                                        <td data-card="{{ $item && $item['expiry'] ? 'half' : 'hide' }}" data-label="{{ __('transactions.lines.batch') }}" class="px-cell py-cell-y">
+                                            @if ($item && $item['expiry'])
+                                                <label for="{{ $id }}-batch" class="sr-only">{{ __('transactions.form.row_batch', ['row' => $loop->iteration]) }}</label>
+                                                <input
+                                                    id="{{ $id }}-batch"
+                                                    type="text"
+                                                    dir="ltr"
+                                                    maxlength="{{ \App\Support\Batches::MAX }}"
+                                                    autocomplete="off"
+                                                    wire:model.blur="lines.{{ $key }}.batch"
+                                                    placeholder="{{ __('transactions.form.batch_placeholder') }}"
+                                                    @isset($errors['batch']) aria-invalid="true" aria-describedby="{{ $id }}-batch-error" @endisset
+                                                    class="{{ $control }} {{ isset($errors['batch']) ? $bad : $ok }} uppercase tabular"
+                                                >
+                                                @isset($errors['batch'])
+                                                    <p id="{{ $id }}-batch-error" class="mt-1 text-small text-danger" role="alert">{{ $errors['batch'] }}</p>
+                                                @endisset
+                                            @else
+                                                <span class="flex h-control items-center text-muted" aria-hidden="true">&mdash;</span>
+                                            @endif
+                                        </td>
+                                    @endif
+
+                                    {{-- Expiry date (receipts) or lot picked (orders): only on rows whose item tracks expiry --}}
+                                    <td data-card="{{ $item && $item['expiry'] ? 'half' : 'hide' }}" data-label="{{ $receives ? __('transactions.lines.expiry') : __('transactions.lines.lot') }}" class="px-cell py-cell-y">
                                         @if ($item && $item['expiry'])
-                                            <label for="{{ $id }}-expiry" class="sr-only">{{ __('transactions.form.row_expiry', ['row' => $loop->iteration]) }}</label>
+                                            <label for="{{ $id }}-expiry" class="sr-only">{{ __($receives ? 'transactions.form.row_expiry' : 'transactions.form.row_lot', ['row' => $loop->iteration]) }}</label>
                                             @if (! $receives)
-                                                {{-- Dates in stock in the draft's warehouse, nearest first, with what each holds. --}}
+                                                {{-- Lots in stock in the draft's warehouse, nearest first, with what each holds. --}}
                                                 <div class="relative">
-                                                    <select id="{{ $id }}-expiry" wire:model.live="lines.{{ $key }}.expiry" class="{{ $control }} {{ isset($errors['expiry']) ? $bad : $ok }} appearance-none pe-9">
-                                                        <option value="">{{ __('transactions.form.choose_expiry') }}</option>
+                                                    <select id="{{ $id }}-expiry" wire:model.live="lines.{{ $key }}.expiry" class="{{ $control }} {{ isset($errors['expiry']) || isset($errors['batch']) ? $bad : $ok }} appearance-none pe-9">
+                                                        <option value="">{{ __('transactions.form.choose_lot') }}</option>
                                                         @foreach ($row['expiry_options'] ?? [] as $lot)
-                                                            <option value="{{ $lot['expiry'] }}">{{ Format::date(\Illuminate\Support\Carbon::parse($lot['expiry'])) }} · {{ Format::qtyUnit($lot['qty'], $item['base']) }}</option>
+                                                            <option value="{{ $lot['lot'] }}">{{ \App\Support\Batches::label($lot['expiry'], $lot['batch']) }} · {{ Format::qtyUnit($lot['qty'], $item['base']) }}</option>
                                                         @endforeach
                                                     </select>
                                                     <x-icon name="keyboard_arrow_down" class="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-muted" />
                                                 </div>
                                             @else
-                                                <input id="{{ $id }}-expiry" type="date" wire:model.live="lines.{{ $key }}.expiry" class="{{ $control }} {{ isset($errors['expiry']) ? $bad : $ok }}">
+                                                {{-- A known batch has one expiry date: filled in and locked. --}}
+                                                <input id="{{ $id }}-expiry" type="date" wire:model.live="lines.{{ $key }}.expiry" @readonly($row['batch_known'] ?? false) class="{{ $control }} {{ isset($errors['expiry']) ? $bad : $ok }} read-only:bg-surface">
                                             @endif
                                             @isset($errors['expiry'])
                                                 <p class="mt-1 text-small text-danger" role="alert">{{ $errors['expiry'] }}</p>
+                                            @elseif (! $receives && isset($errors['batch']))
+                                                <p class="mt-1 text-small text-danger" role="alert">{{ $errors['batch'] }}</p>
+                                            @elseif ($row['batch_known'] ?? false)
+                                                <p class="mt-1 text-small text-muted">{{ __('transactions.form.batch_known', ['batch' => \App\Support\Batches::normalize($line['batch'] ?? ''), 'date' => Format::date(\Illuminate\Support\Carbon::parse($row['batch_known']))]) }}</p>
                                             @elseif ($row['expiry_past'] ?? false)
                                                 <p class="mt-1 flex items-start gap-1 text-small font-semibold text-status-pending" role="status">
                                                     <x-icon name="warning" class="mt-0.5 size-4" />

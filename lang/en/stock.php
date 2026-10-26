@@ -27,6 +27,12 @@ return [
         'keep' => 'Keep it',
     ],
 
+    // A lot: batch number and expiry date (App\Support\Batches).
+    'batch' => [
+        'label' => ':batch · :date',
+        'none' => 'No batch',
+    ],
+
     'errors' => [
         'not_enough' => 'Only :qty of :item available in :warehouse.',
         'not_enough_on_date' => 'On :date only :qty of :item was available in :warehouse. Stock that arrived later can’t go out on that date.',
@@ -44,6 +50,7 @@ return [
         'serial_in_stock' => 'Serial :serial is already in stock.',
         'serial_not_in_stock' => 'Serial :serial is not in stock in this warehouse.',
         'serial_not_on_date' => 'Serial :serial arrived in this warehouse after :date, so it can’t go out on that date.',
+        'batch_other_date' => 'Batch :batch of :item expires :date — enter that date or another batch number.',
         'expiry_expired' => 'The stock expiring :date has expired. Expired stock can’t go out this way.',
         'cannot_cancel_status' => 'Only completed documents can be cancelled.',
         'already_used' => 'Some of this stock has already gone out: :item received :received, only :left is left. It can’t be cancelled.',

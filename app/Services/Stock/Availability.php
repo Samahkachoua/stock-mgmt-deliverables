@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Services\Stock\Exceptions\InsufficientStock;
 use App\Services\Stock\Exceptions\OnlyExpiredStock;
 use App\Services\Stock\Exceptions\PostingRejected;
+use App\Support\Batches;
 use App\Support\CompanyTime;
 use App\Support\Format;
 use Carbon\CarbonImmutable;
@@ -15,11 +16,12 @@ use Illuminate\Support\Facades\DB;
 /**
  * What is in stock, read from the stock_balance cache (never written here).
  *
- * Stock of an expiry item is kept per expiry date. "Expired" means that date
- * is before today in the warehouse's own time zone: stock can still go out on
+ * Stock of an expiry item is kept per lot: expiry date + batch number
+ * (CLAUDE.md rule 9; batch '' = stock from before batches). "Expired" means the
+ * date is before today in the company's time zone: stock can still go out on
  * its expiry date.
  *
- * Methods named lock...() / allocate() / takeExpiry() take row locks (SELECT ... FOR UPDATE)
+ * Methods named lock...() / allocate() / takeLot() take row locks (SELECT ... FOR UPDATE)
  * and must run inside the posting transaction, so the quantities they return
  * cannot change before the movements are written.
  *
@@ -31,7 +33,7 @@ class Availability
     /**
      * Today in the warehouse: every warehouse works in the company's time zone
      * (Settings › General). Balance rows of items without expiry have expiry_date
-     * NULL (stock_balance.expiry_key sentinel).
+     * and batch_no NULL (stock_balance.expiry_key / batch_key sentinels).
      */
     public function today(string $warehouseId): CarbonImmutable
     {
@@ -50,11 +52,12 @@ class Availability
     }
 
     /**
-     * Stock per expiry date (a single row with expiry null for items without
-     * expiry), nearest expiry first (FEFO). With a $date before today, only
-     * what may go out on that date (see onDate()).
+     * Stock per lot (a single row with expiry and batch null for items without
+     * expiry), nearest expiry first (FEFO), then stock without a batch, then by
+     * batch. With a $date before today, only what may go out on that date (see
+     * onDate()).
      *
-     * @return list<array{expiry: string|null, qty: float, expired: bool}>
+     * @return list<array{expiry: string|null, batch: string, lot: string, qty: float, expired: bool}>
      */
     public function rows(string $warehouseId, string $customerId, string $productId, ?CarbonInterface $date = null): array
     {
@@ -66,13 +69,19 @@ class Availability
             ->where('customer_id', $customerId)
             ->where('product_id', $productId)
             ->where('qty_base', '>', 0)
-            ->orderByRaw('expiry_date ASC NULLS LAST')
-            ->get(['expiry_date', 'qty_base'])
-            ->map(fn ($row) => [
-                'expiry' => $row->expiry_date,
-                'qty' => $then === null ? (float) $row->qty_base : min((float) $row->qty_base, $then[$row->expiry_date ?? ''] ?? 0.0),
-                'expired' => $row->expiry_date !== null && $row->expiry_date < $today,
-            ])
+            ->orderByRaw('expiry_date ASC NULLS LAST, batch_key ASC')
+            ->get(['expiry_date', 'batch_key', 'qty_base'])
+            ->map(function ($row) use ($then, $today) {
+                $lot = Batches::key($row->expiry_date, $row->batch_key);
+
+                return [
+                    'expiry' => $row->expiry_date,
+                    'batch' => (string) $row->batch_key,
+                    'lot' => $lot,
+                    'qty' => $then === null ? (float) $row->qty_base : min((float) $row->qty_base, $then[$lot] ?? 0.0),
+                    'expired' => $row->expiry_date !== null && $row->expiry_date < $today,
+                ];
+            })
             ->filter(fn (array $row) => $row['qty'] > 0)
             ->values()
             ->all();
@@ -87,9 +96,9 @@ class Availability
     }
 
     /**
-     * What may go out on a document dated $date, per expiry date ('' for items
-     * without expiry): what was here at the end of that day, but never more than
-     * the lowest stock of any later day, so no later day goes below zero.
+     * What may go out on a document dated $date, per lot (Batches::key(); "|" for
+     * items without expiry): what was here at the end of that day, but never more
+     * than the lowest stock of any later day, so no later day goes below zero.
      * Example: nothing until 21 Oct, 10 received on 21 Oct: a Delivery note dated 1 Oct
      * may take nothing.
      *
@@ -121,44 +130,66 @@ class Availability
 
         $rows = DB::select(<<<SQL
             WITH daily AS (
-                SELECT m.product_id, m.expiry_date, {$movementDay} AS day,
+                SELECT m.product_id, m.expiry_date, COALESCE(m.batch_no, '') AS batch, {$movementDay} AS day,
                        SUM(CASE WHEN m.direction = 'IN' THEN m.qty_base ELSE -m.qty_base END) AS delta
                 FROM stock_movement m
                 JOIN stock_transaction t ON t.id = m.transaction_id
                 WHERE m.warehouse_id = ? AND m.customer_id = ? AND m.product_id IN ({$placeholders})
-                GROUP BY 1, 2, 3
+                GROUP BY 1, 2, 3, 4
             ), running AS (
-                SELECT product_id, expiry_date, day, SUM(delta) OVER (PARTITION BY product_id, expiry_date ORDER BY day) AS balance
+                SELECT product_id, expiry_date, batch, day,
+                       SUM(delta) OVER (PARTITION BY product_id, expiry_date, batch ORDER BY day) AS balance
                 FROM daily
             )
-            SELECT product_id, expiry_date,
+            SELECT product_id, expiry_date, batch,
                    COALESCE((array_agg(balance ORDER BY day DESC) FILTER (WHERE day <= ?::date))[1], 0) AS on_day,
                    MIN(balance) FILTER (WHERE day > ?::date) AS later
             FROM running
-            GROUP BY product_id, expiry_date
+            GROUP BY product_id, expiry_date, batch
         SQL, [$warehouseId, $customerId, ...$productIds, $date->toDateString(), $date->toDateString()]);
 
         $quantities = [];
 
         foreach ($rows as $row) {
             $qty = $row->later === null ? (float) $row->on_day : min((float) $row->on_day, (float) $row->later);
-            $quantities[(string) $row->product_id][$row->expiry_date ?? ''] = max(round($qty, 4), 0.0);
+            $quantities[(string) $row->product_id][Batches::key($row->expiry_date, $row->batch)] = max(round($qty, 4), 0.0);
         }
 
         return $quantities;
     }
 
     /**
-     * Of $balance (one expiry date, or none), what may go out on a document
-     * dated $date: all of it when it is dated today (or no date is given).
+     * Of $balance (one lot, or an item without expiry when $expiry is null),
+     * what may go out on a document dated $date: all of it when it is dated
+     * today (or no date is given).
      */
-    public function usable(float $balance, string $warehouseId, string $customerId, string $productId, ?string $expiry, ?CarbonInterface $date): float
+    public function usable(float $balance, string $warehouseId, string $customerId, string $productId, ?string $expiry, ?CarbonInterface $date, ?string $batch = null): float
     {
         if (! $this->isBackdated($warehouseId, $date)) {
             return $balance;
         }
 
-        return min($balance, $this->onDate($warehouseId, $customerId, $productId, $date)[$expiry ?? ''] ?? 0.0);
+        return min($balance, $this->onDate($warehouseId, $customerId, $productId, $date)[Batches::key($expiry, $batch)] ?? 0.0);
+    }
+
+    /**
+     * The batches of an item in stock here on one expiry date ('' = stock
+     * without a batch), in FEFO order.
+     *
+     * @return list<string>
+     */
+    public function batchesOn(string $warehouseId, string $customerId, string $productId, string $expiry): array
+    {
+        return DB::table('stock_balance')
+            ->where('warehouse_id', $warehouseId)
+            ->where('customer_id', $customerId)
+            ->where('product_id', $productId)
+            ->where('expiry_date', $expiry)
+            ->where('qty_base', '>', 0)
+            ->orderBy('batch_key')
+            ->pluck('batch_key')
+            ->map(fn ($batch) => (string) $batch)
+            ->all();
     }
 
     /**
@@ -241,12 +272,13 @@ class Availability
 
     /**
      * Picks stock nearest expiry first (FEFO) to cover $needed base units,
-     * locking every balance it reads. Expired stock is skipped unless
-     * $useExpired; with a $date before today, only what was here on that date
-     * is used. Throws when there is not enough; the exception says how much
-     * there is, and how much of the rest has expired.
+     * locking every balance it reads: lot by lot (expiry date, then stock
+     * without a batch, then batch). Expired stock is skipped unless $useExpired;
+     * with a $date before today, only what was here on that date is used.
+     * Throws when there is not enough; the exception says how much there is,
+     * and how much of the rest has expired.
      *
-     * @return list<array{expiry: string, qty: float}>
+     * @return list<array{expiry: string, batch: string, qty: float}>
      */
     public function allocate(Product $product, string $warehouseId, string $customerId, float $needed, bool $useExpired, ?string $row = null, ?CarbonInterface $date = null): array
     {
@@ -259,8 +291,9 @@ class Availability
             ->whereNotNull('expiry_date')
             ->where('qty_base', '>', 0)
             ->orderBy('expiry_date')
+            ->orderBy('batch_key')
             ->lockForUpdate()
-            ->get(['expiry_date', 'qty_base']);
+            ->get(['expiry_date', 'batch_key', 'qty_base']);
 
         $then = $this->isBackdated($warehouseId, $date) ? $this->onDate($warehouseId, $customerId, $product->id, $date) : null;
         $allocations = [];
@@ -269,7 +302,8 @@ class Availability
         $expired = 0.0;
 
         foreach ($lots as $lot) {
-            $qty = $then === null ? (float) $lot->qty_base : min((float) $lot->qty_base, $then[$lot->expiry_date] ?? 0.0);
+            $batch = (string) $lot->batch_key;
+            $qty = $then === null ? (float) $lot->qty_base : min((float) $lot->qty_base, $then[Batches::key($lot->expiry_date, $batch)] ?? 0.0);
 
             if (! $useExpired && $lot->expiry_date < $today) {
                 $expired += $qty;
@@ -281,7 +315,7 @@ class Availability
 
             if ($remaining > 0 && $qty > 0) {
                 $take = min($qty, $remaining);
-                $allocations[] = ['expiry' => $lot->expiry_date, 'qty' => round($take, 4)];
+                $allocations[] = ['expiry' => $lot->expiry_date, 'batch' => $batch, 'qty' => round($take, 4)];
                 $remaining = round($remaining - $take, 4);
             }
         }
@@ -294,11 +328,12 @@ class Availability
     }
 
     /**
-     * The expiry date the user chose (Y-m-d), locked: there must be $needed
-     * base units of it here (on $date too, when the document is dated before
-     * today), and it must not have expired unless $useExpired.
+     * The lot the user chose (expiry Y-m-d and batch, '' = without a batch),
+     * locked: there must be $needed base units of it here (on $date too, when
+     * the document is dated before today), and it must not have expired unless
+     * $useExpired.
      */
-    public function takeExpiry(Product $product, string $warehouseId, string $customerId, string $expiry, float $needed, bool $useExpired, ?string $row = null, ?CarbonInterface $date = null): void
+    public function takeLot(Product $product, string $warehouseId, string $customerId, string $expiry, string $batch, float $needed, bool $useExpired, ?string $row = null, ?CarbonInterface $date = null): void
     {
         if (! $useExpired && $expiry < $this->today($warehouseId)->toDateString()) {
             throw new PostingRejected('stock.errors.expiry_expired', ['date' => Format::date(CarbonImmutable::parse($expiry))], $row, 'expiry');
@@ -309,6 +344,7 @@ class Availability
             ->where('customer_id', $customerId)
             ->where('product_id', $product->id)
             ->where('expiry_date', $expiry)
+            ->where('batch_key', $batch)
             ->lockForUpdate()
             ->value('qty_base') ?? 0);
 
@@ -320,7 +356,7 @@ class Availability
             throw self::notEnough($product, $warehouseId, $available, $needed, row: $row);
         }
 
-        $then = $this->usable($available, $warehouseId, $customerId, $product->id, $expiry, $date);
+        $then = $this->usable($available, $warehouseId, $customerId, $product->id, $expiry, $date, $batch);
 
         if ($then < $needed - 1e-9) {
             throw self::notEnough($product, $warehouseId, $then, $needed, row: $row, date: $date);

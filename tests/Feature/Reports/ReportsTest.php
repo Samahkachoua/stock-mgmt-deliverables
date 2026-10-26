@@ -7,6 +7,7 @@ use App\Models\Warehouse;
 use App\Reports\Reports;
 use App\Services\Stock\PostingService;
 use App\Support\Format;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -240,6 +241,16 @@ it('reports damage by period, reason and warehouse', function () {
         ->and(column(onScreen($d->admin, $d->beirut, 'damage', ['reason' => 'EXPIRED'])['rows'], 'item'))->toBe(['Yogurt'])
         ->and(onScreen($d->admin, $d->beirut, 'damage', ['warehouse' => 'all'])['total'])->toBe(3)
         ->and(onScreen($d->admin, $d->beirut, 'damage', ['from' => now()->addDay()->toDateString(), 'to' => now()->addDays(5)->toDateString()])['total'])->toBe(0);
+
+    // The lot written off: expiry date and batch for the expiry item, empty for the others.
+    $expired = now()->subDays(2)->toDateString();
+    $yogurt = collect(onScreen($d->admin, $d->beirut, 'damage', ['reason' => 'EXPIRED'])['rows'])->sole();
+    $beans = collect(onScreen($d->admin, $d->beirut, 'damage', ['reason' => 'HANDLING'])['rows'])->sole();
+
+    expect($yogurt['expiry_date']['text'])->toBe(Format::date(CarbonImmutable::parse($expired)))
+        ->and($yogurt['batch']['text'])->toBe(Stock::batch($expired))
+        ->and($beans['expiry_date']['text'])->toBe('')
+        ->and($beans['batch']['text'])->toBe('');
 });
 
 // Adjustments

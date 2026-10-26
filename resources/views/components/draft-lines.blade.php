@@ -10,8 +10,9 @@
 @php
     $lines = collect($lines);
     $expiries = $lines->contains(fn ($line) => filled($line['expiry']));
+    $batches = $lines->contains(fn ($line) => filled($line['batch'] ?? null));
     $num = 'px-cell text-end tabular';
-    $columns = 4 + ($expiries ? 1 : 0);
+    $columns = 4 + ($expiries ? 1 : 0) + ($batches ? 1 : 0);
 @endphp
 
 <section {{ $attributes->class('overflow-hidden rounded-xl border border-default bg-card shadow-card') }}>
@@ -29,6 +30,9 @@
                     <th scope="col" class="w-14 ps-edge text-start">#</th>
                     <th scope="col" class="px-cell text-start">{{ __('transactions.lines.item') }}</th>
                     <th scope="col" class="px-cell text-start">{{ __('transactions.lines.unit') }}</th>
+                    @if ($batches)
+                        <th scope="col" class="px-cell text-start">{{ __('transactions.lines.batch') }}</th>
+                    @endif
                     @if ($expiries)
                         <th scope="col" class="px-cell text-start">{{ __('transactions.lines.expiry') }}</th>
                     @endif
@@ -54,6 +58,9 @@
                             @endisset
                         </td>
                         <td data-label="{{ __('transactions.lines.unit') }}" class="px-cell text-fg">{{ Format::unit($line['unit']) }}</td>
+                        @if ($batches)
+                            <td data-label="{{ __('transactions.lines.batch') }}" @if (blank($line['batch'] ?? null)) data-card="hide" @endif class="px-cell text-fg"><span dir="ltr" class="tabular">{{ $line['batch'] ?? '' }}</span></td>
+                        @endif
                         @if ($expiries)
                             <td data-label="{{ __('transactions.lines.expiry') }}" @if (blank($line['expiry'])) data-card="hide" @endif class="px-cell text-fg">{{ $line['expiry'] ? Format::date(\Illuminate\Support\Carbon::parse($line['expiry'])) : '' }}</td>
                         @endif

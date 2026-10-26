@@ -418,7 +418,7 @@ it('counts an expiry item per expiry date, and the same date only once', functio
         ->toThrow(PostingRejected::class, __('transactions.form.errors.expiry_choose'));
 
     expect(fn () => countStock($this->stock, [$this->stock->line('YOGURT', '5', expiry: $this->expiry['month']), $this->stock->line('YOGURT', '4', expiry: $this->expiry['month'])]))
-        ->toThrow(DuplicateLine::class, __('transactions.form.duplicate.count_expiry', ['item' => 'Yogurt', 'expiry' => Format::date(CarbonImmutable::parse($this->expiry['month'])), 'row' => '1']));
+        ->toThrow(DuplicateLine::class, __('transactions.form.duplicate.count_expiry_batch', ['item' => 'Yogurt', 'batch' => Stock::batch($this->expiry['month']), 'expiry' => Format::date(CarbonImmutable::parse($this->expiry['month'])), 'row' => '1']));
 
     countStock($this->stock, [$this->stock->line('YOGURT', '5', expiry: $this->expiry['month']), $this->stock->line('YOGURT', '8', expiry: $this->expiry['two_months'])]);
 

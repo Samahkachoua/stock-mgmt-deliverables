@@ -8,12 +8,14 @@ use App\Models\StockDraft;
 use App\Models\StockTransaction;
 use App\Models\User;
 use App\Services\Stock\Exceptions\AlreadyProcessed;
+use App\Services\Stock\Exceptions\BatchDateMismatch;
 use App\Services\Stock\Exceptions\DuplicateLine;
 use App\Services\Stock\Exceptions\NotAllowed;
 use App\Services\Stock\Exceptions\PostingRejected;
 use App\Services\Stock\Exceptions\SerialProblem;
 use App\Services\Stock\Exceptions\StockException;
 use App\Support\Audit;
+use App\Support\Batches;
 use App\Support\CompanyTime;
 use App\Support\Drafts\DraftNotifier;
 use App\Support\Drafts\DraftTypes;
@@ -254,6 +256,7 @@ final class DraftService
                 'qty_entered' => $line['qty'],
                 'qty_base' => $line['qty_base'],
                 'expiry_date' => $line['expiry'],
+                'batch_no' => $line['batch'] === '' ? null : $line['batch'],
                 'serials' => json_encode($line['serials']),
             ], 'id');
         }
@@ -324,7 +327,7 @@ final class DraftService
     /**
      * Checks every line as the document it becomes would; returns what to save.
      *
-     * @return array<string, array{product: Product, unit_id: string, qty: int, qty_base: float, expiry: string|null, serials: list<string>}>
+     * @return array<string, array{product: Product, unit_id: string, qty: int, qty_base: float, expiry: string|null, batch: string|null, serials: list<string>}>
      */
     private function prepareLines(DraftUi $kind, DraftInput $input): array
     {
@@ -381,17 +384,21 @@ final class DraftService
             }
 
             $expiry = null;
+            $batch = null;
 
             if ($product->track_expiry) {
                 $expiry = $this->expiry($line->expiry, $key)
                     ?? throw new PostingRejected($kind->receives() ? 'transactions.form.errors.expiry_required' : 'transactions.form.errors.expiry_choose', [], $key, 'expiry');
+                $batch = $kind->receives()
+                    ? $this->typedBatch($product, $line, $expiry, $seen, $key)
+                    : $this->pickedBatch($product, $line, $input->warehouseId, $input->customerId, $expiry, $key);
             }
 
             // Rule 12: the lines become one document, which may not repeat a line.
-            $lineKey = $kind->type->lineKey($product->id, $line->unit, $expiry, $product->track_expiry);
+            $lineKey = $kind->type->lineKey($product->id, $line->unit, $expiry, $product->track_expiry, $batch);
 
             if (isset($keys[$lineKey])) {
-                [$message, $params] = $kind->type->duplicateMessage($product->name(), $line->unit, $expiry, $product->track_expiry, $keys[$lineKey]['number']);
+                [$message, $params] = $kind->type->duplicateMessage($product->name(), $line->unit, $expiry, $product->track_expiry, $keys[$lineKey]['number'], $batch);
 
                 throw new DuplicateLine($message, $params, (string) $key, $keys[$lineKey]['key']);
             }
@@ -402,7 +409,7 @@ final class DraftService
 
             // A service has no stock to check.
             if (! $kind->receives() && ! $product->is_service) {
-                $this->checkStock($product, $input->warehouseId, $input->customerId, $expiry, $qtyBase, $seen, $key);
+                $this->checkStock($product, $input->warehouseId, $input->customerId, $expiry, $batch, $qtyBase, $seen, $key);
             }
 
             $rows[$key] = [
@@ -411,6 +418,7 @@ final class DraftService
                 'qty' => (int) $qty,
                 'qty_base' => $qtyBase,
                 'expiry' => $expiry,
+                'batch' => $batch,
                 'serials' => $serials,
             ];
         }
@@ -473,17 +481,18 @@ final class DraftService
     }
 
     /**
-     * Order: enough in stock now in the draft's warehouse (of the line's expiry
-     * date, which must not have expired), after earlier lines of the same item.
+     * Order: enough in stock now in the draft's warehouse (of the line's lot,
+     * expiry date + batch, which must not have expired), after earlier lines
+     * of the same item.
      *
      * @param  array<string, mixed>  $seen
      */
-    private function checkStock(Product $product, string $warehouseId, string $customerId, ?string $expiry, float $qtyBase, array &$seen, string $key): void
+    private function checkStock(Product $product, string $warehouseId, string $customerId, ?string $expiry, ?string $batch, float $qtyBase, array &$seen, string $key): void
     {
-        $seenKey = 'qty|'.$warehouseId.'|'.$product->id.'|'.$expiry;
+        $seenKey = 'qty|'.$warehouseId.'|'.$product->id.'|'.Batches::key($expiry, $batch);
 
         if ($expiry !== null) {
-            $lot = collect($this->availability->rows($warehouseId, $customerId, $product->id))->firstWhere('expiry', $expiry)
+            $lot = collect($this->availability->rows($warehouseId, $customerId, $product->id))->firstWhere('lot', Batches::key($expiry, $batch))
                 ?? throw new PostingRejected('transactions.form.errors.expiry_not_here', [], $key, 'expiry');
 
             if ($lot['expired']) {
@@ -502,6 +511,68 @@ final class DraftService
         }
 
         $seen[$seenKey] = $taken + $qtyBase;
+    }
+
+    /**
+     * Draft receipt: the batch number typed (required for expiry items). A
+     * batch already known for the item keeps its expiry date, also between the
+     * lines of this draft.
+     *
+     * @param  array<string, mixed>  $seen
+     */
+    private function typedBatch(Product $product, DraftLineInput $line, string $expiry, array &$seen, string $key): string
+    {
+        $batch = $this->batch($line, $key);
+
+        if ($batch === '') {
+            throw new PostingRejected('transactions.form.errors.batch_required', [], $key, 'batch');
+        }
+
+        $known = $seen['batch|'.$product->id.'|'.$batch] ?? Batches::dates($product->id, [$batch])[$batch] ?? null;
+
+        if ($known !== null && $known !== $expiry) {
+            throw new BatchDateMismatch(['batch' => $batch, 'item' => $product->name(), 'date' => Format::date(CarbonImmutable::parse($known))], $key);
+        }
+
+        $seen['batch|'.$product->id.'|'.$batch] = $expiry;
+
+        return $batch;
+    }
+
+    /**
+     * Order: the batch picked ('' = stock without a batch). None named: the
+     * only batch of that date in the draft's warehouse; with several, the user
+     * must choose.
+     */
+    private function pickedBatch(Product $product, DraftLineInput $line, string $warehouseId, string $customerId, string $expiry, string $key): string
+    {
+        if ($line->batch !== null) {
+            return $this->batch($line, $key);
+        }
+
+        $batches = $this->availability->batchesOn($warehouseId, $customerId, $product->id, $expiry);
+
+        return match (count($batches)) {
+            0 => '',
+            1 => $batches[0],
+            default => throw new PostingRejected('transactions.form.errors.batch_choose', [], $key, 'batch'),
+        };
+    }
+
+    /** The line's batch number as kept (Batches::normalize()), '' when none. */
+    private function batch(DraftLineInput $line, string $key): string
+    {
+        $batch = Batches::normalize($line->batch);
+
+        if (mb_strlen($batch) > Batches::MAX) {
+            throw new PostingRejected('settings.errors.too_long', ['max' => Batches::MAX], $key, 'batch');
+        }
+
+        if (str_contains($batch, '|')) {
+            throw new PostingRejected('transactions.form.errors.batch_invalid', [], $key, 'batch');
+        }
+
+        return $batch;
     }
 
     private function expiry(?string $expiry, string $key): ?string
@@ -568,12 +639,13 @@ final class DraftService
                 ->join('unit as u', 'u.id', '=', 'l.unit_id')
                 ->where('l.draft_id', $id)
                 ->orderBy('l.line_no')
-                ->get(['l.product_id', 'u.code as unit', 'l.qty_entered', 'l.expiry_date', 'l.serials'])
+                ->get(['l.product_id', 'u.code as unit', 'l.qty_entered', 'l.expiry_date', 'l.batch_no', 'l.serials'])
                 ->map(fn ($line) => [
                     'product_id' => $line->product_id,
                     'unit' => $line->unit,
                     'qty' => (float) $line->qty_entered,
                     'expiry' => $line->expiry_date,
+                    ...($line->batch_no === null ? [] : ['batch' => $line->batch_no]),
                     'serials' => json_decode((string) $line->serials, true) ?: [],
                 ])
                 ->all(),

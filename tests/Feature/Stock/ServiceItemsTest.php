@@ -164,7 +164,7 @@ it('never posts a movement for a service in the database', function () {
     $transaction = $this->stock->post('IN', [$this->stock->line('PACK', 1, 'HR')]);
     $line = DB::table('stock_transaction_line')->where('transaction_id', $transaction->id)->value('id');
 
-    expect(fn () => DB::transaction(fn () => DB::select('SELECT fn_post_movement(?, ?, ?, ?, ?, NULL, ?::movement_direction, ?)', [
+    expect(fn () => DB::transaction(fn () => DB::select('SELECT fn_post_movement(?, ?, ?, ?, ?, NULL, NULL, ?::movement_direction, ?)', [
         $transaction->id, $line, $this->stock->warehouse->id, $this->stock->customer->id, $this->stock->id('PACK'), 'IN', 1,
     ])))->toThrow(QueryException::class, 'Service item has no stock');
 });

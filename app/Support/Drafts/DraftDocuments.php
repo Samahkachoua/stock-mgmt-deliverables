@@ -190,6 +190,7 @@ final class DraftDocuments
                 'base_qty' => (float) $row->qty_base,
                 'base_unit' => $converter->base(),
                 'expiry' => $row->expiry_date,
+                'batch' => $row->batch_no,
                 'serials' => $serials,
                 'details' => $serials === [] ? [] : [__('transactions.details.serials', ['serials' => implode(', ', $serials)])],
             ];

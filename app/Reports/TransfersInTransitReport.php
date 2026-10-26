@@ -52,6 +52,7 @@ final class TransfersInTransitReport extends Report
             'item' => ['label' => 'reports.columns.item'],
             'code' => ['label' => 'reports.columns.code', 'priority' => 2, 'card' => 'hide'],
             'expiry_date' => ['label' => 'reports.columns.expiry_date', 'priority' => 2],
+            'batch' => ['label' => 'reports.columns.batch', 'priority' => 2],
             'qty' => ['label' => 'reports.columns.qty_base', 'align' => 'end'],
         ];
     }
@@ -75,12 +76,13 @@ final class TransfersInTransitReport extends Report
             ->when($filters['customer'] !== '', fn ($query) => $query->where('stock_transaction.customer_id', $filters['customer']))
             ->select([
                 'stock_transaction.doc_no', 'stock_transaction.dispatched_at',
-                'i.product_id', 'i.qty_base', 'i.expiry_date',
+                'i.product_id', 'i.qty_base', 'i.expiry_date', 'i.batch_no',
                 'wf.name as from_name', 'wt.name as to_name', 'c.name as customer_name',
             ])
             ->orderBy('stock_transaction.dispatched_at')
             ->orderBy('stock_transaction.doc_no')
-            ->orderBy('i.expiry_date');
+            ->orderBy('i.expiry_date')
+            ->orderBy('i.batch_key');
     }
 
     public function row(object $row, array $filters): array
@@ -99,6 +101,7 @@ final class TransfersInTransitReport extends Report
             'item' => ['text' => $product->name(), 'strong' => true],
             'code' => ['text' => $product->sku, 'ltr' => true],
             'expiry_date' => ['text' => $row->expiry_date === null ? '' : Format::date(CarbonImmutable::parse($row->expiry_date))],
+            'batch' => ['text' => (string) $row->batch_no, 'ltr' => true],
             'qty' => $this->qtyCell($row->qty_base, $row->product_id) + ['strong' => true],
         ];
     }

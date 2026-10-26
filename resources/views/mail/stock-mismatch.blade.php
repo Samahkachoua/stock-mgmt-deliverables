@@ -1,7 +1,7 @@
 {{ __('reconcile.mail.intro', ['count' => $total]) }}
 
 @foreach ($shown as $row)
-- {{ $row['warehouse'] }} / {{ $row['customer'] }} / {{ $row['item'] }}{{ $row['expiry'] ? ' / '.\App\Support\Format::date(\Illuminate\Support\Carbon::parse($row['expiry'])) : '' }}: {{ __('reconcile.mail.line', ['balance' => \App\Support\Format::qty($row['balance']), 'movements' => \App\Support\Format::qty($row['movements'])]) }}
+- {{ $row['warehouse'] }} / {{ $row['customer'] }} / {{ $row['item'] }}{{ $row['expiry'] ? ' / '.\App\Support\Format::date(\Illuminate\Support\Carbon::parse($row['expiry'])) : '' }}{{ filled($row['batch'] ?? null) ? ' / '.$row['batch'] : '' }}: {{ __('reconcile.mail.line', ['balance' => \App\Support\Format::qty($row['balance']), 'movements' => \App\Support\Format::qty($row['movements'])]) }}
 @endforeach
 @if ($total > count($shown))
 

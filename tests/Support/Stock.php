@@ -22,6 +22,11 @@ use Illuminate\Support\Facades\DB;
  *   BEANS   Piece, 1 Box = 12, 1 Pallet = 480
  *   YOGURT  Piece, 1 Box = 6, expiry-tracked
  *   PHONE   Piece, serial numbers
+ *
+ * Expiry lines without a batch get batch(): one batch per expiry date, as
+ * when every delivery of a date is one batch. Received or counted, that batch
+ * is written on the line; going out it is left out, so the only batch of the
+ * date is taken (PostingService picks it).
  */
 final class Stock
 {
@@ -94,7 +99,7 @@ final class Stock
     {
         $keyed = [];
         foreach ($lines as $i => $line) {
-            $keyed['r'.($i + 1)] = $line;
+            $keyed['r'.($i + 1)] = $this->withBatch($type, $line);
         }
 
         return app(PostingService::class)->post(
@@ -131,21 +136,45 @@ final class Stock
 
     /**
      * @param  list<string>  $serials
+     * @param  string|null  $batch  batch number of an expiry line ('' = stock without a batch)
      */
-    public function line(string $code, float|string $qty, string $unit = 'PC', ?string $expiry = null, array $serials = []): DocumentLine
+    public function line(string $code, float|string $qty, string $unit = 'PC', ?string $expiry = null, array $serials = [], ?string $batch = null): DocumentLine
     {
-        return new DocumentLine($this->id($code), $unit, $qty, $expiry, $serials);
+        return new DocumentLine($this->id($code), $unit, $qty, $expiry, $serials, $batch);
     }
 
     /**
-     * Balance in base units, optionally of one expiry date (Y-m-d).
+     * The batch number expiry lines get when none is given: one per date.
      */
-    public function balance(string $code, ?string $expiry = null, ?Warehouse $warehouse = null): float
+    public static function batch(string $expiry): string
+    {
+        return 'L'.str_replace('-', '', $expiry);
+    }
+
+    /**
+     * An expiry line received or counted without a batch gets batch().
+     */
+    public function withBatch(string $type, DocumentLine $line): DocumentLine
+    {
+        $ui = TransactionTypes::get($type);
+
+        if ($line->batch !== null || ! filled($line->expiry) || ($ui->postingDirection() !== 'IN' && ! $ui->countsStock())) {
+            return $line;
+        }
+
+        return new DocumentLine($line->productId, $line->unit, $line->qty, $line->expiry, $line->serials, self::batch((string) $line->expiry));
+    }
+
+    /**
+     * Balance in base units, optionally of one expiry date (Y-m-d) and batch.
+     */
+    public function balance(string $code, ?string $expiry = null, ?Warehouse $warehouse = null, ?string $batch = null): float
     {
         return (float) DB::table('stock_balance')
             ->where('warehouse_id', ($warehouse ?? $this->warehouse)->id)
             ->where('product_id', $this->id($code))
             ->when($expiry, fn ($query) => $query->where('expiry_date', $expiry))
+            ->when($batch !== null, fn ($query) => $query->where('batch_key', $batch))
             ->sum('qty_base');
     }
 
@@ -193,9 +222,10 @@ final class Stock
             WITH ledger AS (
                 SELECT warehouse_id, customer_id, product_id,
                        COALESCE(expiry_date, DATE '0001-01-01') AS expiry_key,
+                       COALESCE(batch_no, '') AS batch_key,
                        SUM(CASE WHEN direction = 'IN' THEN qty_base ELSE -qty_base END) AS qty
                   FROM stock_movement
-                 GROUP BY 1, 2, 3, 4
+                 GROUP BY 1, 2, 3, 4, 5
             )
             SELECT COALESCE(b.warehouse_id, l.warehouse_id) AS warehouse_id,
                    COALESCE(b.product_id, l.product_id) AS product_id,
@@ -204,6 +234,7 @@ final class Stock
               FULL JOIN ledger l
                 ON l.warehouse_id = b.warehouse_id AND l.customer_id = b.customer_id
                AND l.product_id = b.product_id AND l.expiry_key = b.expiry_key
+               AND l.batch_key = b.batch_key
              WHERE COALESCE(b.qty_base, 0) <> COALESCE(l.qty, 0)
         SQL);
     }

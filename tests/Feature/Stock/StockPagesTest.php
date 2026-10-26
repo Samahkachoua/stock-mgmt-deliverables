@@ -8,6 +8,7 @@ use App\Models\Warehouse;
 use App\Services\Stock\Document;
 use App\Services\Stock\DocumentLine;
 use App\Services\Stock\PostingService;
+use App\Support\Batches;
 use App\Support\Format;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -107,7 +108,7 @@ it('shows lines in the unit entered with their base quantity, and the activity',
         ->assertSee(__('transactions.activity.posted', ['name' => '<bdi>'.e($this->stock->user->full_name).'</bdi>']), false);
 });
 
-it('shows which expiry dates a delivery note took, and the serial numbers', function () {
+it('shows which lots (batch and expiry date) a delivery note took, and the serial numbers', function () {
     $this->stock->post('IN', [
         $this->stock->line('YOGURT', 4, expiry: now()->addDays(5)->toDateString()),
         $this->stock->line('YOGURT', 10, expiry: now()->addDays(50)->toDateString()),
@@ -117,7 +118,7 @@ it('shows which expiry dates a delivery note took, and the serial numbers', func
 
     $this->actingAs($this->stock->user)->get(route('delivery-note.show', $deliveryNote->doc_no))
         ->assertOk()
-        ->assertSee(__('transactions.details.from_expiries', ['dates' => Format::date(now()->addDays(5)).' (4 Piece), '.Format::date(now()->addDays(50)).' (2 Piece)']))
+        ->assertSee(__('transactions.details.from_expiries', ['dates' => Batches::text(now()->addDays(5)->toDateString(), Stock::batch(now()->addDays(5)->toDateString())).' (4 Piece), '.Batches::text(now()->addDays(50)->toDateString(), Stock::batch(now()->addDays(50)->toDateString())).' (2 Piece)']))
         ->assertSee(__('transactions.details.serials', ['serials' => 'SN-2']));
 });
 

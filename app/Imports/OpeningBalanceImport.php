@@ -13,6 +13,7 @@ use App\Services\Stock\Availability;
 use App\Services\Stock\Document;
 use App\Services\Stock\DocumentLine;
 use App\Services\Stock\PostingService;
+use App\Support\Batches;
 use App\Support\CompanyTime;
 use App\Support\Format;
 use Carbon\CarbonImmutable;
@@ -22,7 +23,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * Opening balances from Excel (SRS FR-10.4), checked like the Opening Balance
  * form: a warehouse the user works in, the customer's item, a unit the item
- * has, a quantity, and the expiry date for expiry items. On confirm, one
+ * has, a quantity, and the expiry date and batch number for expiry items (a
+ * batch has one expiry date, in the file and in stock). On confirm, one
  * Opening Balance document per warehouse and customer, posted through
  * PostingService.
  *
@@ -58,6 +60,7 @@ final class OpeningBalanceImport extends ImportType
             new Column('customer_code', required: true),
             new Column('item_code', required: true),
             new Column('expiry_date', kind: 'date'),
+            new Column('batch_no'),
             new Column('quantity', required: true),
             new Column('unit'),
             new Column('serial_no'),
@@ -101,12 +104,21 @@ final class OpeningBalanceImport extends ImportType
             ->whereIn('status', ['IN_STOCK', 'IN_TRANSIT'])->get(['product_id', 'serial_no'])
             ->mapWithKeys(fn ($s) => [$s->product_id.'|'.$s->serial_no => true]);
 
+        // Batches already known, item|batch => expiry date (a batch has one date).
+        $knownBatches = DB::table('product_batch')->whereIn('product_id', $products->where('track_expiry', true)->pluck('id'))->get(['product_id', 'batch_no', 'expiry_date'])
+            ->mapWithKeys(fn ($b) => [$b->product_id.'|'.$b->batch_no => $b->expiry_date]);
+
         $serialRows = []; // customer|item|serial => rows of the file it is on
+        $batchDates = []; // customer|item|batch => expiry dates the file gives it
         foreach ($rows as $row) {
             $v = array_map(fn ($value) => trim((string) $value), $row->payload['values']);
 
             if (($v['serial_no'] ?? '') !== '') {
                 $serialRows[mb_strtoupper(($v['customer_code'] ?? '').'|'.($v['item_code'] ?? '')).'|'.$v['serial_no']][] = $row->row_no;
+            }
+
+            if (($v['batch_no'] ?? '') !== '' && ($date = Values::date($v['expiry_date'] ?? '')) !== null) {
+                $batchDates[mb_strtoupper(($v['customer_code'] ?? '').'|'.($v['item_code'] ?? '')).'|'.Batches::normalize($v['batch_no'])][$date] = true;
             }
         }
 
@@ -229,8 +241,27 @@ final class OpeningBalanceImport extends ImportType
                 if ($expiry !== null && $warehouse !== null && $expiry < CompanyTime::today()->toDateString()) {
                     $check->warn('imports.warnings.expired', ['date' => Format::date(CarbonImmutable::parse($expiry))]);
                 }
+
+                // Batch number: required, one expiry date per batch (known, and within the file).
+                $batch = Batches::normalize($v['batch_no'] ?? '');
+                $known = $knownBatches[$product->id.'|'.$batch] ?? null;
+                $inFile = array_keys($batchDates[mb_strtoupper($v['customer_code'].'|'.$v['item_code']).'|'.$batch] ?? []);
+
+                if ($batch === '') {
+                    $check->error('imports.errors.batch_required', ['item' => $product->sku]);
+                } elseif (mb_strlen($batch) > Batches::MAX || str_contains($batch, '|')) {
+                    $check->error('imports.errors.batch_invalid', ['value' => $v['batch_no'], 'max' => Batches::MAX]);
+                } elseif ($expiry !== null && $known !== null && $known !== $expiry) {
+                    $check->error('stock.errors.batch_other_date', ['batch' => $batch, 'item' => $product->sku, 'date' => Format::date(CarbonImmutable::parse($known))]);
+                } elseif ($expiry !== null && count($inFile) > 1) {
+                    $check->error('imports.errors.batch_two_dates', ['batch' => $batch, 'item' => $product->sku]);
+                }
             } elseif ($product !== null && ($v['expiry_date'] ?? '') !== '') {
                 $check->warn('imports.warnings.expiry_ignored', ['item' => $product->sku]);
+            }
+
+            if ($product !== null && ! $product->track_expiry && ($v['batch_no'] ?? '') !== '') {
+                $check->warn('imports.warnings.batch_ignored', ['item' => $product->sku]);
             }
 
             if ($product !== null && ! $product->track_serial && ($v['serial_no'] ?? '') !== '') {
@@ -266,7 +297,7 @@ final class OpeningBalanceImport extends ImportType
             $warehouse = $warehouses[$warehouseCode];
             $customer = $customers[$customerCode];
             $lines = [];
-            $merged = []; // item|unit|expiry => the line key it went into
+            $merged = []; // item|unit|expiry|batch => the line key it went into
 
             foreach ($group as $row) {
                 $v = array_map(fn ($value) => trim((string) $value), $row->payload['values']);
@@ -277,18 +308,19 @@ final class OpeningBalanceImport extends ImportType
 
                 $qty = $product->track_serial ? '1' : (string) Values::number($v['quantity']);
                 $expiry = $product->track_expiry ? Values::date($v['expiry_date']) : null;
+                $batch = $product->track_expiry ? Batches::normalize($v['batch_no'] ?? '') : null;
                 $serials = $product->track_serial ? [$v['serial_no']] : [];
 
-                // Rows of the same item, unit and expiry date add up into one line
-                // (rule 12: a document never repeats a line); a serial item's pieces
-                // become one line with all their serials.
-                $same = $product->id.'|'.$unit.'|'.$expiry;
+                // Rows of the same item, unit, expiry date and batch add up into one
+                // line (rule 12: a document never repeats a line); a serial item's
+                // pieces become one line with all their serials.
+                $same = $product->id.'|'.$unit.'|'.$expiry.'|'.$batch;
 
                 if (isset($merged[$same])) {
                     $first = $lines[$merged[$same]];
                     $serials = [...$first->serials, ...$serials];
                     $qty = $product->track_serial ? (string) count($serials) : (string) round((float) $first->qty + (float) $qty, 4);
-                    $lines[$merged[$same]] = new DocumentLine($first->productId, $first->unit, $qty, $first->expiry, $serials);
+                    $lines[$merged[$same]] = new DocumentLine($first->productId, $first->unit, $qty, $first->expiry, $serials, $first->batch);
 
                     continue;
                 }
@@ -301,6 +333,7 @@ final class OpeningBalanceImport extends ImportType
                     qty: $qty,
                     expiry: $expiry,
                     serials: $serials,
+                    batch: $batch,
                 );
             }
 

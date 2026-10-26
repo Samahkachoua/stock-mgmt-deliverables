@@ -143,14 +143,26 @@ them so users get a clear, translated message instead of a raw DB error.
    must stay correct for a future customer-portal user who sees only their
    own customer's stock.
 9. **Serial-tracked products** use only their base unit — hide the unit
-   dropdown for them. **Expiry-tracked products** require an expiry date on
-   every Receive / Opening Balance line. There are **no batch/lot numbers**:
-   stock is kept per expiry date (`expiry_date` on lines, movements, balances
-   and in-transit rows; there is no `batch` table). On Delivery note, Transfer and
-   Damage the user picks the expiry date per line (the nearest is
-   pre-selected; Damage may also pick expired stock) and `PostingService`
-   takes stock only from that date. A line without a date (no UI path today)
-   falls back to FEFO (nearest expiry first) across dates.
+   dropdown for them. **Expiry-tracked products** require an expiry date AND
+   a batch number on every Receive / Opening Balance / Draft receipt line
+   (and in the Opening Balance import). Stock is kept per **lot** = expiry
+   date + batch (`expiry_date` and `batch_no` on lines, draft lines,
+   movements, balances and in-transit rows; `App\Support\Batches`).
+   - A batch has **one expiry date** per item: `product_batch` (unique item +
+     batch), referenced by lines and movements; typing a known batch fills
+     in and locks its date, another date is refused (`BatchDateMismatch`).
+     Only expiry items have batches (`trg_validate_product_batch`). Batch
+     numbers are kept trimmed and upper case, at most 40 characters, no "|".
+   - Stock from before batches has no batch ("No batch", `batch_no` NULL);
+     it can still go out or be counted.
+   - On Delivery note, Transfer, Damage, Order and Adjustment the user picks
+     the lot per line from one dropdown ("B-1042 · 12 Mar 2027 · 40 Piece";
+     the form's value is `Batches::key()`, "2027-03-12|B-1042"); the nearest
+     is pre-selected; Damage may also pick expired stock. `PostingService`
+     takes stock only from that lot. A line with a date but no batch takes
+     the date's only batch, and is refused ("Choose the batch") when the date
+     has several. A line without a date (no UI path today) falls back to
+     FEFO across lots: nearest expiry, then "No batch", then batch number.
 10. **Adjustments are entered as a counted quantity**, not a +/− amount. The
     line stores what the user counted; the difference against the system
     balance (at save time) becomes an IN or OUT movement. Show the difference
@@ -165,26 +177,25 @@ them so users get a clear, translated message instead of a raw DB error.
 12. **No duplicate lines in a transaction.** A line's key (`line_key` in
     config/transactions.php, `TypeUi::lineKey()`):
   - Receive, Opening Balance, Delivery note, Transfer, Damage: item + unit, plus the
-    expiry date for expiry-tracked items (so one item can still be taken from
-    two expiry dates with two rows, rule 9).
-  - Adjustment: item + expiry date, in any unit (a count is compared with the
+    lot (expiry date + batch) for expiry-tracked items (so one item can still
+    be taken from two lots with two rows, rule 9).
+  - Adjustment: item + lot, in any unit (a count is compared with the
     whole balance: counting it in two units would adjust it twice).
   Two lines with the same key are never allowed; the same item in another
-  unit (not on a count) or with another expiry date is. There are no batch
-  numbers (rule 9): wherever a spec says batch, read expiry date. Availability
-  is checked on the combined base quantity of all lines of that item.
+  unit (not on a count) or with another lot is. Availability is checked on
+  the combined base quantity of all lines of that item (of that lot).
   - Prevent it while typing: a new row of an item starts on a unit (and
-    nearest expiry date) no other row of it has yet. When a row's key still
+    nearest lot) no other row of it has yet. When a row's key still
     matches an existing row, clear the new row, show the toast "Olive Oil 1L
-    (Carton, expiry 12 Mar 2027) is already in row 1 — change the quantity
-    there" and move focus to that row's quantity.
+    (Carton, batch B-1042, expiry 12 Mar 2027) is already in row 1 — change
+    the quantity there" and move focus to that row's quantity.
   - Check again on save (server side, `PostingService` for every path, and
     `DraftService` for a draft): `DuplicateLine`, same toast,
     red border on both rows. The Opening Balance import adds up rows of the
-    same item + unit + expiry (and a serial item's pieces) into one line.
+    same item + unit + expiry + batch (and a serial item's pieces) into one line.
   - Database safety net: unique index `uq_transaction_line_key` on
-    stock_transaction_line over transaction + item + unit + expiry, with
-    "no expiry" treated as one value.
+    stock_transaction_line over transaction + item + unit + expiry + batch,
+    with "no expiry" / "no batch" each treated as one value.
 13. **Service items never touch stock.** An item with `product.is_service`
     (packing, delivery fee...) has only its base unit, no expiry and no
     serials (`ck_product_service_untracked`, `trg_validate_product_unit`).
@@ -238,14 +249,16 @@ per type. Only the colour, title and the type-specific columns differ.
    shown in red under the field; Save is disabled while any row is invalid.
    Sticky footer: summary ("3 items · 212 Piece"), Cancel, Save.
    Type-specific columns:
-   - Receive / Opening Balance: Expiry date, shown only on rows whose item
-     tracks expiry; hint reads "In stock now", no maximum.
-   - Delivery note / Transfer / Damage: Expiry date dropdown (date · quantity,
-     nearest pre-selected), only on rows whose item tracks expiry; the
-     "Available" hint and maximum are for that date. To take from two
-     dates, add two rows.
+   - Receive / Opening Balance: Batch | Expiry date, shown only on rows whose
+     item tracks expiry; hint reads "In stock now", no maximum.
+   - Delivery note / Transfer / Damage: Batch · expiry dropdown (batch · date
+     · quantity, nearest pre-selected), only on rows whose item tracks expiry;
+     the "Available" hint and maximum are for that lot. To take from two
+     lots, add two rows.
    - Adjustment: In system (read-only) | Counted (input) | Difference
-     (auto, green +/red −). Expiry items also show an Expiry date dropdown.
+     (auto, green +/red −). Expiry items also show the Batch · expiry dropdown
+     (the lots in stock; there is no way yet to count a batch the system
+     doesn't have).
    - Serial items: Quantity is replaced by a serial-number picker/input.
    - Adjustment/Damage above the approval threshold: a one-line notice
      above the footer and the button becomes "Send for approval".

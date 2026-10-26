@@ -108,7 +108,7 @@ it('appends an empty row as soon as the last row gets a quantity', function () {
     expect(rowKeys($form))->toHaveCount(2);
 
     $second = rowKeys($form)[1];
-    expect($form->get("lines.$second"))->toBe(['item' => null, 'unit' => '', 'qty' => '', 'expiry' => '', 'serials' => '', 'picked' => []]);
+    expect($form->get("lines.$second"))->toBe(['item' => null, 'unit' => '', 'qty' => '', 'expiry' => '', 'batch' => '', 'serials' => '', 'picked' => []]);
 
     // Editing an earlier row does not add more rows.
     $form->set("lines.$first.qty", '4');
@@ -200,24 +200,46 @@ it('does not limit receipts to what is in stock', function () {
         ->and(saveDisabled($form))->toBeFalse();
 });
 
-it('asks for the expiry date (and no batch number) on receipts of expiry-tracked items only', function () {
+it('asks for the batch number and the expiry date on receipts of expiry-tracked items only', function () {
     $form = form($this->catalog, 'IN');
     [$row] = rowKeys($form);
 
     $form->set("lines.$row.item", $this->catalog->id('YG-500'))->set("lines.$row.qty", '10');
 
     expect($form->html())->toContain("line-$row-expiry")
+        ->and($form->html())->toContain("line-$row-batch")
         ->and($form->html())->toContain(e(__('transactions.form.errors.expiry_required')))
-        ->and($form->html())->not->toContain("line-$row-batch")
+        ->and($form->html())->toContain(e(__('transactions.form.errors.batch_required')))
         ->and(saveDisabled($form))->toBeTrue();
 
     $form->set("lines.$row.expiry", now()->addMonth()->toDateString());
+    expect(saveDisabled($form))->toBeTrue();
 
-    expect(saveDisabled($form))->toBeFalse();
+    // Kept upper case.
+    $form->set("lines.$row.batch", ' b-1042 ');
+    expect($form->get("lines.$row.batch"))->toBe('B-1042')
+        ->and(saveDisabled($form))->toBeFalse();
 
     $other = rowKeys($form)[1];
     $form->set("lines.$other.item", $this->catalog->id('RC-5K'));
-    expect($form->html())->not->toContain("line-$other-expiry");
+    expect($form->html())->not->toContain("line-$other-expiry")
+        ->and($form->html())->not->toContain("line-$other-batch");
+});
+
+it('fills in the expiry date of a batch received before, and refuses another date for it', function () {
+    DB::table('product_batch')->insert(['product_id' => $this->catalog->id('YG-500'), 'batch_no' => 'B-1042', 'expiry_date' => now()->addDays(14)->toDateString()]);
+
+    $form = form($this->catalog, 'IN');
+    [$row] = rowKeys($form);
+    $form->set("lines.$row.item", $this->catalog->id('YG-500'))->set("lines.$row.qty", '10')->set("lines.$row.batch", 'b-1042');
+
+    expect($form->get("lines.$row.expiry"))->toBe(now()->addDays(14)->toDateString())
+        ->and($form->html())->toContain(e(__('transactions.form.batch_known', ['batch' => 'B-1042', 'date' => Format::date(now()->addDays(14))])))
+        ->and(saveDisabled($form))->toBeFalse();
+
+    $form->set("lines.$row.expiry", now()->addDays(20)->toDateString());
+    expect($form->html())->toContain(e(__('stock.errors.batch_other_date', ['batch' => 'B-1042', 'item' => 'Yogurt 500g', 'date' => Format::date(now()->addDays(14))])))
+        ->and(saveDisabled($form))->toBeTrue();
 });
 
 it('suggests the nearest expiry date on a delivery note, and checks the quantity against the date chosen', function () {
@@ -227,7 +249,7 @@ it('suggests the nearest expiry date on a delivery note, and checks the quantity
 
     $form->set("lines.$row.item", $this->catalog->id('YG-500'));
 
-    expect($form->get("lines.$row.expiry"))->toBe($soon)
+    expect($form->get("lines.$row.expiry"))->toBe("$soon|")
         ->and($form->html())->toContain("line-$row-expiry")
         ->toContain(e(Format::date(now()->addDays(14))));
 
@@ -236,7 +258,7 @@ it('suggests the nearest expiry date on a delivery note, and checks the quantity
     expect($form->html())->toContain(e(__('transactions.form.errors.not_enough', ['qty' => '24 Piece'])))
         ->and(saveDisabled($form))->toBeTrue();
 
-    $form->set("lines.$row.expiry", $late);
+    $form->set("lines.$row.expiry", "$late|");
     expect($form->html())->toContain(e(Format::date(now()->addDays(40))))
         ->and(saveDisabled($form))->toBeFalse();
 });
@@ -250,9 +272,9 @@ it('offers expired stock on a damage only', function () {
         [$row] = rowKeys($form);
         $form->set("lines.$row.item", $this->catalog->id('YG-500'));
 
-        expect(str_contains($form->html(), 'value="'.$gone.'"'))->toBe($offered)
+        expect(str_contains($form->html(), 'value="'.$gone.'|"'))->toBe($offered)
             // Nearest expiry first: on a damage that is the expired stock.
-            ->and($form->get("lines.$row.expiry"))->toBe($offered ? $gone : now()->addDays(14)->toDateString());
+            ->and($form->get("lines.$row.expiry"))->toBe(($offered ? $gone : now()->addDays(14)->toDateString()).'|');
     }
 });
 
@@ -262,7 +284,7 @@ it('takes stock from the expiry date chosen in the form', function () {
     [$soon, $late] = [now()->addDays(14)->toDateString(), now()->addDays(40)->toDateString()];
 
     $form->set("lines.$row.item", $this->catalog->id('YG-500'))
-        ->set("lines.$row.expiry", $late)
+        ->set("lines.$row.expiry", "$late|")
         ->set("lines.$row.qty", '30')
         ->call('save')
         ->assertHasNoErrors();
@@ -289,10 +311,10 @@ it('counts an expiry date of an expiry-tracked item against that date', function
     $form = form($this->catalog, 'ADJUSTMENT')->set('reason', 'STOCK_COUNT_VARIANCE');
     [$row] = rowKeys($form);
 
-    $form->set("lines.$row.item", $this->catalog->id('YG-500'))->set("lines.$row.expiry", now()->addDays(40)->toDateString())->set("lines.$row.qty", '30');
+    $form->set("lines.$row.item", $this->catalog->id('YG-500'))->set("lines.$row.expiry", now()->addDays(40)->toDateString().'|')->set("lines.$row.qty", '30');
 
-    // Both dates are offered; the one counted holds 36, so 30 is 6 short.
-    expect($form->html())->toContain('value="'.now()->addDays(14)->toDateString().'"')->toContain('-6')
+    // Both lots are offered; the one counted holds 36, so 30 is 6 short.
+    expect($form->html())->toContain('value="'.now()->addDays(14)->toDateString().'|"')->toContain('-6')
         ->and(saveDisabled($form))->toBeFalse();
 });
 
@@ -514,6 +536,7 @@ it('warns about an expiry date that has passed on a receipt or opening balance, 
     $warning = e(__('transactions.form.expiry_past'));
 
     $form->set("lines.$row.item", $this->catalog->id('YG-500'))->set("lines.$row.qty", '10')
+        ->set("lines.$row.batch", 'B-1')
         ->set("lines.$row.expiry", now()->addMonth()->toDateString());
 
     expect($form->html())->not->toContain($warning);

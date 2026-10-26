@@ -1,8 +1,8 @@
 {{--
     Read-only lines of a document. Columns follow the type:
     transfers show Sent | Received, adjustments In system | Counted | Difference,
-    everything else Quantity | Base quantity; Expiry date appears when the type
-    records it and a line has one.
+    everything else Quantity | Base quantity; Batch and Expiry date appear when
+    the type records them and a line has one.
     <x-lines-table :type="$type" :lines="$document['lines']" />
 --}}
 @props(['type', 'lines'])
@@ -13,6 +13,7 @@
     $mode = $type->dispatchReceive() ? 'transfer' : ($type->hasLineColumn('counted') ? 'count' : 'quantity');
     $expiries = collect($lines)->contains(fn ($line) => filled($line['expiry'] ?? null))
         && ($type->hasLineColumn('expiry') || $type->hasLineColumn('expiry_pick') || $mode === 'count');
+    $batches = $expiries && collect($lines)->contains(fn ($line) => filled($line['batch'] ?? null));
     $total = collect($lines)->sum(fn ($line) => match ($mode) {
         // While In transit nothing is received yet: total what was sent.
         'transfer' => $line['received'] === null ? $line['base_qty'] : $line['received'] * ($line['base_qty'] / max($line['qty'], 1)),
@@ -38,6 +39,9 @@
                     <th scope="col" class="w-14 ps-edge text-start">#</th>
                     <th scope="col" class="px-cell text-start">{{ __('transactions.lines.item') }}</th>
                     <th scope="col" class="px-cell text-start">{{ __('transactions.lines.unit') }}</th>
+                    @if ($batches)
+                        <th scope="col" class="px-cell text-start">{{ __('transactions.lines.batch') }}</th>
+                    @endif
                     @if ($expiries)
                         <th scope="col" class="px-cell text-start">{{ __('transactions.lines.expiry') }}</th>
                     @endif
@@ -70,6 +74,9 @@
                             @endforeach
                         </td>
                         <td data-label="{{ __('transactions.lines.unit') }}" class="px-cell text-fg">{{ Format::unit($line['unit']) }}</td>
+                        @if ($batches)
+                            <td data-label="{{ __('transactions.lines.batch') }}" @if (blank($line['batch'] ?? null)) data-card="hide" @endif class="px-cell text-fg"><span dir="ltr" class="tabular">{{ $line['batch'] ?? '' }}</span></td>
+                        @endif
                         @if ($expiries)
                             <td data-label="{{ __('transactions.lines.expiry') }}" @if (blank($line['expiry'] ?? null)) data-card="hide" @endif class="px-cell text-fg">{{ $line['expiry'] ? Format::date(\Illuminate\Support\Carbon::parse($line['expiry'])) : '' }}</td>
                         @endif

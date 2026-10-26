@@ -68,12 +68,16 @@ class StockSeeder extends Seeder
             $document = [];
 
             foreach ($lines as $i => $line) {
+                $expiry = isset($line[3]) ? $today->addDays($line[3])->toDateString() : null;
+
                 $document['r'.($i + 1)] = new DocumentLine(
                     productId: $products[$line[0]],
                     unit: $line[1],
                     qty: $line[2],
-                    expiry: isset($line[3]) ? $today->addDays($line[3])->toDateString() : null,
+                    expiry: $expiry,
                     serials: $line[4] ?? [],
+                    // One batch per expiry date (a batch has one date).
+                    batch: $expiry === null ? null : 'LOT-'.str_replace('-', '', $expiry),
                 );
             }
 

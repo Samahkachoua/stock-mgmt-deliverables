@@ -5,6 +5,7 @@ namespace App\Support\Transactions;
 use App\Models\Product;
 use App\Models\StockTransaction;
 use App\Services\Stock\UnitConverter;
+use App\Support\Batches;
 use App\Support\CompanyTime;
 use App\Support\DateRange;
 use App\Support\Drafts\DraftTypes;
@@ -200,18 +201,19 @@ final class Documents
             ->join('unit as u', 'u.id', '=', 'l.unit_id')
             ->where('l.transaction_id', $transactionId)
             ->orderBy('l.line_no')
-            ->get(['l.id', 'l.product_id', 'l.qty_entered', 'l.qty_base', 'l.qty_received', 'l.shortage_reason', 'l.qty_system', 'l.qty_counted', 'u.code as unit', 'l.expiry_date']);
+            ->get(['l.id', 'l.product_id', 'l.qty_entered', 'l.qty_base', 'l.qty_received', 'l.shortage_reason', 'l.qty_system', 'l.qty_counted', 'u.code as unit', 'l.expiry_date', 'l.batch_no']);
 
         $products = Product::withoutGlobalScopes()->with(['baseUnit', 'units.unit'])->findMany($rows->pluck('product_id')->unique())->keyBy('id');
 
-        // Which expiry dates each line took stock from (a delivery note line may use several).
+        // Which lots (expiry date + batch) each line took stock from (a delivery note line may use several).
         $allocations = DB::table('stock_movement')
             ->where('transaction_id', $transactionId)
             ->whereIn('line_id', $rows->pluck('id'))
             ->where('direction', 'OUT')
             ->whereNotNull('expiry_date')
             ->orderBy('expiry_date')
-            ->get(['line_id', 'qty_base', 'expiry_date'])
+            ->orderByRaw("COALESCE(batch_no, '')")
+            ->get(['line_id', 'qty_base', 'expiry_date', 'batch_no'])
             ->groupBy('line_id');
 
         $serials = DB::table('stock_transaction_line_serial as ls')
@@ -232,7 +234,7 @@ final class Documents
 
             if (($taken = $allocations->get($row->id)) && $taken->count() > 0 && $row->expiry_date === null) {
                 $details[] = __('transactions.details.from_expiries', [
-                    'dates' => $taken->map(fn ($m) => __('transactions.details.expiry_qty', ['date' => Format::date(CarbonImmutable::parse($m->expiry_date)), 'qty' => Format::qtyUnit($m->qty_base, $converter->base())]))->implode(', '),
+                    'dates' => $taken->map(fn ($m) => __('transactions.details.expiry_qty', ['date' => Batches::text($m->expiry_date, $m->batch_no), 'qty' => Format::qtyUnit($m->qty_base, $converter->base())]))->implode(', '),
                 ]);
             }
 
@@ -263,6 +265,7 @@ final class Documents
                 'base_qty' => (float) $row->qty_base,
                 'base_unit' => $converter->base(),
                 'expiry' => $row->expiry_date,
+                'batch' => $row->batch_no,
                 'received' => $received,
                 'shortage_reason' => $row->shortage_reason,
                 'serials' => $lineSerials?->pluck('serial_no')->all() ?? [],

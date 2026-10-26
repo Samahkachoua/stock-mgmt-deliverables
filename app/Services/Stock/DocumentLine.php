@@ -13,6 +13,8 @@ final class DocumentLine
     /**
      * @param  string  $unit  unit code (e.g. BOX)
      * @param  list<string>  $serials  serial numbers, for serial-numbered items
+     * @param  string|null  $batch  batch number of an expiry item: typed coming in; going out the
+     *                              batch picked ('' = stock without a batch), null = the only batch of that date
      */
     public function __construct(
         public readonly string $productId,
@@ -20,5 +22,6 @@ final class DocumentLine
         public readonly string|float|int $qty,
         public readonly ?string $expiry = null,
         public readonly array $serials = [],
+        public readonly ?string $batch = null,
     ) {}
 }

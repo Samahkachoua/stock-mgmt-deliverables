@@ -7,6 +7,7 @@ return [
     'lines' => '{0} :count سطر|{1} سطر واحد|{2} سطران|[3,10] :count أسطر|[11,*] :count سطرًا',
 
     'filters' => [
+        'batch' => 'الدفعة',
         'search' => 'بحث',
         'search_item' => 'الصنف',
         'search_placeholder' => 'ابحث بالاسم أو الرمز…',
@@ -40,6 +41,7 @@ return [
         'out' => 'صادر',
         'balance' => 'الرصيد بعدها',
         'expiry_date' => 'تاريخ الانتهاء',
+        'batch' => 'الدفعة',
         'days_left' => 'الأيام المتبقية',
         'status' => 'الحالة',
         'approved_by' => 'وافق عليه',

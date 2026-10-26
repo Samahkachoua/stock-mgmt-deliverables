@@ -7,6 +7,7 @@ use App\Models\StockDraft;
 use App\Models\StockTransaction;
 use App\Models\User;
 use App\Services\Stock\Exceptions\AlreadyProcessed;
+use App\Services\Stock\Exceptions\BatchDateMismatch;
 use App\Services\Stock\Exceptions\DuplicateLine;
 use App\Services\Stock\Exceptions\InsufficientStock;
 use App\Services\Stock\Exceptions\NotAllowed;
@@ -17,6 +18,7 @@ use App\Services\Stock\Exceptions\StaleCount;
 use App\Services\Stock\Exceptions\StockAlreadyUsed;
 use App\Services\Stock\Exceptions\StockException;
 use App\Support\Audit;
+use App\Support\Batches;
 use App\Support\CompanyTime;
 use App\Support\Drafts\DraftTypes;
 use App\Support\Format;
@@ -192,10 +194,10 @@ final class PostingService
             $movements = DB::table('stock_movement')->where('transaction_id', $header->id)->orderBy('seq')->get();
             $products = Product::withoutGlobalScopes()->with(['baseUnit', 'units.unit'])->findMany($movements->pluck('product_id')->unique())->keyBy('id');
 
-            // Receipts: everything received must still be here, per item and expiry date.
-            foreach ($movements->where('direction', 'IN')->groupBy(fn ($m) => $m->product_id.'|'.$m->expiry_date) as $group) {
+            // Receipts: everything received must still be here, per item and lot (expiry date + batch).
+            foreach ($movements->where('direction', 'IN')->groupBy(fn ($m) => $m->product_id.'|'.Batches::key($m->expiry_date, $m->batch_no)) as $group) {
                 $first = $group->first();
-                $balance = $this->lockBalance($first->warehouse_id, $first->customer_id, $first->product_id, $first->expiry_date);
+                $balance = $this->lockBalance($first->warehouse_id, $first->customer_id, $first->product_id, $first->expiry_date, $first->batch_no);
                 $received = (float) $group->sum('qty_base');
 
                 if ($balance < $received) {
@@ -211,7 +213,7 @@ final class PostingService
             $this->reverseSerials($header, $type);
 
             foreach ($movements as $movement) {
-                $this->move($header->id, $movement->line_id, $movement->warehouse_id, $movement->customer_id, $movement->product_id, $movement->expiry_date,
+                $this->move($header->id, $movement->line_id, $movement->warehouse_id, $movement->customer_id, $movement->product_id, $movement->expiry_date, $movement->batch_no,
                     $movement->direction === 'IN' ? 'OUT' : 'IN', (float) $movement->qty_base);
             }
 
@@ -352,12 +354,12 @@ final class PostingService
                 $plan[] = compact('line', 'receivedBase', 'reason', 'sentSerials', 'arrivedSerials');
             }
 
-            // The expiry dates each line left the source with, nearest first (all lines in one query).
+            // The lots (expiry date + batch) each line left the source with, nearest first (all lines in one query).
             $sentByLine = DB::table('stock_movement')
                 ->whereIn('line_id', $lines->pluck('id'))
                 ->where('direction', 'OUT')
-                ->orderByRaw('expiry_date ASC NULLS LAST, seq ASC')
-                ->get(['line_id', 'expiry_date', 'qty_base'])
+                ->orderByRaw("expiry_date ASC NULLS LAST, COALESCE(batch_no, '') ASC, seq ASC")
+                ->get(['line_id', 'expiry_date', 'batch_no', 'qty_base'])
                 ->groupBy('line_id');
             $arrivedIds = [];
             $lostIds = [];
@@ -370,7 +372,7 @@ final class PostingService
                     $qty = round(min((float) $movement->qty_base, $remaining), 4);
 
                     if ($qty > 0) {
-                        $this->move($header->id, $line->id, $header->to_warehouse_id, $header->customer_id, $line->product_id, $movement->expiry_date, 'IN', $qty);
+                        $this->move($header->id, $line->id, $header->to_warehouse_id, $header->customer_id, $line->product_id, $movement->expiry_date, $movement->batch_no, 'IN', $qty);
                         $remaining = round($remaining - $qty, 4);
                     }
                 }
@@ -435,7 +437,7 @@ final class PostingService
         $movements = DB::table('stock_movement')->where('transaction_id', $header->id)->where('direction', 'OUT')->orderBy('seq')->get();
 
         foreach ($movements as $movement) {
-            $this->move($header->id, $movement->line_id, $movement->warehouse_id, $movement->customer_id, $movement->product_id, $movement->expiry_date, 'IN', (float) $movement->qty_base);
+            $this->move($header->id, $movement->line_id, $movement->warehouse_id, $movement->customer_id, $movement->product_id, $movement->expiry_date, $movement->batch_no, 'IN', (float) $movement->qty_base);
         }
 
         $serials = DB::table('stock_transaction_line_serial as ls')
@@ -566,7 +568,7 @@ final class PostingService
 
             $type->postingDirection() === 'IN'
                 ? $this->postIn($context, $product, $line, $serials, $key)
-                : $this->postOut($context, $product, $product->track_expiry ? $this->chosenExpiry($line, $key) : null, $serials, $type->usesExpired(), $key, inTransit: $transfer);
+                : $this->postOut($context, $product, $product->track_expiry ? $this->chosenExpiry($line, $key) : null, $product->track_expiry ? $this->chosenBatch($line, $key) : null, $serials, $type->usesExpired(), $key, inTransit: $transfer);
         }
 
         $transaction = StockTransaction::withoutGlobalScopes()->findOrFail($transactionId);
@@ -629,10 +631,11 @@ final class PostingService
             }
 
             $expiry = filled($line->expiry) ? trim((string) $line->expiry) : null;
-            $lineKey = $type->lineKey($product->id, $line->unit, $expiry, $product->track_expiry);
+            $batch = $line->batch === null ? null : Batches::normalize($line->batch);
+            $lineKey = $type->lineKey($product->id, $line->unit, $expiry, $product->track_expiry, $batch);
 
             if (isset($seen[$lineKey])) {
-                [$message, $params] = $type->duplicateMessage($product->name(), $line->unit, $expiry, $product->track_expiry, $seen[$lineKey]['number']);
+                [$message, $params] = $type->duplicateMessage($product->name(), $line->unit, $expiry, $product->track_expiry, $seen[$lineKey]['number'], $batch);
 
                 throw new DuplicateLine($message, $params, (string) $key, $seen[$lineKey]['key']);
             }
@@ -765,6 +768,8 @@ final class PostingService
                     qty: (string) (int) round((float) $line->qty_entered),
                     expiry: $line->expiry_date,
                     serials: json_decode((string) $line->serials, true) ?: [],
+                    // A picked lot without a batch is saved with batch_no NULL: '' = that stock.
+                    batch: $line->batch_no ?? ($line->expiry_date === null ? null : ''),
                 );
             }
 
@@ -915,6 +920,7 @@ final class PostingService
                 'line_no' => ++$lineNo,
                 'product_id' => $line['product']->id,
                 'expiry_date' => $line['expiry'],
+                'batch_no' => ($line['batch'] ?? '') === '' ? null : $line['batch'],
                 'unit_id' => $line['product']->units->firstWhere('unit.code', $line['unit'])->unit_id,
                 'qty_entered' => $line['qty_entered'],
                 'qty_base' => $line['qty_base'],
@@ -995,13 +1001,14 @@ final class PostingService
             $seen['serials'] = $seenSerials;
         }
 
-        // Enough for this line (of the chosen expiry date, if any) after the
-        // earlier lines of the same item. Checked again, with locks, when the
-        // stock actually goes out.
+        // Enough for this line (of the chosen lot, if any) after the earlier
+        // lines of the same item. Checked again, with locks, when the stock
+        // actually goes out.
         $expiry = $product->track_expiry ? $this->chosenExpiry($line, $key) : null;
+        $batch = $expiry === null ? null : $this->lotBatch($product, $warehouseId, $customerId, $expiry, $this->chosenBatch($line, $key), $key);
         $seenKey = 'qty|'.$product->id;
 
-        $lot = $expiry === null ? null : (collect($this->availability->rows($warehouseId, $customerId, $product->id))->firstWhere('expiry', $expiry)
+        $lot = $expiry === null ? null : (collect($this->availability->rows($warehouseId, $customerId, $product->id))->firstWhere('lot', Batches::key($expiry, $batch))
             ?? throw new PostingRejected('transactions.form.errors.expiry_not_here', [], $key, 'expiry'));
 
         if ($lot !== null) {
@@ -1009,7 +1016,7 @@ final class PostingService
                 throw new PostingRejected('stock.errors.expiry_expired', ['date' => Format::date(CarbonImmutable::parse($expiry))], $key, 'expiry');
             }
 
-            $seenKey .= '|'.$expiry;
+            $seenKey .= '|'.$lot['lot'];
         }
 
         $taken = $seen[$seenKey] ?? 0.0;
@@ -1017,7 +1024,7 @@ final class PostingService
         // Now, and (dated back) on the document's date.
         foreach ($this->availability->isBackdated($warehouseId, $date) ? [null, $date] : [null] as $on) {
             $available = $lot !== null
-                ? (float) (collect($this->availability->rows($warehouseId, $customerId, $product->id, $on))->firstWhere('expiry', $expiry)['qty'] ?? 0)
+                ? (float) (collect($this->availability->rows($warehouseId, $customerId, $product->id, $on))->firstWhere('lot', $lot['lot'])['qty'] ?? 0)
                 : $this->availability->quantity($warehouseId, $customerId, $product->id, excludeExpired: ! $type->usesExpired(), date: $on);
 
             if ($available - $taken < $qtyBase - 1e-9) {
@@ -1033,6 +1040,7 @@ final class PostingService
             'qty_entered' => $qty,
             'qty_base' => $qtyBase,
             'expiry' => $expiry,
+            'batch' => $batch,
             'qty_system' => null,
             'qty_counted' => null,
             'direction' => null,
@@ -1056,19 +1064,28 @@ final class PostingService
     {
         $converter = $product->converter();
         $expiry = null;
+        $batch = null;
 
         if ($product->track_expiry) {
             $expiry = $this->chosenExpiry($line, $key)
                 ?? throw new PostingRejected('transactions.form.errors.expiry_choose', [], $key, 'expiry');
+            // A batch counted that isn't in stock here yet is typed, like a receipt.
+            $batch = $this->lotBatch($product, $warehouseId, $customerId, $expiry, $this->chosenBatch($line, $key), $key, required: true);
+
+            if ($batch !== '') {
+                $this->ensureBatch($product, $batch, $expiry, $key);
+            }
         }
 
-        if (isset($seen['count|'.$product->id.'|'.$expiry])) {
+        $countKey = 'count|'.$product->id.'|'.Batches::key($expiry, $batch);
+
+        if (isset($seen[$countKey])) {
             throw new PostingRejected('transactions.form.errors.counted_twice', [], $key, 'item');
         }
 
-        $seen['count|'.$product->id.'|'.$expiry] = true;
+        $seen[$countKey] = true;
         $this->lockItem($product->id);
-        $system = $this->lockBalance($warehouseId, $customerId, $product->id, $expiry);
+        $system = $this->lockBalance($warehouseId, $customerId, $product->id, $expiry, $batch);
         $missing = [];
 
         if ($product->track_serial) {
@@ -1127,6 +1144,7 @@ final class PostingService
             'qty_entered' => round(abs($difference) / $converter->factor($unit), 4),
             'qty_base' => abs($difference),
             'expiry' => $expiry,
+            'batch' => $batch,
             'qty_system' => $system,
             'qty_counted' => $counted,
             'direction' => $difference > 0 ? 'IN' : 'OUT',
@@ -1172,26 +1190,26 @@ final class PostingService
 
             if ($line->direction !== null) {
                 $this->lockItem($product->id);
-                $current = $this->lockBalance($header->warehouse_id, $header->customer_id, $product->id, $line->expiry_date);
+                $current = $this->lockBalance($header->warehouse_id, $header->customer_id, $product->id, $line->expiry_date, $line->batch_no);
 
                 if (abs($current - (float) $line->qty_system) > 1e-9 || $gone !== null) {
                     throw new StaleCount('stock.errors.count_changed', ['item' => $product->name()], $key);
                 }
 
-                $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, $line->expiry_date, $line->direction, (float) $line->qty_base);
+                $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, $line->expiry_date, $line->batch_no, $line->direction, (float) $line->qty_base);
             } elseif ($product->track_expiry && $line->expiry_date !== null) {
-                // The expiry date the user chose when saving.
-                $this->availability->takeExpiry($product, $header->warehouse_id, $header->customer_id, $line->expiry_date, (float) $line->qty_base, $type->usesExpired(), $key, $date);
-                $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, $line->expiry_date, 'OUT', (float) $line->qty_base);
+                // The lot (expiry date + batch) the user chose when saving.
+                $this->availability->takeLot($product, $header->warehouse_id, $header->customer_id, $line->expiry_date, (string) $line->batch_no, (float) $line->qty_base, $type->usesExpired(), $key, $date);
+                $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, $line->expiry_date, $line->batch_no, 'OUT', (float) $line->qty_base);
             } elseif ($product->track_expiry) {
                 $allocations = $this->availability->allocate($product, $header->warehouse_id, $header->customer_id, (float) $line->qty_base, $type->usesExpired(), $key, $date);
 
                 if (count($allocations) === 1) {
-                    DB::table('stock_transaction_line')->where('id', $line->id)->update(['expiry_date' => $allocations[0]['expiry']]);
+                    DB::table('stock_transaction_line')->where('id', $line->id)->update(['expiry_date' => $allocations[0]['expiry'], 'batch_no' => self::batchColumn($allocations[0]['batch'])]);
                 }
 
                 foreach ($allocations as $allocation) {
-                    $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, $allocation['expiry'], 'OUT', $allocation['qty']);
+                    $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, $allocation['expiry'], self::batchColumn($allocation['batch']), 'OUT', $allocation['qty']);
                 }
             } else {
                 $available = $this->availability->lockNoExpiry($header->warehouse_id, $header->customer_id, $product->id);
@@ -1212,7 +1230,7 @@ final class PostingService
 
                 $this->checkSerialsOnDate($header->warehouse_id, $product->id, $serials->pluck('serial_no')->all(), $date, $key);
 
-                $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, null, 'OUT', (float) $line->qty_base);
+                $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, null, null, 'OUT', (float) $line->qty_base);
             }
 
             if ($serials->isNotEmpty()) {
@@ -1231,15 +1249,16 @@ final class PostingService
     }
 
     /**
-     * Locks one balance row (item, and expiry date or none) and returns it; 0 when there is none.
+     * Locks one balance row (item, and lot or none) and returns it; 0 when there is none.
      */
-    private function lockBalance(string $warehouseId, string $customerId, string $productId, ?string $expiry): float
+    private function lockBalance(string $warehouseId, string $customerId, string $productId, ?string $expiry, ?string $batch = null): float
     {
         return (float) (DB::table('stock_balance')
             ->where('warehouse_id', $warehouseId)
             ->where('customer_id', $customerId)
             ->where('product_id', $productId)
             ->where('expiry_key', $expiry ?? self::NO_EXPIRY)
+            ->where('batch_key', (string) $batch)
             ->lockForUpdate()
             ->value('qty_base') ?? 0);
     }
@@ -1249,7 +1268,8 @@ final class PostingService
 
     /**
      * Receive / Opening Balance: adds stock. Expiry items need the expiry date
-     * (their stock is kept per date); serial items register each serial here.
+     * and the batch number (their stock is kept per lot; a batch has one
+     * expiry date); serial items register each serial here.
      *
      * @param  array<string, mixed>  $context
      * @param  list<string>  $serials
@@ -1257,15 +1277,23 @@ final class PostingService
     private function postIn(array $context, Product $product, DocumentLine $line, array $serials, string $key): void
     {
         $expiry = null;
+        $batch = null;
 
         if ($product->track_expiry) {
             $expiry = $this->chosenExpiry($line, $key)
                 ?? throw new PostingRejected('transactions.form.errors.expiry_required', [], $key, 'expiry');
+            $batch = $this->chosenBatch($line, $key);
+
+            if ($batch === null || $batch === '') {
+                throw new PostingRejected('transactions.form.errors.batch_required', [], $key, 'batch');
+            }
+
+            $this->ensureBatch($product, $batch, $expiry, $key);
         }
 
-        $lineId = $this->insertLine($context, $product, $expiry);
+        $lineId = $this->insertLine($context, $product, $expiry, $batch);
 
-        $this->move($context['transaction'], $lineId, $context['warehouse'], $context['customer'], $product->id, $expiry, 'IN', $context['qty_base']);
+        $this->move($context['transaction'], $lineId, $context['warehouse'], $context['customer'], $product->id, $expiry, $batch, 'IN', $context['qty_base']);
 
         if ($serials === []) {
             return;
@@ -1325,36 +1353,38 @@ final class PostingService
 
     /**
      * Delivery note / transfer dispatch: takes stock out. Expiry items are taken from
-     * the expiry date chosen on the line or, when none is given, nearest expiry
-     * first (FEFO), possibly from several dates (one movement per date); serial
-     * items take exactly the serials picked, which must be in stock here. For a
-     * transfer ($inTransit) the stock is recorded in in_transit_balance and its
-     * serials are In transit, not issued. Dated back, only what was here on
-     * the document's date can go out.
+     * the lot (expiry date + batch) chosen on the line or, when no date is given,
+     * nearest expiry first (FEFO), possibly from several lots (one movement per
+     * lot); serial items take exactly the serials picked, which must be in stock
+     * here. For a transfer ($inTransit) the stock is recorded in
+     * in_transit_balance and its serials are In transit, not issued. Dated back,
+     * only what was here on the document's date can go out.
      *
      * @param  array<string, mixed>  $context
      * @param  list<string>  $serials
      */
-    private function postOut(array $context, Product $product, ?string $expiry, array $serials, bool $useExpired, string $key, bool $inTransit = false): void
+    private function postOut(array $context, Product $product, ?string $expiry, ?string $batch, array $serials, bool $useExpired, string $key, bool $inTransit = false): void
     {
         $needed = $context['qty_base'];
         $date = $context['date'];
 
         if ($product->track_expiry) {
             if ($expiry !== null) {
-                $this->availability->takeExpiry($product, $context['warehouse'], $context['customer'], $expiry, $needed, $useExpired, $key, $date);
-                $allocations = [['expiry' => $expiry, 'qty' => $needed]];
+                $batch = $this->lotBatch($product, $context['warehouse'], $context['customer'], $expiry, $batch, $key);
+                $this->availability->takeLot($product, $context['warehouse'], $context['customer'], $expiry, $batch, $needed, $useExpired, $key, $date);
+                $allocations = [['expiry' => $expiry, 'batch' => $batch, 'qty' => $needed]];
             } else {
                 $allocations = $this->availability->allocate($product, $context['warehouse'], $context['customer'], $needed, $useExpired, $key, $date);
             }
 
-            $lineId = $this->insertLine($context, $product, count($allocations) === 1 ? $allocations[0]['expiry'] : null);
+            $single = count($allocations) === 1;
+            $lineId = $this->insertLine($context, $product, $single ? $allocations[0]['expiry'] : null, $single ? $allocations[0]['batch'] : null);
 
             foreach ($allocations as $allocation) {
-                $this->move($context['transaction'], $lineId, $context['warehouse'], $context['customer'], $product->id, $allocation['expiry'], 'OUT', $allocation['qty']);
+                $this->move($context['transaction'], $lineId, $context['warehouse'], $context['customer'], $product->id, $allocation['expiry'], self::batchColumn($allocation['batch']), 'OUT', $allocation['qty']);
 
                 if ($inTransit) {
-                    $this->addInTransit($context['transaction'], $product->id, $allocation['expiry'], $allocation['qty']);
+                    $this->addInTransit($context['transaction'], $product->id, $allocation['expiry'], self::batchColumn($allocation['batch']), $allocation['qty']);
                 }
             }
 
@@ -1389,10 +1419,10 @@ final class PostingService
         $this->checkSerialsOnDate($context['warehouse'], $product->id, $serials, $date, $key);
 
         $lineId = $this->insertLine($context, $product, null);
-        $this->move($context['transaction'], $lineId, $context['warehouse'], $context['customer'], $product->id, null, 'OUT', $needed);
+        $this->move($context['transaction'], $lineId, $context['warehouse'], $context['customer'], $product->id, null, null, 'OUT', $needed);
 
         if ($inTransit) {
-            $this->addInTransit($context['transaction'], $product->id, null, $needed);
+            $this->addInTransit($context['transaction'], $product->id, null, null, $needed);
         }
 
         if ($serialIds !== []) {
@@ -1417,15 +1447,15 @@ final class PostingService
     }
 
     /**
-     * Records stock on its way (per transfer, item and expiry date).
+     * Records stock on its way (per transfer, item and lot).
      */
-    private function addInTransit(string $transactionId, string $productId, ?string $expiry, float $qty): void
+    private function addInTransit(string $transactionId, string $productId, ?string $expiry, ?string $batch, float $qty): void
     {
         DB::statement(<<<'SQL'
-            INSERT INTO in_transit_balance (transaction_id, product_id, expiry_date, qty_base) VALUES (?, ?, ?, ?)
-            ON CONFLICT (transaction_id, product_id, expiry_key)
+            INSERT INTO in_transit_balance (transaction_id, product_id, expiry_date, batch_no, qty_base) VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (transaction_id, product_id, expiry_key, batch_key)
             DO UPDATE SET qty_base = in_transit_balance.qty_base + EXCLUDED.qty_base
-        SQL, [$transactionId, $productId, $expiry, $qty]);
+        SQL, [$transactionId, $productId, $expiry, $batch, $qty]);
     }
 
     /**
@@ -1481,15 +1511,86 @@ final class PostingService
     }
 
     /**
+     * The line's batch number as kept (Batches::normalize()): null when the line
+     * names none, '' for stock without a batch (picked going out). Refused when
+     * too long or with a "|" in it.
+     */
+    private function chosenBatch(DocumentLine $line, string $key): ?string
+    {
+        if ($line->batch === null) {
+            return null;
+        }
+
+        $batch = Batches::normalize($line->batch);
+
+        if (mb_strlen($batch) > Batches::MAX) {
+            throw new PostingRejected('settings.errors.too_long', ['max' => Batches::MAX], $key, 'batch');
+        }
+
+        if (str_contains($batch, '|')) {
+            throw new PostingRejected('transactions.form.errors.batch_invalid', [], $key, 'batch');
+        }
+
+        return $batch;
+    }
+
+    /**
+     * The batch to take on one expiry date ('' = stock without a batch). A line
+     * that names none takes the only batch of that date here; with several the
+     * user must choose. With $required (a count), a date with no stock here
+     * needs a batch typed.
+     */
+    private function lotBatch(Product $product, string $warehouseId, string $customerId, string $expiry, ?string $batch, string $key, bool $required = false): string
+    {
+        if ($batch !== null) {
+            return $batch;
+        }
+
+        $batches = $this->availability->batchesOn($warehouseId, $customerId, $product->id, $expiry);
+
+        return match (count($batches)) {
+            1 => $batches[0],
+            0 => $required ? throw new PostingRejected('transactions.form.errors.batch_required', [], $key, 'batch') : '',
+            default => throw new PostingRejected('transactions.form.errors.batch_choose', [], $key, 'batch'),
+        };
+    }
+
+    /**
+     * Registers a batch of an item with its expiry date (product_batch), or
+     * checks the date of a batch already known: a batch has one expiry date.
+     */
+    private function ensureBatch(Product $product, string $batch, string $expiry, string $key): void
+    {
+        DB::statement('INSERT INTO product_batch (product_id, batch_no, expiry_date) VALUES (?, ?, ?) ON CONFLICT (product_id, batch_no) DO NOTHING', [$product->id, $batch, $expiry]);
+
+        $known = (string) DB::table('product_batch')->where('product_id', $product->id)->where('batch_no', $batch)->value('expiry_date');
+
+        if ($known !== $expiry) {
+            throw new BatchDateMismatch([
+                'batch' => $batch,
+                'item' => $product->name(),
+                'date' => Format::date(CarbonImmutable::parse($known)),
+            ], $key);
+        }
+    }
+
+    /** batch_no as stored: NULL for stock without a batch (''). */
+    private static function batchColumn(?string $batch): ?string
+    {
+        return $batch === null || $batch === '' ? null : $batch;
+    }
+
+    /**
      * @param  array<string, mixed>  $context
      */
-    private function insertLine(array $context, Product $product, ?string $expiry): string
+    private function insertLine(array $context, Product $product, ?string $expiry, ?string $batch = null): string
     {
         return (string) DB::table('stock_transaction_line')->insertGetId([
             'transaction_id' => $context['transaction'],
             'line_no' => $context['line_no'],
             'product_id' => $product->id,
             'expiry_date' => $expiry,
+            'batch_no' => self::batchColumn($batch),
             'unit_id' => $context['unit'],
             'qty_entered' => $context['qty'],
             'qty_base' => $context['qty_base'],
@@ -1499,10 +1600,10 @@ final class PostingService
     /**
      * One ledger movement + balance update, through the database function.
      */
-    private function move(string $transactionId, string $lineId, string $warehouseId, string $customerId, string $productId, ?string $expiry, string $direction, float $qty): void
+    private function move(string $transactionId, string $lineId, string $warehouseId, string $customerId, string $productId, ?string $expiry, ?string $batch, string $direction, float $qty): void
     {
-        DB::select('SELECT fn_post_movement(?, ?, ?, ?, ?, ?::date, ?::movement_direction, ?)', [
-            $transactionId, $lineId, $warehouseId, $customerId, $productId, $expiry, $direction, $qty,
+        DB::select('SELECT fn_post_movement(?, ?, ?, ?, ?, ?::date, ?, ?::movement_direction, ?)', [
+            $transactionId, $lineId, $warehouseId, $customerId, $productId, $expiry, self::batchColumn($batch), $direction, $qty,
         ]);
     }
 

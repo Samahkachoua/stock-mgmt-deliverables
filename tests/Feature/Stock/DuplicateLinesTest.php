@@ -62,7 +62,7 @@ function postLines(Stock $stock, string $type, array $lines, ?Warehouse $to = nu
 {
     $keyed = [];
     foreach ($lines as $i => $line) {
-        $keyed['r'.($i + 1)] = $line;
+        $keyed['r'.($i + 1)] = $stock->withBatch($type, $line);
     }
 
     return app(PostingService::class)->post(
@@ -151,46 +151,48 @@ it('shows combined availability over rows of the same item in different units', 
     expect($form->html())->toContain(e(__('transactions.form.errors.not_enough', ['qty' => '0 Piece'])));
 })->with(['OUT', 'TRANSFER', 'DAMAGE']);
 
-it('keeps the expiry date apart: the same item and unit with another expiry date is another line', function () {
+it('keeps the lot apart: the same item and unit with another expiry date (or batch) is another line', function () {
     $soon = CarbonImmutable::today()->addDays(30)->toDateString();
     $late = CarbonImmutable::today()->addDays(90)->toDateString();
     $this->stock->post('IN', [$this->stock->line('YOGURT', 6, expiry: $soon), $this->stock->line('YOGURT', 6, expiry: $late)]);
+    // The lots as the form's dropdown has them: expiry date + batch.
+    [$soonLot, $lateLot] = [$soon.'|'.Stock::batch($soon), $late.'|'.Stock::batch($late)];
 
-    // Going out: a second row starts on what no row has yet — nearest date first (FEFO), in another unit.
+    // Going out: a second row starts on what no row has yet — nearest lot first (FEFO), in another unit.
     $form = newForm($this->stock, 'OUT');
     [$first] = array_keys($form->get('lines'));
     $form->set("lines.$first.item", $this->stock->id('YOGURT'))->set("lines.$first.qty", '2');
     $second = array_keys($form->get('lines'))[1];
     $form->set("lines.$second.item", $this->stock->id('YOGURT'));
 
-    $form->assertSet("lines.$first.expiry", $soon)->assertSet("lines.$first.unit", 'PC')
-        ->assertSet("lines.$second.expiry", $soon)->assertSet("lines.$second.unit", 'BOX');
+    $form->assertSet("lines.$first.expiry", $soonLot)->assertSet("lines.$first.unit", 'PC')
+        ->assertSet("lines.$second.expiry", $soonLot)->assertSet("lines.$second.unit", 'BOX');
 
-    // The same unit with the other date is another line.
-    $form->set("lines.$second.expiry", $late)->set("lines.$second.unit", 'PC')
+    // The same unit with the other lot is another line.
+    $form->set("lines.$second.expiry", $lateLot)->set("lines.$second.unit", 'PC')
         ->assertSet("lines.$second.item", $this->stock->id('YOGURT'));
 
-    // Picking the first row's date as well makes it a repeat.
-    $form->set("lines.$second.expiry", $soon)
+    // Picking the first row's lot as well makes it a repeat.
+    $form->set("lines.$second.expiry", $soonLot)
         ->assertSet("lines.$second.item", null)
-        ->assertDispatched('toast', toast: ['type' => 'warning', 'message' => __('transactions.form.duplicate.unit_expiry', [
-            'item' => 'Yogurt', 'unit' => Format::unit('PC'), 'expiry' => Format::date(CarbonImmutable::parse($soon)), 'row' => '1',
+        ->assertDispatched('toast', toast: ['type' => 'warning', 'message' => __('transactions.form.duplicate.unit_expiry_batch', [
+            'item' => 'Yogurt', 'unit' => Format::unit('PC'), 'batch' => Stock::batch($soon), 'expiry' => Format::date(CarbonImmutable::parse($soon)), 'row' => '1',
         ]), 'url' => null, 'link' => null]);
 });
 
-it('refuses a typed expiry date that another receipt row of the item and unit already has', function (string $type) {
+it('refuses a typed batch that another receipt row of the item and unit already has', function (string $type) {
     $date = CarbonImmutable::today()->addDays(60)->toDateString();
     $form = newForm($this->stock, $type);
     [$first] = array_keys($form->get('lines'));
-    $form->set("lines.$first.item", $this->stock->id('YOGURT'))->set("lines.$first.expiry", $date)->set("lines.$first.qty", '6');
+    $form->set("lines.$first.item", $this->stock->id('YOGURT'))->set("lines.$first.batch", 'B1')->set("lines.$first.expiry", $date)->set("lines.$first.qty", '6');
     $second = array_keys($form->get('lines'))[1];
 
-    // Another date: allowed.
-    $form->set("lines.$second.item", $this->stock->id('YOGURT'))->set("lines.$second.expiry", CarbonImmutable::today()->addDays(70)->toDateString());
+    // Another batch of the same date: allowed.
+    $form->set("lines.$second.item", $this->stock->id('YOGURT'))->set("lines.$second.expiry", $date)->set("lines.$second.batch", 'B2');
     expect($form->get("lines.$second.item"))->toBe($this->stock->id('YOGURT'));
 
-    // The same date: cleared.
-    $form->set("lines.$second.expiry", $date)->assertSet("lines.$second.item", null);
+    // The same batch: cleared.
+    $form->set("lines.$second.batch", 'b1')->assertSet("lines.$second.item", null);
 })->with(['IN', 'OPENING_BALANCE']);
 
 // On save (server side)
@@ -258,8 +260,8 @@ it('takes a receipt of the same item and unit with another expiry date, and refu
         ->and($this->stock->balance('YOGURT', $late))->toBe(4.0);
 
     expect(fn () => postLines($this->stock, $type, [$this->stock->line('YOGURT', 1, expiry: $soon), $this->stock->line('YOGURT', 2, expiry: $soon)]))
-        ->toThrow(DuplicateLine::class, __('transactions.form.duplicate.unit_expiry', [
-            'item' => 'Yogurt', 'unit' => Format::unit('PC'), 'expiry' => Format::date(CarbonImmutable::parse($soon)), 'row' => '1',
+        ->toThrow(DuplicateLine::class, __('transactions.form.duplicate.unit_expiry_batch', [
+            'item' => 'Yogurt', 'unit' => Format::unit('PC'), 'batch' => Stock::batch($soon), 'expiry' => Format::date(CarbonImmutable::parse($soon)), 'row' => '1',
         ]));
 })->with(['IN', 'OPENING_BALANCE']);
 

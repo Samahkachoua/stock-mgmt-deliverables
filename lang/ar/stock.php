@@ -27,6 +27,12 @@ return [
         'keep' => 'الإبقاء عليه',
     ],
 
+    // A lot: batch number and expiry date (App\Support\Batches).
+    'batch' => [
+        'label' => ':batch · :date',
+        'none' => 'بدون دفعة',
+    ],
+
     'errors' => [
         'not_enough' => 'المتاح من :item في :warehouse هو :qty فقط.',
         'not_enough_on_date' => 'في :date كان المتاح من :item في :warehouse هو :qty فقط. لا يمكن إخراج مخزون وصل لاحقًا بهذا التاريخ.',
@@ -44,6 +50,7 @@ return [
         'serial_in_stock' => 'الرقم التسلسلي :serial موجود في المخزون مسبقًا.',
         'serial_not_in_stock' => 'الرقم التسلسلي :serial غير موجود في مخزون هذا المستودع.',
         'serial_not_on_date' => 'وصل الرقم التسلسلي :serial إلى هذا المستودع بعد :date، لذا لا يمكن إخراجه بهذا التاريخ.',
+        'batch_other_date' => 'تنتهي صلاحية الدفعة :batch من :item في :date — أدخل هذا التاريخ أو رقم دفعة آخر.',
         'expiry_expired' => 'انتهت صلاحية المخزون الذي ينتهي في :date. لا يمكن إخراج مخزون منتهي الصلاحية بهذه الطريقة.',
         'cannot_cancel_status' => 'لا يمكن إلغاء إلا المستندات المكتملة.',
         'already_used' => 'خرج جزء من هذا المخزون: استُلم من :item :received، والمتبقي :left فقط. لا يمكن إلغاؤه.',

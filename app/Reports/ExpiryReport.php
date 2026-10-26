@@ -11,7 +11,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Expiry: stock that has expired, or expires within N days, per expiry date,
+ * Expiry: stock that has expired, or expires within N days, per lot (expiry date and batch),
  * nearest first. From stock_balance (current state).
  */
 final class ExpiryReport extends Report
@@ -49,6 +49,7 @@ final class ExpiryReport extends Report
             'customer' => ['label' => 'reports.columns.customer', 'priority' => 2],
             'warehouse' => ['label' => 'reports.columns.warehouse', 'priority' => 2],
             'expiry_date' => ['label' => 'reports.columns.expiry_date'],
+            'batch' => ['label' => 'reports.columns.batch', 'priority' => 2],
             'days_left' => ['label' => 'reports.columns.days_left', 'align' => 'end'],
             'qty' => ['label' => 'reports.columns.qty_base', 'align' => 'end'],
             'breakdown' => ['label' => 'reports.columns.qty_larger', 'priority' => 2, 'card' => 'hide'],
@@ -75,10 +76,11 @@ final class ExpiryReport extends Report
             ->when($filters['status'] === 'all', fn ($query) => $query->where('stock_balance.expiry_date', '<=', $until))
             ->select([
                 'stock_balance.product_id', 'stock_balance.qty_base',
-                'stock_balance.expiry_date', 'c.name as customer_name', 'w.name as warehouse_name',
+                'stock_balance.expiry_date', 'stock_balance.batch_no', 'c.name as customer_name', 'w.name as warehouse_name',
             ])
             ->orderBy('stock_balance.expiry_date')
             ->orderBy('p.name_en')
+            ->orderBy('stock_balance.batch_key')
             ->orderBy('w.name');
     }
 
@@ -93,6 +95,7 @@ final class ExpiryReport extends Report
             'customer' => (string) $row->customer_name,
             'warehouse' => (string) $row->warehouse_name,
             'expiry_date' => Format::date(CarbonImmutable::parse($row->expiry_date)),
+            'batch' => ['text' => (string) $row->batch_no, 'ltr' => true],
             'days_left' => ['text' => Format::qty($left), 'value' => $left, 'tone' => $left < 0 ? 'rejected' : 'pending'],
             'qty' => $this->qtyCell($row->qty_base, $row->product_id) + ['strong' => true],
             'breakdown' => $this->breakdown($row->qty_base, $row->product_id),

@@ -161,10 +161,11 @@ final class TypeUi
 
     /**
      * A line's key (CLAUDE.md rule 12, `line_key`): two lines with the same key
-     * may not be on one document. The item, plus its unit and/or its expiry
-     * date (expiry-tracked items only, '' when none is chosen yet).
+     * may not be on one document. The item, plus its unit and/or its lot:
+     * expiry date and batch (expiry-tracked items only, '' when none is chosen
+     * yet; batch '' = stock without a batch).
      */
-    public function lineKey(string $productId, string $unit, ?string $expiry, bool $tracksExpiry): string
+    public function lineKey(string $productId, string $unit, ?string $expiry, bool $tracksExpiry, ?string $batch = null): string
     {
         $parts = $this->config['line_key'] ?? ['unit', 'expiry'];
         $key = [$productId];
@@ -175,33 +176,40 @@ final class TypeUi
 
         if (in_array('expiry', $parts, true) && $tracksExpiry) {
             $key[] = $expiry ?? '';
+            $key[] = $batch ?? '';
         }
 
         return implode('|', $key);
     }
 
     /**
-     * "Olive Oil 1L (Carton, expiry 12 Mar 2027) is already in row 1 — change
-     * the quantity there": translation key and parameters, for a repeated line
-     * (the row number goes in `row`).
+     * "Olive Oil 1L (Carton, batch B-1042, expiry 12 Mar 2027) is already in
+     * row 1 — change the quantity there": translation key and parameters, for
+     * a repeated line (the row number goes in `row`).
      *
      * @return array{0: string, 1: array<string, string>}
      */
-    public function duplicateMessage(string $item, string $unit, ?string $expiry, bool $tracksExpiry, int $row): array
+    public function duplicateMessage(string $item, string $unit, ?string $expiry, bool $tracksExpiry, int $row, ?string $batch = null): array
     {
         $parts = $this->config['line_key'] ?? ['unit', 'expiry'];
         $withExpiry = in_array('expiry', $parts, true) && $tracksExpiry && $expiry !== null && $expiry !== '';
+        $withBatch = $withExpiry && $batch !== null && $batch !== '';
         $params = ['item' => $item, 'row' => Format::qty($row)];
+        $suffix = $withBatch ? '_expiry_batch' : ($withExpiry ? '_expiry' : '');
 
         if ($withExpiry) {
             $params['expiry'] = Format::date(CarbonImmutable::parse($expiry));
         }
 
-        if (! in_array('unit', $parts, true)) {
-            return [$withExpiry ? 'transactions.form.duplicate.count_expiry' : 'transactions.form.duplicate.count', $params];
+        if ($withBatch) {
+            $params['batch'] = $batch;
         }
 
-        return [$withExpiry ? 'transactions.form.duplicate.unit_expiry' : 'transactions.form.duplicate.unit', $params + ['unit' => Format::unit($unit)]];
+        if (! in_array('unit', $parts, true)) {
+            return ['transactions.form.duplicate.count'.$suffix, $params];
+        }
+
+        return ['transactions.form.duplicate.unit'.$suffix, $params + ['unit' => Format::unit($unit)]];
     }
 
     /**

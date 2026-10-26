@@ -66,7 +66,7 @@ abstract class PostedLinesReport extends Report
             ->select([
                 'stock_transaction.doc_no', 'stock_transaction.document_date', 'stock_transaction.reason_code',
                 'l.product_id', 'l.qty_base', 'l.qty_system', 'l.qty_counted', 'l.direction',
-                'l.expiry_date', 'c.name as customer_name', 'w.name as warehouse_name', 'u.full_name as created_by_name', 'ap.full_name as approved_by_name',
+                'l.expiry_date', 'l.batch_no', 'c.name as customer_name', 'w.name as warehouse_name', 'u.full_name as created_by_name', 'ap.full_name as approved_by_name',
             ])
             ->orderByDesc('stock_transaction.document_date')
             ->orderByDesc('stock_transaction.doc_no')

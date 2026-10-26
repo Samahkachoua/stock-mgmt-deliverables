@@ -7,6 +7,7 @@ return [
     'lines' => '{0} :count lines|{1} :count line|[2,*] :count lines',
 
     'filters' => [
+        'batch' => 'Batch',
         'search' => 'Search',
         'search_item' => 'Item',
         'search_placeholder' => 'Search by name or code…',
@@ -40,6 +41,7 @@ return [
         'out' => 'Out',
         'balance' => 'Balance after',
         'expiry_date' => 'Expiry date',
+        'batch' => 'Batch',
         'days_left' => 'Days left',
         'status' => 'Status',
         'approved_by' => 'Approved by',

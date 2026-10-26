@@ -184,8 +184,32 @@ class Users extends Component
         $this->resetValidation();
     }
 
+    /**
+     * Whether the ticked roles could confirm orders / draft receipts before a
+     * role change (set in updating(), read in updated() of the same request).
+     *
+     * @var array{0: bool, 1: bool}|null
+     */
+    private ?array $couldConfirm = null;
+
+    public function updating(string $property): void
+    {
+        if (str_starts_with($property, 'roleIds')) {
+            $this->couldConfirm = [$this->confirmsOrders(), $this->confirmsDraftReceipts()];
+        }
+    }
+
     public function updated(string $property): void
     {
+        // The email settings follow the roles: ticked when a role that may
+        // confirm those drafts is added, off when no role may any more.
+        if (str_starts_with($property, 'roleIds')) {
+            unset($this->confirmsOrders, $this->confirmsDraftReceipts);
+            [$couldOrders, $couldReceipts] = $this->couldConfirm ?? [false, false];
+            $this->notifyNewOrders = $this->confirmsOrders() && ($couldOrders ? $this->notifyNewOrders : true);
+            $this->notifyDraftReceipts = $this->confirmsDraftReceipts() && ($couldReceipts ? $this->notifyDraftReceipts : true);
+        }
+
         // Branches belong to a customer: another customer, no branches chosen.
         if ($property === 'customerId') {
             $this->branchIds = [];
@@ -256,8 +280,11 @@ class Users extends Component
             $user->active = $data['active'];
             $user->customer_id = $data['customerId'] === '' ? null : $data['customerId'];
             $user->default_warehouse_id = $data['defaultWarehouseId'];
-            $user->notify_new_orders = $data['notifyNewOrders'];
-            $user->notify_draft_receipts = $data['notifyDraftReceipts'];
+            // A hidden setting (the roles may not confirm those drafts): off for a new
+            // user, kept as it was for an existing one. open() and a role change
+            // decide what the box shows when it is offered again.
+            $user->notify_new_orders = $this->confirmsOrders() ? $data['notifyNewOrders'] : ($isNew ? false : $user->notify_new_orders);
+            $user->notify_draft_receipts = $this->confirmsDraftReceipts() ? $data['notifyDraftReceipts'] : ($isNew ? false : $user->notify_draft_receipts);
 
             if ($data['password'] !== '') {
                 $user->password_hash = $data['password']; // hashed by the model cast
@@ -421,9 +448,11 @@ class Users extends Component
         $this->password = '';
         $this->preferred_lang = $user->preferred_lang ?? app()->getLocale();
         $this->active = $user->active ?? true;
-        $this->notifyNewOrders = $user->notify_new_orders ?? true;
-        $this->notifyDraftReceipts = $user->notify_draft_receipts ?? true;
         $this->roleIds = $user->exists ? $user->roles()->pluck('role.id')->all() : [];
+        unset($this->confirmsOrders, $this->confirmsDraftReceipts);
+        // Shown as saved, and off for someone who may not confirm them (a new user has no roles yet).
+        $this->notifyNewOrders = ($user->notify_new_orders ?? true) && $this->confirmsOrders();
+        $this->notifyDraftReceipts = ($user->notify_draft_receipts ?? true) && $this->confirmsDraftReceipts();
         $this->warehouseIds = $user->exists ? $user->warehouses()->pluck('warehouse.id')->all() : [];
         $this->defaultWarehouseId = $user->exists ? (string) $user->defaultWarehouseId() : '';
         $this->customerId = (string) $user->customer_id;

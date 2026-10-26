@@ -15,6 +15,7 @@ use App\Services\Stock\Exceptions\StockException;
 use App\Services\Stock\ItemCatalog;
 use App\Services\Stock\PostingService;
 use App\Services\Stock\UnitConverter;
+use App\Support\Batches;
 use App\Support\CompanyTime;
 use App\Support\Format;
 use App\Support\Notify;
@@ -93,7 +94,7 @@ class TransactionForm extends Component
      * `serials`: serial numbers typed one per line (stock coming in);
      * `picked`: serial numbers chosen from stock (stock going out).
      *
-     * @var array<string, array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}>
+     * @var array<string, array{item: ?string, unit: string, qty: string, expiry: string, batch?: string, serials: string, picked: list<string>}>
      */
     public array $lines = [];
 
@@ -249,8 +250,8 @@ class TransactionForm extends Component
 
             $options = $this->pickableExpiries($item);
 
-            if (! collect($options)->contains('expiry', $line['expiry'])) {
-                $this->lines[$key]['expiry'] = $options[0]['expiry'] ?? '';
+            if (! collect($options)->contains('lot', $line['expiry'])) {
+                $this->lines[$key]['expiry'] = $options[0]['lot'] ?? '';
             }
         }
     }
@@ -267,6 +268,7 @@ class TransactionForm extends Component
             $item = $this->item($this->lines[$key]['item']);
             $this->lines[$key]['serials'] = '';
             $this->lines[$key]['picked'] = [];
+            $this->lines[$key]['batch'] = '';
             [$this->lines[$key]['unit'], $this->lines[$key]['expiry']] = $item === null ? ['', ''] : $this->suggestedUnitAndExpiry($key, $item);
 
             // Counting serial items: suggest that every piece is there; the user unticks what is missing.
@@ -283,7 +285,18 @@ class TransactionForm extends Component
             $this->lines[$key]['qty'] = $count > 0 || $this->ui()->countsStock() ? (string) $count : '';
         }
 
-        if (in_array($field, ['item', 'unit', 'expiry'], true) && isset($this->lines[$key])) {
+        // A batch already known for the item has one expiry date: it is filled in (and locked).
+        if ($field === 'batch' && isset($this->lines[$key])) {
+            $batch = Batches::normalize($this->lines[$key]['batch'] ?? '');
+            $this->lines[$key]['batch'] = $batch;
+            $known = $this->lines[$key]['item'] === null ? null : (Batches::dates((string) $this->lines[$key]['item'], [$batch])[$batch] ?? null);
+
+            if ($known !== null) {
+                $this->lines[$key]['expiry'] = $known;
+            }
+        }
+
+        if (in_array($field, ['item', 'unit', 'expiry', 'batch'], true) && isset($this->lines[$key])) {
             $this->rejectDuplicate($key);
         }
 
@@ -304,14 +317,15 @@ class TransactionForm extends Component
             return;
         }
 
-        $other = $this->rowWithKey($key, $item, $line['unit'], $line['expiry']);
+        [$expiry, $batch] = $this->lotOf($line);
+        $other = $this->rowWithKey($key, $item, $line['unit'], $expiry, $batch);
 
         if ($other === null) {
             return;
         }
 
-        [$message, $params] = $this->ui()->duplicateMessage($item['name'], $line['unit'], $line['expiry'], $item['expiry'], $this->rowNumber($other));
-        $this->lines[$key] = ['item' => null, 'unit' => '', 'qty' => '', 'expiry' => '', 'serials' => '', 'picked' => []];
+        [$message, $params] = $this->ui()->duplicateMessage($item['name'], $line['unit'], $expiry, $item['expiry'], $this->rowNumber($other), $batch);
+        $this->lines[$key] = ['item' => null, 'unit' => '', 'qty' => '', 'expiry' => '', 'batch' => '', 'serials' => '', 'picked' => []];
 
         Notify::warning(__($message, $params), on: $this);
         $this->dispatch('focus-field', id: 'line-'.$other.'-qty');
@@ -332,7 +346,7 @@ class TransactionForm extends Component
     {
         $units = $item['serial'] ? [$item['base']] : array_keys($item['units']);
         $expiries = $item['expiry'] && $this->ui()->hasLineColumn('expiry_pick')
-            ? array_column($this->pickableExpiries($item), 'expiry')
+            ? array_column($this->pickableExpiries($item), 'lot')
             : [''];
         $expiries = $expiries === [] ? [''] : $expiries;
 
@@ -343,7 +357,7 @@ class TransactionForm extends Component
                     return [(string) $units[0], ''];
                 }
 
-                if ($this->rowWithKey($key, $item, (string) $unit, $expiry) === null) {
+                if ($this->rowWithKey($key, $item, (string) $unit, ...Batches::split($expiry)) === null) {
                     return [(string) $unit, $expiry];
                 }
             }
@@ -353,21 +367,23 @@ class TransactionForm extends Component
     }
 
     /**
-     * Another row (not $key) with this item, unit and expiry date as its key, or null.
+     * Another row (not $key) with this item, unit and lot (expiry date + batch) as its key, or null.
      *
      * @param  array<string, mixed>  $item
      */
-    private function rowWithKey(string $key, array $item, string $unit, string $expiry): ?string
+    private function rowWithKey(string $key, array $item, string $unit, ?string $expiry, ?string $batch = null): ?string
     {
         $ui = $this->ui();
-        $wanted = $ui->lineKey($item['id'], $unit, $expiry, $item['expiry']);
+        $wanted = $ui->lineKey($item['id'], $unit, $expiry, $item['expiry'], $batch);
 
         foreach ($this->lines as $otherKey => $other) {
             if ($otherKey === $key || $other['item'] !== $item['id']) {
                 continue;
             }
 
-            if ($this->hasFullKey($item, $other) && $ui->lineKey($item['id'], $other['unit'], $other['expiry'], $item['expiry']) === $wanted) {
+            [$otherExpiry, $otherBatch] = $this->lotOf($other);
+
+            if ($this->hasFullKey($item, $other) && $ui->lineKey($item['id'], $other['unit'], $otherExpiry, $item['expiry'], $otherBatch) === $wanted) {
                 return (string) $otherKey;
             }
         }
@@ -376,14 +392,41 @@ class TransactionForm extends Component
     }
 
     /**
-     * Whether a row's key is complete: a unit, and for an expiry item an expiry date.
+     * Whether a row's key is complete: a unit, and for an expiry item its lot
+     * (picked; or typed: expiry date and batch number).
      *
      * @param  array<string, mixed>  $item
-     * @param  array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}  $line
+     * @param  array{item: ?string, unit: string, qty: string, expiry: string, batch?: string, serials: string, picked: list<string>}  $line
      */
     private function hasFullKey(array $item, array $line): bool
     {
-        return $line['unit'] !== '' && (! $item['expiry'] || $line['expiry'] !== '');
+        return $line['unit'] !== '' && (! $item['expiry'] || ($line['expiry'] !== '' && ($this->picksLot() || trim($line['batch'] ?? '') !== '')));
+    }
+
+    /**
+     * Rows that pick a lot from stock (going out, counting): the expiry field
+     * holds the lot (Batches::key()). Receipt rows type the date and the batch.
+     */
+    private function picksLot(): bool
+    {
+        $ui = $this->ui();
+
+        return $ui->hasLineColumn('counted') || $ui->hasLineColumn('expiry_pick');
+    }
+
+    /**
+     * A row's expiry date and batch ('' = stock without a batch; null when none yet).
+     *
+     * @param  array{item: ?string, unit: string, qty: string, expiry: string, batch?: string, serials: string, picked: list<string>}  $line
+     * @return array{0: string|null, 1: string|null}
+     */
+    private function lotOf(array $line): array
+    {
+        if ($this->picksLot()) {
+            return $line['expiry'] === '' ? [null, null] : Batches::split($line['expiry']);
+        }
+
+        return [$line['expiry'] === '' ? null : $line['expiry'], Batches::normalize($line['batch'] ?? '')];
     }
 
     /**
@@ -521,12 +564,16 @@ class TransactionForm extends Component
         $lines = [];
 
         foreach ($this->filledLines() as $key => $line) {
+            $item = $this->item($line['item']);
+            [$expiry, $batch] = $item !== null && $item['expiry'] ? $this->lotOf($line) : [null, null];
+
             $lines[$key] = new DocumentLine(
                 productId: (string) $line['item'],
                 unit: $line['unit'],
                 qty: trim($line['qty']),
-                expiry: $line['expiry'] ?: null,
+                expiry: $expiry,
                 serials: $line['picked'] !== [] ? $line['picked'] : $this->serialList($line['serials']),
+                batch: $batch,
             );
         }
 
@@ -605,7 +652,7 @@ class TransactionForm extends Component
 
             // Rule 12: the same item + unit (+ expiry date) on two rows: both in red.
             if ($row['item'] !== null && $this->hasFullKey($row['item'], $line)
-                && ($other = $this->rowWithKey((string) $key, $row['item'], $line['unit'], $line['expiry'])) !== null) {
+                && ($other = $this->rowWithKey((string) $key, $row['item'], $line['unit'], ...$this->lotOf($line))) !== null) {
                 $row['errors']['item'] = __('transactions.form.errors.duplicate_row', ['row' => Format::qty($this->rowNumber($other))]);
             }
 
@@ -615,7 +662,7 @@ class TransactionForm extends Component
                 : array_diff_key($row['errors'], array_flip($row['missing']));
 
             // Refusals from the last save (e.g. stock taken meanwhile) stay until the form changes.
-            foreach (['item', 'unit', 'qty', 'expiry', 'serials'] as $field) {
+            foreach (['item', 'unit', 'qty', 'expiry', 'batch', 'serials'] as $field) {
                 if ($message = $this->getErrorBag()->first('lines.'.$key.'.'.$field)) {
                     $row['errors'][$field] = $message;
                     $row['shown'][$field] = $message;
@@ -685,8 +732,8 @@ class TransactionForm extends Component
     }
 
     /**
-     * @param  array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}  $line
-     * @param  array<string, float>  $used
+     * @param  array{item: ?string, unit: string, qty: string, expiry: string, batch?: string, serials: string, picked: list<string>}  $line
+     * @param  array<string, float|string>  $used  also batch => expiry date of earlier rows
      * @return array<string, mixed>
      */
     private function checkLine(TypeUi $ui, array $line, array &$used): array
@@ -729,7 +776,7 @@ class TransactionForm extends Component
 
         if ($needsExpiry && $pick) {
             $row['expiry_options'] = $counted ? $item['expiries'] : $this->pickableExpiries($item);
-            $chosen = collect($row['expiry_options'])->firstWhere('expiry', $line['expiry']);
+            $chosen = collect($row['expiry_options'])->firstWhere('lot', $line['expiry']);
 
             if ($line['expiry'] === '') {
                 $errors['expiry'] = __('transactions.form.errors.expiry_choose');
@@ -749,6 +796,24 @@ class TransactionForm extends Component
 
             // Allowed (stock does arrive expired), but never by accident: the row says so.
             $row['expiry_past'] = ! isset($errors['expiry']) && $line['expiry'] < CompanyTime::today()->toDateString();
+
+            // The batch number: required; a known batch keeps its expiry date (also between rows).
+            $batch = Batches::normalize($line['batch'] ?? '');
+            $known = $batch === '' ? null : ($used['batch|'.$item['id'].'|'.$batch] ?? Batches::dates($item['id'], [$batch])[$batch] ?? null);
+            $row['batch_known'] = $known;
+
+            if ($batch === '') {
+                $errors['batch'] = __('transactions.form.errors.batch_required');
+                $missing[] = 'batch';
+            } elseif (mb_strlen($batch) > Batches::MAX) {
+                $errors['batch'] = __('settings.errors.too_long', ['max' => Batches::MAX]);
+            } elseif (str_contains($batch, '|')) {
+                $errors['batch'] = __('transactions.form.errors.batch_invalid');
+            } elseif ($known !== null && $line['expiry'] !== '' && $known !== $line['expiry']) {
+                $errors['expiry'] = __('stock.errors.batch_other_date', ['batch' => $batch, 'item' => $item['name'], 'date' => Format::date(CarbonImmutable::parse($known))]);
+            } elseif ($line['expiry'] !== '' && ! isset($errors['expiry'])) {
+                $used['batch|'.$item['id'].'|'.$batch] = $line['expiry'];
+            }
         }
 
         // In stock for this item (or the chosen expiry date when counting or picking one), in base units.
@@ -756,9 +821,9 @@ class TransactionForm extends Component
         $stockKey = ($item['id'] ?? '').($perExpiry ? '|'.$line['expiry'] : '');
 
         $inStock = $item === null ? 0.0 : ($perExpiry && $line['expiry'] !== ''
-            ? (float) (collect($item['expiries'])->firstWhere('expiry', $line['expiry'])['qty'] ?? 0)
+            ? (float) (collect($item['expiries'])->firstWhere('lot', $line['expiry'])['qty'] ?? 0)
             : $item['available']);
-        $remaining = max($inStock - ($used[$stockKey] ?? 0), 0);
+        $remaining = max($inStock - (float) ($used[$stockKey] ?? 0), 0);
 
         if ($qty === '') {
             if (! ($item['serial'] ?? false)) {
@@ -782,7 +847,7 @@ class TransactionForm extends Component
                     : __('transactions.form.errors.not_enough_on_date', ['qty' => $converter->breakdown($remaining, [$line['unit']]), 'date' => Format::date($this->stockDate())]);
             }
 
-            $used[$stockKey] = ($used[$stockKey] ?? 0) + $base;
+            $used[$stockKey] = (float) ($used[$stockKey] ?? 0) + $base;
         }
 
         if ($counted && $converter !== null && $factor !== null) {
@@ -914,11 +979,11 @@ class TransactionForm extends Component
     }
 
     /**
-     * Expiry dates of an expiry item that this type may take stock from here,
-     * nearest first: expired ones only when the type uses them (Damage).
+     * Lots (expiry date + batch) of an expiry item that this type may take stock
+     * from here, nearest first: expired ones only when the type uses them (Damage).
      *
      * @param  array<string, mixed>  $item
-     * @return list<array{expiry: string, qty: float, expired: bool}>
+     * @return list<array{expiry: string, batch: string, lot: string, qty: float, expired: bool}>
      */
     private function pickableExpiries(array $item): array
     {
@@ -932,8 +997,8 @@ class TransactionForm extends Component
      * another row. Going out: picked from those in stock here.
      *
      * @param  array<string, mixed>  $item
-     * @param  array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}  $line
-     * @param  array<string, float>  $used  also remembers serials seen on earlier rows
+     * @param  array{item: ?string, unit: string, qty: string, expiry: string, batch?: string, serials: string, picked: list<string>}  $line
+     * @param  array<string, float|string>  $used  also remembers serials seen on earlier rows
      * @return array{0: list<string>, 1: list<string>} errors, and the serials that can be picked
      */
     private function checkSerials(TypeUi $ui, array $item, array $line, array &$used): array
@@ -1041,7 +1106,7 @@ class TransactionForm extends Component
     }
 
     /**
-     * @return array<string, array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}>
+     * @return array<string, array{item: ?string, unit: string, qty: string, expiry: string, batch?: string, serials: string, picked: list<string>}>
      */
     private function filledLines(): array
     {
@@ -1049,11 +1114,11 @@ class TransactionForm extends Component
     }
 
     /**
-     * @param  array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}  $line
+     * @param  array{item: ?string, unit: string, qty: string, expiry: string, batch?: string, serials: string, picked: list<string>}  $line
      */
     private function isBlank(array $line): bool
     {
-        return $line['item'] === null && trim($line['qty']) === '' && $line['expiry'] === ''
+        return $line['item'] === null && trim($line['qty']) === '' && $line['expiry'] === '' && trim($line['batch'] ?? '') === ''
             && trim($line['serials']) === '' && $line['picked'] === [];
     }
 
@@ -1068,6 +1133,6 @@ class TransactionForm extends Component
 
     private function addBlankLine(): void
     {
-        $this->lines['r'.$this->nextLine++] = ['item' => null, 'unit' => '', 'qty' => '', 'expiry' => '', 'serials' => '', 'picked' => []];
+        $this->lines['r'.$this->nextLine++] = ['item' => null, 'unit' => '', 'qty' => '', 'expiry' => '', 'batch' => '', 'serials' => '', 'picked' => []];
     }
 }

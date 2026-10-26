@@ -4,10 +4,12 @@ namespace App\Reports;
 
 use App\Models\User;
 use App\Support\Format;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Damage: what was written off as damaged, by period, reason and warehouse.
+ * Damage: what was written off as damaged, by period, reason and warehouse,
+ * with the expiry date and batch of expiry items.
  */
 final class DamageReport extends PostedLinesReport
 {
@@ -30,6 +32,9 @@ final class DamageReport extends PostedLinesReport
             'customer' => ['label' => 'reports.columns.customer', 'priority' => 2],
             'item' => ['label' => 'reports.columns.item'],
             'code' => ['label' => 'reports.columns.code', 'priority' => 2, 'card' => 'hide'],
+            // Expiry items: the lot written off (empty for other items).
+            'expiry_date' => ['label' => 'reports.columns.expiry_date', 'priority' => 2],
+            'batch' => ['label' => 'reports.columns.batch', 'priority' => 2],
             'qty' => ['label' => 'reports.columns.qty_base', 'align' => 'end'],
             'breakdown' => ['label' => 'reports.columns.qty_larger', 'priority' => 2, 'card' => 'hide'],
             'reason' => ['label' => 'reports.columns.reason'],
@@ -46,6 +51,8 @@ final class DamageReport extends PostedLinesReport
     public function row(object $row, array $filters): array
     {
         return $this->commonCells($row) + [
+            'expiry_date' => ['text' => $row->expiry_date === null ? '' : Format::date(CarbonImmutable::parse($row->expiry_date))],
+            'batch' => ['text' => (string) $row->batch_no, 'ltr' => true],
             'qty' => $this->qtyCell($row->qty_base, $row->product_id) + ['tone' => 'rejected'],
             'breakdown' => $this->breakdown($row->qty_base, $row->product_id),
             'reason' => __('transactions.reasons.'.$row->reason_code),

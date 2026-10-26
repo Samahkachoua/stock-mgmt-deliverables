@@ -88,6 +88,7 @@
                             <thead>
                                 <tr class="h-thead bg-surface text-small font-semibold uppercase tracking-wide text-muted">
                                     <th scope="col" class="ps-edge text-start">{{ __('reports.columns.expiry_date') }}</th>
+                                    <th scope="col" class="px-cell text-start">{{ __('reports.columns.batch') }}</th>
                                     <th scope="col" class="px-cell text-end">{{ __('reports.columns.qty_base') }}</th>
                                     <th scope="col" class="px-cell text-end">{{ __('reports.columns.qty_larger') }}</th>
                                     <th scope="col" class="pe-edge text-end">{{ __('reports.columns.status') }}</th>
@@ -100,6 +101,7 @@
                                     @endphp
                                     <tr class="h-row">
                                         <td data-card="title" class="ps-edge font-semibold text-fg">{{ $lot['expiry'] ? Format::date($lot['expiry']) : '—' }}</td>
+                                        <td data-label="{{ __('reports.columns.batch') }}" class="px-cell text-fg"><span dir="ltr" class="tabular">{{ $lot['batch'] ?? __('stock.batch.none') }}</span></td>
                                         <td data-label="{{ __('reports.columns.qty_base') }}" class="px-cell text-end font-semibold text-fg tabular">{{ Format::qtyUnit($lot['qty'], $base) }}</td>
                                         <td data-label="{{ __('reports.columns.qty_larger') }}" class="px-cell text-end text-fg">{{ $converter->breakdown($lot['qty']) }}</td>
                                         <td data-card="badge" class="pe-edge text-end">

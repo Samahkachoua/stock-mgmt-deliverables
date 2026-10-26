@@ -16,6 +16,7 @@ use App\Services\Stock\Exceptions\StockException;
 use App\Services\Stock\ItemCatalog;
 use App\Services\Stock\PostingService;
 use App\Services\Stock\UnitConverter;
+use App\Support\Batches;
 use App\Support\CompanyTime;
 use App\Support\Drafts\DraftDocuments;
 use App\Support\Drafts\DraftTypes;
@@ -99,7 +100,7 @@ class DraftForm extends Component
      * Rows keyed by a stable key ("r1", "r2", ...). `serials`: typed (receipt);
      * `picked`: chosen from stock in the draft's warehouse (order).
      *
-     * @var array<string, array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}>
+     * @var array<string, array{item: ?string, unit: string, qty: string, expiry: string, batch?: string, serials: string, picked: list<string>}>
      */
     public array $lines = [];
 
@@ -144,7 +145,8 @@ class DraftForm extends Component
                     'item' => $line['product_id'],
                     'unit' => $line['unit'],
                     'qty' => (string) (int) $line['qty'],
-                    'expiry' => (string) $line['expiry'],
+                    'expiry' => $kind->receives() || $line['expiry'] === null ? (string) $line['expiry'] : Batches::key($line['expiry'], $line['batch']),
+                    'batch' => $kind->receives() ? (string) $line['batch'] : '',
                     'serials' => $kind->receives() ? implode("\n", $line['serials']) : '',
                     'picked' => $kind->receives() ? [] : $line['serials'],
                 ];
@@ -282,14 +284,26 @@ class DraftForm extends Component
             $this->lines[$key]['serials'] = '';
             $this->lines[$key]['picked'] = [];
             $this->lines[$key]['expiry'] = '';
+            $this->lines[$key]['batch'] = '';
 
-            // Stock going out of an expiry item: suggest the nearest expiry date in the draft's warehouse.
+            // Stock going out of an expiry item: suggest the nearest lot in the draft's warehouse.
             if ($item !== null && $item['expiry'] && ! $this->kind()->receives()) {
-                $this->lines[$key]['expiry'] = $this->pickableExpiries($item)[0]['expiry'] ?? '';
+                $this->lines[$key]['expiry'] = $this->pickableExpiries($item)[0]['lot'] ?? '';
             }
 
             if ($item !== null && $item['serial']) {
                 $this->lines[$key]['qty'] = '';
+            }
+        }
+
+        // A receipt's batch already known for the item has one expiry date: it is filled in.
+        if ($field === 'batch') {
+            $batch = Batches::normalize($this->lines[$key]['batch'] ?? '');
+            $this->lines[$key]['batch'] = $batch;
+            $known = $this->lines[$key]['item'] === null ? null : (Batches::dates((string) $this->lines[$key]['item'], [$batch])[$batch] ?? null);
+
+            if ($known !== null) {
+                $this->lines[$key]['expiry'] = $known;
             }
         }
 
@@ -418,12 +432,18 @@ class DraftForm extends Component
         $lines = [];
 
         foreach ($this->filledLines() as $key => $line) {
+            // An order row holds the lot picked (Batches::key()); a receipt row the date and the batch typed.
+            [$expiry, $batch] = $this->kind()->receives() || $line['expiry'] === ''
+                ? [$line['expiry'] ?: null, $line['batch'] ?? '']
+                : Batches::split($line['expiry']);
+
             $lines[$key] = new DraftLineInput(
                 productId: (string) $line['item'],
                 unit: $line['unit'],
                 qty: trim($line['qty']),
-                expiry: $line['expiry'] ?: null,
+                expiry: $expiry ?: null,
                 serials: $this->kind()->receives() ? $this->serialList($line['serials']) : $line['picked'],
+                batch: $expiry ? $batch : null,
             );
         }
 
@@ -497,7 +517,7 @@ class DraftForm extends Component
                 : array_diff_key($row['errors'], array_flip($row['missing']));
 
             // Refusals from the last save stay until the form changes.
-            foreach (['item', 'unit', 'qty', 'expiry', 'serials'] as $field) {
+            foreach (['item', 'unit', 'qty', 'expiry', 'batch', 'serials'] as $field) {
                 if ($message = $this->getErrorBag()->first('lines.'.$key.'.'.$field)) {
                     $row['errors'][$field] = $message;
                     $row['shown'][$field] = $message;
@@ -548,8 +568,8 @@ class DraftForm extends Component
     }
 
     /**
-     * @param  array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}  $line
-     * @param  array<string, float>  $used  base quantity taken by earlier rows (per item and expiry date), serials seen
+     * @param  array{item: ?string, unit: string, qty: string, expiry: string, batch?: string, serials: string, picked: list<string>}  $line
+     * @param  array<string, float|string>  $used  base quantity taken by earlier rows (per item and lot), serials seen, batch => expiry date
      * @return array<string, mixed>
      */
     private function checkLine(array $line, array &$used): array
@@ -594,7 +614,7 @@ class DraftForm extends Component
             if ($line['expiry'] === '') {
                 $errors['expiry'] = __('transactions.form.errors.expiry_choose');
                 $missing[] = 'expiry';
-            } elseif (collect($row['expiry_options'])->firstWhere('expiry', $line['expiry']) === null) {
+            } elseif (collect($row['expiry_options'])->firstWhere('lot', $line['expiry']) === null) {
                 $errors['expiry'] = __('transactions.form.errors.expiry_not_here');
             }
         }
@@ -608,15 +628,33 @@ class DraftForm extends Component
             }
 
             $row['expiry_past'] = ! isset($errors['expiry']) && $line['expiry'] < CompanyTime::today()->toDateString();
+
+            // The batch number: required; a known batch keeps its expiry date (also between rows).
+            $batch = Batches::normalize($line['batch'] ?? '');
+            $known = $batch === '' ? null : ($used['batch|'.$item['id'].'|'.$batch] ?? Batches::dates($item['id'], [$batch])[$batch] ?? null);
+            $row['batch_known'] = $known;
+
+            if ($batch === '') {
+                $errors['batch'] = __('transactions.form.errors.batch_required');
+                $missing[] = 'batch';
+            } elseif (mb_strlen($batch) > Batches::MAX) {
+                $errors['batch'] = __('settings.errors.too_long', ['max' => Batches::MAX]);
+            } elseif (str_contains($batch, '|')) {
+                $errors['batch'] = __('transactions.form.errors.batch_invalid');
+            } elseif ($known !== null && $line['expiry'] !== '' && $known !== $line['expiry']) {
+                $errors['expiry'] = __('stock.errors.batch_other_date', ['batch' => $batch, 'item' => $item['name'], 'date' => Format::date(CarbonImmutable::parse($known))]);
+            } elseif ($line['expiry'] !== '' && ! isset($errors['expiry'])) {
+                $used['batch|'.$item['id'].'|'.$batch] = $line['expiry'];
+            }
         }
 
         // In stock in the draft's warehouse (of the chosen expiry date when going out), in base units.
         $perExpiry = $needsExpiry && ! $receives;
         $stockKey = ($item['id'] ?? '').($perExpiry ? '|'.$line['expiry'] : '');
         $inStock = $item === null ? 0.0 : ($perExpiry && $line['expiry'] !== ''
-            ? (float) (collect($item['expiries'])->firstWhere('expiry', $line['expiry'])['qty'] ?? 0)
+            ? (float) (collect($item['expiries'])->firstWhere('lot', $line['expiry'])['qty'] ?? 0)
             : $item['available']);
-        $remaining = max($inStock - ($used[$stockKey] ?? 0), 0);
+        $remaining = max($inStock - (float) ($used[$stockKey] ?? 0), 0);
 
         if ($qty === '') {
             if (! ($item['serial'] ?? false)) {
@@ -637,7 +675,7 @@ class DraftForm extends Component
                 $errors['qty'] = __('transactions.form.errors.not_enough', ['qty' => $converter->breakdown($remaining, [$line['unit']])]);
             }
 
-            $used[$stockKey] = ($used[$stockKey] ?? 0) + $base;
+            $used[$stockKey] = (float) ($used[$stockKey] ?? 0) + $base;
         }
 
         return $row + [
@@ -651,8 +689,8 @@ class DraftForm extends Component
 
     /**
      * @param  array<string, mixed>  $item
-     * @param  array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}  $line
-     * @param  array<string, float>  $used
+     * @param  array{item: ?string, unit: string, qty: string, expiry: string, batch?: string, serials: string, picked: list<string>}  $line
+     * @param  array<string, float|string>  $used  also batch => expiry date of earlier rows
      * @return array{0: list<string>, 1: list<string>} errors, and the serials that can be picked
      */
     private function checkSerials(array $item, array $line, array &$used): array
@@ -812,10 +850,10 @@ class DraftForm extends Component
     }
 
     /**
-     * Expiry dates of an item that may go out, nearest first (never expired ones).
+     * Lots (expiry date + batch) of an item that may go out, nearest first (never expired ones).
      *
      * @param  array<string, mixed>  $item
-     * @return list<array{expiry: string, qty: float, expired: bool}>
+     * @return list<array{expiry: string, batch: string, lot: string, qty: float, expired: bool}>
      */
     private function pickableExpiries(array $item): array
     {
@@ -904,7 +942,7 @@ class DraftForm extends Component
     // Rows
 
     /**
-     * @return array<string, array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}>
+     * @return array<string, array{item: ?string, unit: string, qty: string, expiry: string, batch?: string, serials: string, picked: list<string>}>
      */
     private function filledLines(): array
     {
@@ -914,11 +952,11 @@ class DraftForm extends Component
     /**
      * A row is blank until something is filled.
      *
-     * @param  array{item: ?string, unit: string, qty: string, expiry: string, serials: string, picked: list<string>}  $line
+     * @param  array{item: ?string, unit: string, qty: string, expiry: string, batch?: string, serials: string, picked: list<string>}  $line
      */
     private function isBlank(array $line): bool
     {
-        return $line['item'] === null && trim($line['qty']) === '' && $line['expiry'] === ''
+        return $line['item'] === null && trim($line['qty']) === '' && $line['expiry'] === '' && trim($line['batch'] ?? '') === ''
             && trim($line['serials']) === '' && $line['picked'] === [];
     }
 
@@ -933,7 +971,7 @@ class DraftForm extends Component
 
     private function addBlankLine(): void
     {
-        $this->lines['r'.$this->nextLine++] = ['item' => null, 'unit' => '', 'qty' => '', 'expiry' => '', 'serials' => '', 'picked' => []];
+        $this->lines['r'.$this->nextLine++] = ['item' => null, 'unit' => '', 'qty' => '', 'expiry' => '', 'batch' => '', 'serials' => '', 'picked' => []];
     }
 
     // Leaving
@@ -949,7 +987,7 @@ class DraftForm extends Component
             'delivery_date' => $this->deliveryDate,
             'priority' => $this->priority,
             'lines' => array_values(array_map(fn (array $line) => [
-                $line['item'], $line['unit'], trim($line['qty']), $line['expiry'], trim($line['serials']), $line['picked'],
+                $line['item'], $line['unit'], trim($line['qty']), $line['expiry'], trim($line['batch'] ?? ''), trim($line['serials']), $line['picked'],
             ], $this->filledLines())),
         ];
     }

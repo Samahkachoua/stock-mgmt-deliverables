@@ -42,10 +42,11 @@ class ItemStockController extends Controller
             ->where('product_id', $product->id)
             ->where('warehouse_id', $warehouse->id)
             ->where('qty_base', '>', 0)
-            ->orderByRaw('expiry_date ASC NULLS LAST')
-            ->get(['qty_base', 'expiry_date'])
+            ->orderByRaw('expiry_date ASC NULLS LAST, batch_key ASC')
+            ->get(['qty_base', 'expiry_date', 'batch_no'])
             ->map(fn ($row) => [
                 'expiry' => $row->getAttribute('expiry_date') ? CarbonImmutable::parse($row->getAttribute('expiry_date')) : null,
+                'batch' => $row->getAttribute('batch_no'),
                 'qty' => (float) $row->qty_base,
             ]);
 

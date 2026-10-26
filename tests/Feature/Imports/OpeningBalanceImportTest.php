@@ -33,13 +33,19 @@ afterEach(function () {
 });
 
 /**
- * An opening-balance row in template order: warehouse, customer, item, expiry, quantity, unit, serial.
+ * An opening-balance row in template order: warehouse, customer, item, expiry, batch, quantity, unit, serial.
+ * The expiry item (YOGURT) gets a batch per expiry date unless one is given.
  *
  * @return list<mixed>
  */
-function balanceRow(string $warehouse, string $item, mixed $quantity, string $unit = '', mixed $expiry = '', string $serial = ''): array
+function balanceRow(string $warehouse, string $item, mixed $quantity, string $unit = '', mixed $expiry = '', string $serial = '', ?string $batch = null): array
 {
-    return [$warehouse, 'ACME', $item, $expiry, $quantity, $unit, $serial];
+    if ($batch === null) {
+        $date = is_array($expiry) ? $expiry['date'] : (string) $expiry;
+        $batch = strtoupper($item) === 'YOGURT' && $date !== '' ? Stock::batch($date) : '';
+    }
+
+    return [$warehouse, 'ACME', $item, $expiry, $batch, $quantity, $unit, $serial];
 }
 
 function balanceFile(array $rows): UploadedFile
@@ -93,19 +99,19 @@ it('catches every kind of mistake in an opening balance', function (array $row, 
     expect($result->status)->toBe('ERROR')
         ->and($result->text())->toContain($expected);
 })->with([
-    'warehouse not assigned' => [['SAI', 'ACME', 'BEANS', '', 5, ''], 'You are not assigned to warehouse SAI.'],
-    'unknown warehouse' => [['BEYY', 'ACME', 'BEANS', '', 5, ''], 'Warehouse code “BEYY” was not found. Did you mean “BEY”?'],
-    'unknown customer' => [['BEY', 'ACM', 'BEANS', '', 5, ''], 'Did you mean “ACME”?'],
-    'unknown item' => [['BEY', 'ACME', 'BEANZ', '', 5, ''], 'Item “BEANZ” was not found for customer ACME. Did you mean “BEANS”?'],
-    'unit the item doesn’t have' => [['BEY', 'ACME', 'BEANS', '', 5, 'KG'], 'Unit “KG” is not set up for item BEANS (its units:'],
-    'no quantity' => [['BEY', 'ACME', 'BEANS', '', '', ''], 'Quantity is missing.'],
-    'zero quantity' => [['BEY', 'ACME', 'BEANS', '', 0, ''], 'Quantity must be a whole number above 0'],
-    'decimal quantity' => [['BEY', 'ACME', 'BEANS', '', '1.5', ''], 'Quantity must be a whole number above 0 (found “1.5”)'],
-    'quantity over 999,999' => [['BEY', 'ACME', 'BEANS', '', 1000000, ''], 'Quantity is too large: at most 999,999 per row (found “1000000”)'],
-    'expiry item without expiry' => [['BEY', 'ACME', 'YOGURT', '', 5, ''], 'Item YOGURT tracks expiry: enter the expiry date.'],
-    'not a date' => [['BEY', 'ACME', 'YOGURT', '31/02/2027', 5, ''], 'Expiry date “31/02/2027” is not a date.'],
-    'serial item without serial' => [['BEY', 'ACME', 'PHONE', '', 1, ''], 'Item PHONE has serial numbers: enter the serial number of this piece.'],
-    'serial item with more than 1' => [['BEY', 'ACME', 'PHONE', '', 3, '', 'SN-1'], 'use one row per piece, with quantity 1 (found “3”)'],
+    'warehouse not assigned' => [['SAI', 'ACME', 'BEANS', '', '', 5, ''], 'You are not assigned to warehouse SAI.'],
+    'unknown warehouse' => [['BEYY', 'ACME', 'BEANS', '', '', 5, ''], 'Warehouse code “BEYY” was not found. Did you mean “BEY”?'],
+    'unknown customer' => [['BEY', 'ACM', 'BEANS', '', '', 5, ''], 'Did you mean “ACME”?'],
+    'unknown item' => [['BEY', 'ACME', 'BEANZ', '', '', 5, ''], 'Item “BEANZ” was not found for customer ACME. Did you mean “BEANS”?'],
+    'unit the item doesn’t have' => [['BEY', 'ACME', 'BEANS', '', '', 5, 'KG'], 'Unit “KG” is not set up for item BEANS (its units:'],
+    'no quantity' => [['BEY', 'ACME', 'BEANS', '', '', '', ''], 'Quantity is missing.'],
+    'zero quantity' => [['BEY', 'ACME', 'BEANS', '', '', 0, ''], 'Quantity must be a whole number above 0'],
+    'decimal quantity' => [['BEY', 'ACME', 'BEANS', '', '', '1.5', ''], 'Quantity must be a whole number above 0 (found “1.5”)'],
+    'quantity over 999,999' => [['BEY', 'ACME', 'BEANS', '', '', 1000000, ''], 'Quantity is too large: at most 999,999 per row (found “1000000”)'],
+    'expiry item without expiry' => [['BEY', 'ACME', 'YOGURT', '', '', 5, ''], 'Item YOGURT tracks expiry: enter the expiry date.'],
+    'not a date' => [['BEY', 'ACME', 'YOGURT', '31/02/2027', '', 5, ''], 'Expiry date “31/02/2027” is not a date.'],
+    'serial item without serial' => [['BEY', 'ACME', 'PHONE', '', '', 1, ''], 'Item PHONE has serial numbers: enter the serial number of this piece.'],
+    'serial item with more than 1' => [['BEY', 'ACME', 'PHONE', '', '', 3, '', 'SN-1'], 'use one row per piece, with quantity 1 (found “3”)'],
 ]);
 
 it('imports serial items one row per piece', function () {
@@ -150,8 +156,8 @@ it('refuses a serial that is twice in the file or already in stock', function ()
 
 it('keeps an expiry item’s stock per expiry date: rows with the same date add up', function () {
     $job = uploadBalances($this->manager, balanceFile([
-        balanceRow('BEY', 'YOGURT', 6, expiry: '31/03/2027'),
-        balanceRow('BEY', 'YOGURT', 4, expiry: '2027-03-31'),
+        balanceRow('BEY', 'YOGURT', 6, expiry: '31/03/2027', batch: 'B1'),
+        balanceRow('BEY', 'YOGURT', 4, expiry: '2027-03-31', batch: 'B1'),
         balanceRow('BEY', 'YOGURT', 2, expiry: '2027-04-30'),
     ]));
 
@@ -245,4 +251,37 @@ it('refuses a service: it has no stock, so no opening balance', function () {
 
     expect($result->status)->toBe('ERROR')
         ->and($result->text())->toContain('Item PACK is a service');
+});
+
+it('needs a batch for an expiry item, gives a batch one date, and adds up rows of the same batch', function () {
+    $this->stock->post('IN', [$this->stock->line('YOGURT', 1, expiry: '2027-05-31', batch: 'OLD-1')]);
+
+    $job = uploadBalances($this->manager, balanceFile([
+        balanceRow('BEY', 'YOGURT', 6, expiry: '2027-03-31', batch: 'b-7'),
+        balanceRow('BEY', 'YOGURT', 4, expiry: '2027-03-31', batch: 'B-7'),
+        balanceRow('BEY', 'YOGURT', 2, expiry: '2027-04-30', batch: ''),
+        balanceRow('BEY', 'YOGURT', 2, expiry: '2027-04-30', batch: 'OLD-1'),
+        balanceRow('BEY', 'BEANS', 3, batch: 'X'),
+    ]));
+    $rows = $job->rows()->orderBy('row_no')->get();
+
+    expect($rows->pluck('status')->all())->toBe(['WARNING', 'WARNING', 'ERROR', 'ERROR', 'WARNING']) // yogurt is in stock there already
+        ->and($rows[2]->text())->toContain(__('imports.errors.batch_required', ['item' => 'YOGURT']))
+        ->and($rows[3]->text())->toContain('OLD-1')
+        ->and($rows[4]->text())->toBe(__('imports.warnings.batch_ignored', ['item' => 'BEANS']));
+
+    app(ImportEngine::class)->confirm($job, $this->manager);
+
+    expect($this->stock->balance('YOGURT', '2027-03-31', batch: 'B-7'))->toBe(10.0)
+        ->and(DB::table('stock_transaction_line')->where('product_id', $this->stock->id('YOGURT'))->where('batch_no', 'B-7')->count())->toBe(1);
+});
+
+it('refuses one batch with two expiry dates in the same file', function () {
+    $job = uploadBalances($this->manager, balanceFile([
+        balanceRow('BEY', 'YOGURT', 6, expiry: '2027-03-31', batch: 'B-7'),
+        balanceRow('BEY', 'YOGURT', 4, expiry: '2027-04-30', batch: 'B-7'),
+    ]));
+
+    expect($job->rows()->pluck('status')->unique()->all())->toBe(['ERROR'])
+        ->and($job->rows()->first()->text())->toContain(__('imports.errors.batch_two_dates', ['batch' => 'B-7', 'item' => 'YOGURT']));
 });
