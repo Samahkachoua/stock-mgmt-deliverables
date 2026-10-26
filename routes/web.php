@@ -102,10 +102,13 @@ Route::middleware(['auth', 'warehouse'])->group(function () {
             ->defaults('type', $code)
             ->middleware($view);
 
-        Route::get('/'.$slug.'/new', TransactionForm::class)
-            ->name($slug.'.create')
-            ->defaults('type', $code)
-            ->middleware('can:'.$type['create']);
+        // No "New" page for a type created only from a draft (Delivery note, from an Order).
+        if ($type['new'] ?? true) {
+            Route::get('/'.$slug.'/new', TransactionForm::class)
+                ->name($slug.'.create')
+                ->defaults('type', $code)
+                ->middleware('can:'.$type['create']);
+        }
 
         Route::get('/'.$slug.'/{reference}', [TransactionController::class, 'show'])
             ->name($slug.'.show')

@@ -364,7 +364,7 @@
                                                         <select id="{{ $id }}-expiry" wire:model.live="lines.{{ $key }}.expiry" class="{{ $control }} {{ isset($errors['expiry']) || isset($errors['batch']) ? $bad : $ok }} appearance-none pe-9">
                                                             <option value="">{{ __('transactions.form.choose_lot') }}</option>
                                                             @foreach ($row['expiry_options'] ?? [] as $lot)
-                                                                <option value="{{ $lot['lot'] }}">{{ \App\Support\Batches::label($lot['expiry'], $lot['batch']) }} · {{ Format::qtyUnit($lot['qty'], $item['base']) }}{{ $lot['expired'] ? ' · '.__('transactions.form.expired') : '' }}</option>
+                                                                <option value="{{ $lot['lot'] }}">{{ \App\Support\Batches::label($lot['expiry'], $lot['batch']) }} · {{ Format::qtyUnit($counted ? ($lot['total'] ?? $lot['qty']) : $lot['qty'], $item['base']) }}{{ $lot['expired'] ? ' · '.__('transactions.form.expired') : '' }}</option>
                                                             @endforeach
                                                         </select>
                                                         <x-icon name="keyboard_arrow_down" class="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-muted" />

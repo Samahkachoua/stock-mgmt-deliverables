@@ -13,6 +13,7 @@ use App\Services\Stock\Exceptions\BatchDateMismatch;
 use App\Services\Stock\Exceptions\InsufficientStock;
 use App\Services\Stock\Exceptions\NotAllowed;
 use App\Services\Stock\Exceptions\PostingRejected;
+use App\Services\Stock\PostingService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -126,35 +127,43 @@ it('confirms a order from the expiry dates picked on it', function () {
     $draft = $this->drafts->save(draftOf($this, 'OUT', [draftLine($this->stock, 'YOGURT', 4, expiry: $later)]), $this->stock->user);
     $documents = $this->drafts->confirm($draft, $this->stock->user);
 
+    // Confirmed: a delivery note holding the order's stock; nothing has left yet.
     expect($documents)->toHaveCount(1)
         ->and($documents[0]->transaction_type)->toBe('OUT')
+        ->and($documents[0]->status)->toBe('CONFIRMED')
         ->and($documents[0]->warehouse_id)->toBe($this->stock->warehouse->id)
+        ->and($this->stock->balance('YOGURT', $later))->toBe(6.0)
+        ->and($this->stock->reserved('YOGURT', $later))->toBe(4.0);
+
+    app(PostingService::class)->dispatchDelivery($documents[0], null, null, null, $this->stock->user);
+    app(PostingService::class)->deliver($documents[0], Stock::deliveredInFull($documents[0]), $this->stock->user);
+
+    expect($documents[0]->fresh()->status)->toBe('POSTED')
         ->and($this->stock->balance('YOGURT', $soon))->toBe(6.0)
-        ->and($this->stock->balance('YOGURT', $later))->toBe(2.0);
+        ->and($this->stock->balance('YOGURT', $later))->toBe(2.0)
+        ->and($this->stock->reserved('YOGURT'))->toBe(0.0);
 });
 
-it('creates nothing when an order is short, and says which line', function () {
+it('reserves an order\'s stock, so a second order can\'t take it, and says which line', function () {
     $this->stock->post('IN', [$this->stock->line('BEANS', 20)]);
     $this->stock->post('IN', [$this->stock->line('BEANS', 20)], warehouse: $this->depot);
 
-    $draft = $this->drafts->save(draftOf($this, 'OUT', [
+    $this->drafts->save(draftOf($this, 'OUT', [
         draftLine($this->stock, 'BEANS', 5),
         draftLine($this->stock, 'BEANS', 1, 'BOX'),
     ], warehouse: $this->depot), $this->stock->user);
-
-    // Stock taken meanwhile: drafts don't reserve it.
-    $this->stock->post('OUT', [$this->stock->line('BEANS', 10)], warehouse: $this->depot);
     $before = stockCounts();
-    $short = DB::table('stock_draft_line')->where('draft_id', $draft->id)->where('line_no', 2)->value('id');
 
-    expect(fn () => $this->drafts->confirm($draft, $this->stock->user))
-        ->toThrow(fn (InsufficientStock $e) => expect($e->row)->toBe($short));
+    // 17 of 20 reserved: 3 left for anyone else in the depot.
+    expect(fn () => $this->drafts->save(draftOf($this, 'OUT', [draftLine($this->stock, 'BEANS', 2), draftLine($this->stock, 'BEANS', 2, 'BOX')], warehouse: $this->depot), $this->stock->user))
+        ->toThrow(fn (InsufficientStock $e) => expect($e->row)->toBe('r2')->and($e->available)->toBe(1.0));
 
-    // The stock in the other warehouse is not used instead.
+    // The stock in the other warehouse is not used instead; nothing moved.
     expect(stockCounts())->toBe($before)
-        ->and($draft->fresh()->status)->toBe('DRAFT')
-        ->and($this->stock->balance('BEANS', warehouse: $this->depot))->toBe(10.0)
-        ->and($this->stock->balance('BEANS'))->toBe(20.0);
+        ->and(DB::table('stock_draft')->count())->toBe(1)
+        ->and($this->stock->reserved('BEANS', warehouse: $this->depot))->toBe(17.0)
+        ->and($this->stock->balance('BEANS', warehouse: $this->depot))->toBe(20.0)
+        ->and($this->stock->reserved('BEANS'))->toBe(0.0);
 });
 
 it('refuses a draft in a warehouse the user does not work in', function () {
@@ -189,7 +198,8 @@ it('lets the confirmer change quantities and confirm in one step, or keeps nothi
     $update = DB::table('audit_log')->where('entity', 'stock_draft')->where('action', 'UPDATE')->first();
 
     expect((float) DB::table('stock_transaction_line')->where('transaction_id', $deliveryNote->id)->value('qty_base'))->toBe(3.0)
-        ->and($this->stock->balance('BEANS'))->toBe(7.0)
+        ->and($this->stock->balance('BEANS'))->toBe(10.0)
+        ->and($this->stock->reserved('BEANS'))->toBe(3.0)
         ->and(json_decode($update->before_data, true)['lines'][0]['qty'])->toBe(4)
         ->and(json_decode($update->after_data, true)['lines'][0]['qty'])->toBe(3);
 });
@@ -374,7 +384,9 @@ it('keeps the batch picked on an order and delivers from it', function () {
         ->toThrow(PostingRejected::class, __('transactions.form.errors.batch_choose'));
 
     $draft = $this->drafts->save(draftOf($this, 'OUT', [draftLine($this->stock, 'YOGURT', 2, expiry: $soon, batch: 'B2')]), $this->stock->user);
-    $this->drafts->confirm($draft, $this->stock->user);
+    [$note] = $this->drafts->confirm($draft, $this->stock->user);
+    app(PostingService::class)->dispatchDelivery($note, null, null, null, $this->stock->user);
+    app(PostingService::class)->deliver($note, Stock::deliveredInFull($note), $this->stock->user);
 
     expect($this->stock->balance('YOGURT', $soon, batch: 'A1'))->toBe(6.0)
         ->and($this->stock->balance('YOGURT', $soon, batch: 'B2'))->toBe(4.0);

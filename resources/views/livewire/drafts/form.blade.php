@@ -275,6 +275,7 @@
                                             :customer="$customerId"
                                             :warehouse="$warehouseId"
                                             :services="$kind->type->allowsServices()"
+                                            :own-draft="$draftId"
                                             :invalid="isset($errors['item'])"
                                             :input-id="$id.'-item'"
                                             :next="$id.'-unit'"

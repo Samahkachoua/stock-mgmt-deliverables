@@ -193,10 +193,10 @@ it('limits a batch going out on a document dated back to what it had that day', 
     $this->stock->post('IN', [$this->stock->line('YOGURT', 6, expiry: $this->late, batch: 'B2')], date: CarbonImmutable::today()->subDay());
 
     // B2 arrived yesterday: nothing of it three days ago, but A1 was there.
-    expect(fn () => $this->stock->post('OUT', [$this->stock->line('YOGURT', 1, expiry: $this->late, batch: 'B2')], date: CarbonImmutable::today()->subDays(3)))
+    expect(fn () => $this->stock->post('DAMAGE', [$this->stock->line('YOGURT', 1, expiry: $this->late, batch: 'B2')], $this->stock->user, reason: 'HANDLING', date: CarbonImmutable::today()->subDays(3)))
         ->toThrow(InsufficientStock::class);
 
-    $this->stock->post('OUT', [$this->stock->line('YOGURT', 2, expiry: $this->late, batch: 'A1')], date: CarbonImmutable::today()->subDays(3));
+    $this->stock->post('DAMAGE', [$this->stock->line('YOGURT', 2, expiry: $this->late, batch: 'A1')], $this->stock->user, reason: 'HANDLING', date: CarbonImmutable::today()->subDays(3));
 
     expect($this->stock->balance('YOGURT', $this->late, batch: 'A1'))->toBe(4.0);
 });

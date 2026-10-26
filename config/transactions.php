@@ -19,7 +19,12 @@
 |   view           permission to open the list, details and print pages (also
 |                  open to whoever may create or approve the type, see `view_also`)
 |   view_also      other permissions that also open them (e.g. receiving transfers)
-|   create         permission needed for the "New" page
+|   create         permission needed for the "New" page; for a type without
+|                  one (`new` false) the permission to act on its documents
+|   new            false: no "New" page (Delivery note: always confirmed from
+|                  an Order). Default true
+|   status_labels  this type's own label for a status (code => label key under
+|                  lang/<locale>/transactions.php `status`), e.g. Delivered
 |   approve        permission to approve/reject (types that support approval)
 |   header_fields  extra header fields besides Customer, Date and Reference note:
 |                  reason  (choices from `reasons`); the To-warehouse field is added
@@ -71,7 +76,10 @@ return [
             'icon' => 'outbox',
             'prefix' => 'DN',
             'view' => 'stock.out.view',
+            // Dispatch and confirm delivery: delivery notes are created from Orders.
             'create' => 'stock.out.create',
+            'new' => false,
+            'status_labels' => ['DISPATCHED' => 'dispatched', 'POSTED' => 'delivered'],
             'header_fields' => [],
             // The Order it was confirmed from, if any.
             'list_columns' => ['draft'],
@@ -219,6 +227,8 @@ return [
     */
     'statuses' => [
         'PENDING_APPROVAL' => ['token' => 'pending', 'label' => 'pending_approval'],
+        // Delivery note confirmed from an Order: stock reserved, not dispatched yet.
+        'CONFIRMED' => ['token' => 'draft', 'label' => 'confirmed'],
         'DISPATCHED' => ['token' => 'transit', 'label' => 'in_transit'],
         'POSTED' => ['token' => 'completed', 'label' => 'completed'],
         'REJECTED' => ['token' => 'rejected', 'label' => 'rejected'],

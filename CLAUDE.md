@@ -9,6 +9,8 @@ Naming: the OUT type is shown as **Delivery note** (`DN-`) and a draft of it as
 stay direction-based (`OUT`, `stock.out.*`, `draft.out.*`).
 A draft (Order / Draft receipt) has one warehouse, in its header
 (`stock_draft.warehouse_id`); confirming it creates one Delivery note / Receipt.
+A Delivery note is only ever created by confirming an Order (no "New" page):
+Confirmed → Dispatched → Delivered (rule 14).
 
 Reference material (read before large changes):
 - `database/sql/schema.sql` — source of truth for tables, constraints, posting functions
@@ -109,6 +111,9 @@ them so users get a clear, translated message instead of a raw DB error.
    `stock_balance` cache in the same transaction. All posting goes through one
    class, `App\Services\Stock\PostingService`, inside `DB::transaction()`.
    Never write `UPDATE stock_balance` or insert into `stock_movement` anywhere else.
+   Reservations (rule 14) go only through `App\Services\Stock\Reservations`
+   (`fn_reserve` / `fn_release_reservations`); never write `stock_reservation`
+   or `stock_balance.qty_reserved` by hand.
 2. **Negative stock is always blocked.** `fn_apply_balance` raises
    `Negative stock blocked: ...`. `PostingService` must pre-check available
    quantity and throw a domain exception that the UI shows inline next to the
@@ -205,6 +210,22 @@ them so users get a clear, translated message instead of a raw DB error.
     (`fn_post_movement` refuses a service) and availability is never checked.
     Stock reports and the other types' item pickers leave services out
     (`Product::stocked()`, `ItemCatalog` `withServices`).
+14. **Orders reserve stock; a Delivery note has three steps.** Saving an Order
+    reserves its lines (`stock_reservation`, cached in
+    `stock_balance.qty_reserved`); editing releases and reserves again,
+    cancelling releases. Confirming creates a Delivery note in `CONFIRMED` that
+    takes over the reservation (no movement). Dispatch (`DISPATCHED`) records
+    the optional driver name, phone and truck number. Deliver (`POSTED`, shown
+    "Delivered") releases the reservation and posts OUT only for the quantities
+    delivered: less needs a reason (`PostingService::DELIVERY_REASONS`), a line
+    may be replaced by another item (`replaces_line_id`); differences are in
+    the Delivery discrepancies report. Cancelling before delivery releases the
+    stock. **Available = in stock − reserved** everywhere stock is taken
+    (`Availability`, `ItemCatalog`: item search, hints, Transfer, Damage,
+    other Orders); an Order being edited counts its own reservation
+    (`ownDraftId`). A count may not go below the reserved quantity, and
+    `fn_apply_balance` refuses any OUT that would ("Reserved stock blocked").
+    A Delivery note's stock leaves on the day it is delivered (`delivered_at`).
 
 ## i18n and RTL (English, Arabic, French)
 - Every user-facing string goes through `__('file.key')` with translations in
@@ -523,8 +544,8 @@ never ad-hoc spinners per page.
 ## Testing expectations
 - Every action that posts stock (submit, dispatch, receive, approve) has a
   Pest feature test proving negative stock is blocked and balances end correct.
-- Concurrency test for the ledger: two separate DB connections issuing OUT
-  against the same balance; only one may succeed. (Must not run inside
+- Concurrency test for the ledger: two separate DB connections reserving
+  (ordering) the same last stock; only one may succeed. (Must not run inside
   `RefreshDatabase`'s wrapping transaction — use `DatabaseMigrations` or
   truncation for that test.)
 - Arch/DB test: every table in `public` has `rowsecurity = true`.

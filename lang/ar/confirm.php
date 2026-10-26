@@ -68,6 +68,7 @@ return [
         'title' => 'إلغاء :type :reference؟',
         'returns' => 'سيُعيد هذا :stock إلى مخزون :warehouse ولا يمكن التراجع عنه.',
         'removes' => 'سيُخرج هذا :stock من مخزون :warehouse مجددًا ولا يمكن التراجع عنه.',
+        'releases' => 'لم يُسلَّم شيء بعد: يصبح :stock المحجوز في :warehouse متاحًا من جديد. لا يمكن التراجع عن ذلك.',
         'more' => '{1} :first وصنف واحد آخر|{2} :first وصنفان آخران|[3,10] :first و:count أصناف أخرى|[11,*] :first و:count صنفًا آخر',
         'stock' => ':qty من :item',
         'button' => 'إلغاء :type',

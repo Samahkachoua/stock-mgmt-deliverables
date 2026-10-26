@@ -14,7 +14,7 @@ return [
     'labels' => [
         'stock_view' => 'See stock and documents',
         'stock_in_create' => 'Create receipts',
-        'stock_out_create' => 'Create delivery notes',
+        'stock_out_create' => 'Dispatch and deliver delivery notes',
         'stock_transfer_dispatch' => 'Dispatch transfers',
         'stock_transfer_receive' => 'Receive transfers',
         'stock_damage_create' => 'Record damage',

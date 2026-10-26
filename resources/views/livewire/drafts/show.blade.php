@@ -63,7 +63,7 @@
                         </a>
                         <span class="flex items-center gap-3 text-body text-fg">
                             <span class="inline-flex items-center gap-1.5"><x-icon name="warehouse" class="size-4 text-muted" /><bdi>{{ $document['warehouse'] }}</bdi></span>
-                            <x-status-badge :code="$document['status']" />
+                            <x-status-badge :code="$document['status']" :type="\App\Support\Transactions\TransactionTypes::get($document['type'])" />
                         </span>
                     </li>
                 @endforeach

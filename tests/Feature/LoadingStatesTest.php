@@ -3,6 +3,7 @@
 use App\Livewire\Reports\ReportPage;
 use App\Livewire\Transactions\TransactionForm;
 use App\Livewire\Transactions\TransactionList;
+use App\Models\Warehouse;
 use App\Services\Stock\Document;
 use App\Services\Stock\PostingService;
 use Carbon\CarbonImmutable;
@@ -31,13 +32,14 @@ function loadingList(Stock $stock): Testable
 }
 
 /**
- * A new Delivery note form of the fixture warehouse with one filled line.
+ * A new Transfer form of the fixture warehouse (to Tripoli) with one filled line.
  */
 function deliveryNoteForm(Stock $stock, string $qty): Testable
 {
-
-    $form = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'OUT'])
-        ->call('chooseCustomer', $stock->customer->id);
+    $tripoli = Warehouse::where('code', 'TRP')->first() ?? Warehouse::factory()->create(['code' => 'TRP', 'name' => 'Tripoli']);
+    $form = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'TRANSFER'])
+        ->call('chooseCustomer', $stock->customer->id)
+        ->set('toWarehouse', $tripoli->id);
     $row = array_key_first($form->get('lines'));
 
     return $form->set("lines.$row.item", $stock->id('BEANS'))->set("lines.$row.qty", $qty);
@@ -49,13 +51,14 @@ it('creates one transaction when the same token is posted twice', function () {
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 10)]);
     $token = (string) Str::uuid();
-    $deliveryNote = fn () => new Document('OUT', $stock->warehouse->id, $stock->customer->id, CarbonImmutable::today(), null, ['r1' => $stock->line('BEANS', 4)], requestId: $token);
+    $tripoli = Warehouse::factory()->create();
+    $deliveryNote = fn () => new Document('TRANSFER', $stock->warehouse->id, $stock->customer->id, CarbonImmutable::today(), null, ['r1' => $stock->line('BEANS', 4)], $tripoli->id, requestId: $token);
 
     $first = app(PostingService::class)->post($deliveryNote(), $stock->user);
     $second = app(PostingService::class)->post($deliveryNote(), $stock->user);
 
     expect($second->id)->toBe($first->id)
-        ->and(DB::table('stock_transaction')->where('transaction_type', 'OUT')->count())->toBe(1)
+        ->and(DB::table('stock_transaction')->where('transaction_type', 'TRANSFER')->count())->toBe(1)
         ->and(DB::table('stock_transaction')->where('id', $first->id)->value('client_request_id'))->toBe($token)
         ->and(DB::table('stock_movement')->where('transaction_id', $first->id)->count())->toBe(1)
         ->and($stock->balance('BEANS'))->toBe(6.0)
@@ -106,19 +109,19 @@ it('saves once when the same form is submitted twice', function () {
     $form->call('save')->assertHasNoErrors();
     $form->call('save')->assertHasNoErrors();
 
-    $deliveryNotes = DB::table('stock_transaction')->where('transaction_type', 'OUT')->get();
+    $deliveryNotes = DB::table('stock_transaction')->where('transaction_type', 'TRANSFER')->get();
 
     expect($deliveryNotes)->toHaveCount(1)
         ->and($deliveryNotes[0]->client_request_id)->toBe($form->get('requestId'))
         ->and($stock->balance('BEANS'))->toBe(6.0);
-    $form->assertRedirect(route('delivery-note.show', $deliveryNotes[0]->doc_no));
+    $form->assertRedirect(route('transfer.show', $deliveryNotes[0]->doc_no));
 
     // Another form is another document.
     $other = deliveryNoteForm($stock, '4');
     expect($other->get('requestId'))->not->toBe($form->get('requestId'));
     $other->call('save')->assertHasNoErrors();
 
-    expect(DB::table('stock_transaction')->where('transaction_type', 'OUT')->count())->toBe(2)
+    expect(DB::table('stock_transaction')->where('transaction_type', 'TRANSFER')->count())->toBe(2)
         ->and($stock->balance('BEANS'))->toBe(2.0);
 });
 
@@ -139,7 +142,7 @@ it('disables the submit button and shows “Saving…” while the form is being
         ->toContain('wire:loading.inline-flex')
         ->toContain('animate-spin')
         ->toContain(__('app.loading.saving'))
-        ->toContain(__('transactions.types.delivery_note.save'));
+        ->toContain(__('transfers.send_to', ['warehouse' => 'Tripoli']));
 
     // The rest of the form is read-only while it is saved.
     expect($html)->toMatch('/<fieldset\s[^>]*wire:loading\.attr="disabled"[^>]*wire:target="save, runConfirmed"/');

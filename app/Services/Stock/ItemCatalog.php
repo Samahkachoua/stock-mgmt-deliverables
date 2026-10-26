@@ -15,14 +15,19 @@ use Illuminate\Support\Facades\DB;
  * their units and what is in stock in one warehouse (read from stock_balance,
  * never written here).
  *
- * With $excludeExpired (types that skip expired stock, e.g. Delivery note), `available`
- * counts only stock that has not expired; `expired` says how much has.
+ * `available` is what may be taken: stock not reserved for Orders / Delivery
+ * notes (with $ownDraftId, what that Order holds counts as its own). With
+ * $excludeExpired (types that skip expired stock, e.g. Delivery note) it counts
+ * only stock that has not expired; `expired` says how much has. `in_stock` is
+ * the whole balance and `reserved` the part held for orders (counts compare
+ * with the whole balance).
  * `expiries` is the stock of an expiry item per lot (expiry date + batch, `lot`
- * = Batches::key(); batch '' = stock without a batch), nearest expiry first.
+ * = Batches::key(); batch '' = stock without a batch), nearest expiry first:
+ * `qty` available, `total` in stock, `reserved` held (a lot all reserved has qty 0).
  * Services (no stock) are left out unless $withServices (types that take them,
  * TypeUi::allowsServices()); a service has `service` true and no stock.
  *
- * @phpstan-type CatalogItem array{id: string, code: string, name: string, storage: ?string, base: string, units: array<string, float>, available: float, expired: float, expiry: bool, serial: bool, service: bool, expiries: list<array{expiry: string, batch: string, lot: string, qty: float, expired: bool}>}
+ * @phpstan-type CatalogItem array{id: string, code: string, name: string, storage: ?string, base: string, units: array<string, float>, available: float, in_stock: float, reserved: float, expired: float, expiry: bool, serial: bool, service: bool, expiries: list<array{expiry: string, batch: string, lot: string, qty: float, total: float, reserved: float, expired: bool}>}
  */
 final class ItemCatalog
 {
@@ -33,7 +38,7 @@ final class ItemCatalog
      *
      * @return list<CatalogItem>
      */
-    public static function search(string $customerId, string $search, ?string $warehouseId, int $limit = self::MAX_RESULTS, bool $excludeExpired = false, bool $withServices = false): array
+    public static function search(string $customerId, string $search, ?string $warehouseId, int $limit = self::MAX_RESULTS, bool $excludeExpired = false, bool $withServices = false, ?string $ownDraftId = null): array
     {
         if (! Ids::valid($customerId)) {
             return [];
@@ -49,7 +54,7 @@ final class ItemCatalog
             ->limit($limit)
             ->get();
 
-        return self::describe($products, $customerId, $warehouseId, $excludeExpired);
+        return self::describe($products, $customerId, $warehouseId, $excludeExpired, ownDraftId: $ownDraftId);
     }
 
     /**
@@ -59,13 +64,13 @@ final class ItemCatalog
      *
      * @return CatalogItem|null
      */
-    public static function item(string $customerId, ?string $productId, ?string $warehouseId, bool $excludeExpired = false, ?CarbonInterface $date = null, bool $withServices = false): ?array
+    public static function item(string $customerId, ?string $productId, ?string $warehouseId, bool $excludeExpired = false, ?CarbonInterface $date = null, bool $withServices = false, ?string $ownDraftId = null): ?array
     {
         if ($productId === null) {
             return null;
         }
 
-        return self::items($customerId, [$productId], $warehouseId, $excludeExpired, $date, $withServices)[$productId] ?? null;
+        return self::items($customerId, [$productId], $warehouseId, $excludeExpired, $date, $withServices, $ownDraftId)[$productId] ?? null;
     }
 
     /**
@@ -75,7 +80,7 @@ final class ItemCatalog
      * @param  list<string>  $productIds
      * @return array<string, CatalogItem>
      */
-    public static function items(string $customerId, array $productIds, ?string $warehouseId, bool $excludeExpired = false, ?CarbonInterface $date = null, bool $withServices = false): array
+    public static function items(string $customerId, array $productIds, ?string $warehouseId, bool $excludeExpired = false, ?CarbonInterface $date = null, bool $withServices = false, ?string $ownDraftId = null): array
     {
         $productIds = array_values(array_unique(array_filter($productIds, fn ($id) => Ids::valid($id))));
 
@@ -91,14 +96,14 @@ final class ItemCatalog
             ->with(['baseUnit', 'units.unit'])
             ->get();
 
-        return array_column(self::describe($products, $customerId, $warehouseId, $excludeExpired, $date), null, 'id');
+        return array_column(self::describe($products, $customerId, $warehouseId, $excludeExpired, $date, $ownDraftId), null, 'id');
     }
 
     /**
      * @param  Collection<int, Product>  $products
      * @return list<CatalogItem>
      */
-    private static function describe(Collection $products, string $customerId, ?string $warehouseId, bool $excludeExpired, ?CarbonInterface $date = null): array
+    private static function describe(Collection $products, string $customerId, ?string $warehouseId, bool $excludeExpired, ?CarbonInterface $date = null, ?string $ownDraftId = null): array
     {
         if ($products->isEmpty()) {
             return [];
@@ -113,8 +118,17 @@ final class ItemCatalog
             ->whereIn('product_id', $products->modelKeys())
             ->where('qty_base', '>', 0)
             ->orderByRaw('expiry_date ASC NULLS LAST, batch_key ASC')
-            ->get(['product_id', 'qty_base', 'expiry_date', 'batch_key'])
+            ->get(['product_id', 'qty_base', 'qty_reserved', 'expiry_date', 'batch_key'])
             ->groupBy('product_id');
+
+        // An Order being edited: what it holds itself is available to it.
+        $own = $ownDraftId === null || $warehouseId === null ? collect() : DB::table('stock_reservation as r')
+            ->join('stock_draft_line as l', 'l.id', '=', 'r.draft_line_id')
+            ->where('l.draft_id', $ownDraftId)
+            ->where('r.warehouse_id', $warehouseId)
+            ->groupBy('r.product_id', 'r.expiry_date', 'r.batch_no')
+            ->get(['r.product_id', 'r.expiry_date', 'r.batch_no', DB::raw('sum(r.qty_base) as qty')])
+            ->keyBy(fn ($row) => $row->product_id.'|'.Batches::key($row->expiry_date, $row->batch_no));
 
         // Dated back: what each item had on that day, all items in one query.
         $onDate = $warehouseId !== null && app(Availability::class)->isBackdated($warehouseId, $date)
@@ -126,6 +140,8 @@ final class ItemCatalog
         foreach ($products as $product) {
             $converter = UnitConverter::forProduct($product);
             $available = 0.0;
+            $inStock = 0.0;
+            $reserved = 0.0;
             $expired = 0.0;
             $expiries = [];
             $then = $onDate === null ? null : ($onDate[$product->id] ?? []);
@@ -133,11 +149,16 @@ final class ItemCatalog
             foreach ($balances->get($product->id, collect()) as $row) {
                 $isExpired = $row->expiry_date !== null && $row->expiry_date < $today;
                 $lot = Batches::key($row->expiry_date, $row->batch_key);
-                $qty = $then === null ? (float) $row->qty_base : min((float) $row->qty_base, $then[$lot] ?? 0.0);
+                $total = $then === null ? (float) $row->qty_base : min((float) $row->qty_base, $then[$lot] ?? 0.0);
+                $held = max((float) $row->qty_reserved - (float) ($own->get($product->id.'|'.$lot)->qty ?? 0), 0.0);
+                $qty = max(min($total, (float) $row->qty_base - $held), 0.0);
 
-                if ($qty <= 0) {
+                if ($total <= 0) {
                     continue;
                 }
+
+                $inStock += $total;
+                $reserved += $held;
 
                 if ($isExpired && $excludeExpired) {
                     $expired += $qty;
@@ -146,7 +167,7 @@ final class ItemCatalog
                 }
 
                 if ($row->expiry_date !== null) {
-                    $expiries[] = ['expiry' => $row->expiry_date, 'batch' => (string) $row->batch_key, 'lot' => $lot, 'qty' => $qty, 'expired' => $isExpired];
+                    $expiries[] = ['expiry' => $row->expiry_date, 'batch' => (string) $row->batch_key, 'lot' => $lot, 'qty' => $qty, 'total' => $total, 'reserved' => $held, 'expired' => $isExpired];
                 }
             }
 
@@ -159,6 +180,8 @@ final class ItemCatalog
                 // Base unit first, then larger units smallest to largest (the unit dropdown order).
                 'units' => array_reverse($converter->factors(), true),
                 'available' => $available,
+                'in_stock' => $inStock,
+                'reserved' => $reserved,
                 'expired' => $expired,
                 'expiry' => $product->track_expiry,
                 'serial' => $product->track_serial,

@@ -34,9 +34,10 @@ use Illuminate\Support\Str;
  *
  * A draft is checked like the document it becomes, in the draft's
  * warehouse: items of the customer, units, whole quantities,
- * expiry dates, serial numbers, and for an order enough stock now (stock is
- * not reserved: confirming checks again, under locks). Each save runs in one
- * DB::transaction with its audit entry.
+ * expiry dates, serial numbers, and for an order enough stock available now
+ * (not reserved by another order). An order reserves its lines when saved
+ * (Reservations): an edit releases what it held and reserves the new lines, a
+ * cancel releases it. Each save runs in one DB::transaction with its audit entry.
  *
  * Who may do what: the type's create permission (or confirm permission) to
  * save and edit, confirm permission to confirm; staff only in their
@@ -64,6 +65,7 @@ final class DraftService
         private readonly DocumentNumbers $numbers,
         private readonly PostingService $posting,
         private readonly DraftNotifier $notifier,
+        private readonly Reservations $reservations,
     ) {}
 
     /**
@@ -151,6 +153,9 @@ final class DraftService
                 throw new NotAllowed('drafts.errors.cannot_cancel');
             }
 
+            // An order's stock is available again.
+            $this->reservations->releaseOrder($header->id);
+
             DB::table('stock_draft')->where('id', $header->id)->update([
                 'status' => 'CANCELLED',
                 'cancel_reason' => $reason,
@@ -215,6 +220,12 @@ final class DraftService
             throw new PostingRejected('transactions.form.add_a_line');
         }
 
+        // An order being edited gives back what it held, so its own stock counts as
+        // available to it; the new lines are reserved below (all in this transaction).
+        if ($draft !== null && ! $kind->receives()) {
+            $this->reservations->releaseOrder($draft->id);
+        }
+
         $lines = $this->prepareLines($kind, $input);
         $values = [
             'customer_id' => $input->customerId,
@@ -259,6 +270,19 @@ final class DraftService
                 'batch_no' => $line['batch'] === '' ? null : $line['batch'],
                 'serials' => json_encode($line['serials']),
             ], 'id');
+        }
+
+        // An order holds its stock until it is delivered or cancelled.
+        if (! $kind->receives()) {
+            $this->reservations->reserveOrder($input->warehouseId, $input->customerId, array_map(fn (array $line, string $key) => [
+                'draft_line_id' => $this->lineIds[$key],
+                'product' => $line['product'],
+                'qty_base' => $line['qty_base'],
+                'expiry' => $line['expiry'],
+                'batch' => $line['batch'],
+                'serials' => $line['serials'],
+                'key' => $key,
+            ], $lines, array_map('strval', array_keys($lines))));
         }
 
         $after = $this->snapshot($id);

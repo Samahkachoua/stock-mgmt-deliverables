@@ -27,6 +27,11 @@ use Illuminate\Support\Facades\DB;
  *
  * Stock going out on a document dated before today ($date) is limited to what
  * was here on that day: see onDate().
+ *
+ * Stock reserved for Orders / Delivery notes not delivered yet
+ * (stock_balance.qty_reserved, see Reservations) is not available to anything
+ * else: every quantity here that may be taken is qty_base - qty_reserved.
+ * Counts compare with the whole balance (PostingService::prepareCount()).
  */
 class Availability
 {
@@ -41,7 +46,7 @@ class Availability
     }
 
     /**
-     * Base quantity in stock. With $excludeExpired, expired stock doesn't count.
+     * Base quantity available (not reserved). With $excludeExpired, expired stock doesn't count.
      */
     public function quantity(string $warehouseId, string $customerId, string $productId, bool $excludeExpired = false, ?CarbonInterface $date = null): float
     {
@@ -54,10 +59,11 @@ class Availability
     /**
      * Stock per lot (a single row with expiry and batch null for items without
      * expiry), nearest expiry first (FEFO), then stock without a batch, then by
-     * batch. With a $date before today, only what may go out on that date (see
-     * onDate()).
+     * batch. `qty` is what is available (not reserved), `reserved` what is held
+     * for orders; a lot all reserved is listed with qty 0. With a $date before
+     * today, only what may go out on that date (see onDate()).
      *
-     * @return list<array{expiry: string|null, batch: string, lot: string, qty: float, expired: bool}>
+     * @return list<array{expiry: string|null, batch: string, lot: string, qty: float, reserved: float, expired: bool}>
      */
     public function rows(string $warehouseId, string $customerId, string $productId, ?CarbonInterface $date = null): array
     {
@@ -70,19 +76,21 @@ class Availability
             ->where('product_id', $productId)
             ->where('qty_base', '>', 0)
             ->orderByRaw('expiry_date ASC NULLS LAST, batch_key ASC')
-            ->get(['expiry_date', 'batch_key', 'qty_base'])
+            ->get(['expiry_date', 'batch_key', 'qty_base', 'qty_reserved'])
             ->map(function ($row) use ($then, $today) {
                 $lot = Batches::key($row->expiry_date, $row->batch_key);
+                $free = (float) $row->qty_base - (float) $row->qty_reserved;
 
                 return [
                     'expiry' => $row->expiry_date,
                     'batch' => (string) $row->batch_key,
                     'lot' => $lot,
-                    'qty' => $then === null ? (float) $row->qty_base : min((float) $row->qty_base, $then[$lot] ?? 0.0),
+                    'qty' => $then === null ? $free : max(min($free, $then[$lot] ?? 0.0), 0.0),
+                    'reserved' => (float) $row->qty_reserved,
                     'expired' => $row->expiry_date !== null && $row->expiry_date < $today,
                 ];
             })
-            ->filter(fn (array $row) => $row['qty'] > 0)
+            ->filter(fn (array $row) => $row['qty'] > 0 || $row['reserved'] > 0)
             ->values()
             ->all();
     }
@@ -174,18 +182,19 @@ class Availability
 
     /**
      * The batches of an item in stock here on one expiry date ('' = stock
-     * without a batch), in FEFO order.
+     * without a batch), in FEFO order: with $available, only those with stock
+     * that is not reserved (taking stock); otherwise all (counting).
      *
      * @return list<string>
      */
-    public function batchesOn(string $warehouseId, string $customerId, string $productId, string $expiry): array
+    public function batchesOn(string $warehouseId, string $customerId, string $productId, string $expiry, bool $available = true): array
     {
         return DB::table('stock_balance')
             ->where('warehouse_id', $warehouseId)
             ->where('customer_id', $customerId)
             ->where('product_id', $productId)
             ->where('expiry_date', $expiry)
-            ->where('qty_base', '>', 0)
+            ->when($available, fn ($query) => $query->whereColumn('qty_base', '>', 'qty_reserved'), fn ($query) => $query->where('qty_base', '>', 0))
             ->orderBy('batch_key')
             ->pluck('batch_key')
             ->map(fn ($batch) => (string) $batch)
@@ -222,52 +231,83 @@ class Availability
     }
 
     /**
-     * The day a movement counts on, in SQL: its document's date, or for stock a
-     * transfer brings in, the day it was received (in the company's time zone).
-     * $movement and $transaction are the aliases of stock_movement and its
-     * stock_transaction in the query. Used by the stock card too.
+     * The day a movement counts on, in SQL: its document's date; for stock a
+     * transfer brings in, the day it was received; for a delivery note, the day
+     * it was delivered (in the company's time zone). $movement and $transaction
+     * are the aliases of stock_movement and its stock_transaction in the query.
+     * Used by the stock card too.
      */
     public static function movementDay(string $movement = 'm', string $transaction = 't'): string
     {
         $zone = DB::getPdo()->quote(CompanyTime::zone());
 
         return "CASE WHEN {$movement}.warehouse_id = {$transaction}.to_warehouse_id AND {$transaction}.received_at IS NOT NULL"
-            ." THEN ({$transaction}.received_at AT TIME ZONE {$zone})::date ELSE {$transaction}.document_date END";
+            ." THEN ({$transaction}.received_at AT TIME ZONE {$zone})::date"
+            ." WHEN {$transaction}.delivered_at IS NOT NULL THEN ({$transaction}.delivered_at AT TIME ZONE {$zone})::date"
+            ." ELSE {$transaction}.document_date END";
     }
 
     /**
-     * Serial numbers of the item that are in stock in this warehouse (with a
-     * $date before today: those already here on that date).
+     * Serial numbers of the item that are in stock in this warehouse and not
+     * held by an Order / Delivery note (those of the Order $ownDraftId still
+     * count: they are its own; with $withReserved, all of them: a count finds
+     * them on the shelf too). With a $date before today: those already here
+     * on that date.
      *
      * @return list<string>
      */
-    public function serials(string $warehouseId, string $productId, ?CarbonInterface $date = null): array
+    public function serials(string $warehouseId, string $productId, ?CarbonInterface $date = null, ?string $ownDraftId = null, bool $withReserved = false): array
     {
-        $serials = DB::table('serial_number')
-            ->where('product_id', $productId)
-            ->where('warehouse_id', $warehouseId)
-            ->where('status', 'IN_STOCK')
-            ->orderBy('serial_no')
-            ->pluck('serial_no')
+        $serials = DB::table('serial_number as s')
+            ->where('s.product_id', $productId)
+            ->where('s.warehouse_id', $warehouseId)
+            ->where('s.status', 'IN_STOCK')
+            ->when(! $withReserved, fn ($query) => $query->whereNotExists(fn ($query) => $query->from('stock_reservation as r')
+                ->whereColumn('r.serial_id', 's.id')
+                ->when($ownDraftId !== null, fn ($query) => $query->where(fn ($query) => $query
+                    ->whereNull('r.draft_line_id')
+                    ->orWhereNotIn('r.draft_line_id', DB::table('stock_draft_line')->where('draft_id', $ownDraftId)->select('id'))))))
+            ->orderBy('s.serial_no')
+            ->pluck('s.serial_no')
             ->all();
 
         return $this->serialsOnDate($warehouseId, $productId, $serials, $date);
     }
 
     /**
-     * Locks the balance of an item without expiry and returns it.
+     * Of these serial numbers of the item, those held by an Order / Delivery note.
+     *
+     * @param  list<string>  $serials
+     * @return list<string>
+     */
+    public function reservedSerials(string $productId, array $serials): array
+    {
+        if ($serials === []) {
+            return [];
+        }
+
+        return DB::table('stock_reservation as r')
+            ->join('serial_number as s', 's.id', '=', 'r.serial_id')
+            ->where('s.product_id', $productId)
+            ->whereIn('s.serial_no', $serials)
+            ->pluck('s.serial_no')
+            ->all();
+    }
+
+    /**
+     * Locks the balance of an item without expiry and returns what is available (not reserved).
      */
     public function lockNoExpiry(string $warehouseId, string $customerId, string $productId): float
     {
-        $qty = DB::table('stock_balance')
+        $row = DB::table('stock_balance')
             ->where('warehouse_id', $warehouseId)
             ->where('customer_id', $customerId)
             ->where('product_id', $productId)
             ->whereNull('expiry_date')
             ->lockForUpdate()
-            ->value('qty_base');
+            ->first(['qty_base', 'qty_reserved']);
 
-        return (float) ($qty ?? 0);
+        return $row === null ? 0.0 : (float) $row->qty_base - (float) $row->qty_reserved;
     }
 
     /**
@@ -293,7 +333,7 @@ class Availability
             ->orderBy('expiry_date')
             ->orderBy('batch_key')
             ->lockForUpdate()
-            ->get(['expiry_date', 'batch_key', 'qty_base']);
+            ->get(['expiry_date', 'batch_key', 'qty_base', 'qty_reserved']);
 
         $then = $this->isBackdated($warehouseId, $date) ? $this->onDate($warehouseId, $customerId, $product->id, $date) : null;
         $allocations = [];
@@ -303,7 +343,9 @@ class Availability
 
         foreach ($lots as $lot) {
             $batch = (string) $lot->batch_key;
-            $qty = $then === null ? (float) $lot->qty_base : min((float) $lot->qty_base, $then[Batches::key($lot->expiry_date, $batch)] ?? 0.0);
+            // Reserved stock is never taken.
+            $free = (float) $lot->qty_base - (float) $lot->qty_reserved;
+            $qty = max($then === null ? $free : min($free, $then[Batches::key($lot->expiry_date, $batch)] ?? 0.0), 0.0);
 
             if (! $useExpired && $lot->expiry_date < $today) {
                 $expired += $qty;
@@ -339,18 +381,21 @@ class Availability
             throw new PostingRejected('stock.errors.expiry_expired', ['date' => Format::date(CarbonImmutable::parse($expiry))], $row, 'expiry');
         }
 
-        $available = (float) (DB::table('stock_balance')
+        $balance = DB::table('stock_balance')
             ->where('warehouse_id', $warehouseId)
             ->where('customer_id', $customerId)
             ->where('product_id', $product->id)
             ->where('expiry_date', $expiry)
             ->where('batch_key', $batch)
             ->lockForUpdate()
-            ->value('qty_base') ?? 0);
+            ->first(['qty_base', 'qty_reserved']);
 
-        if ($available <= 0) {
+        if ($balance === null || (float) $balance->qty_base <= 0) {
             throw new PostingRejected('transactions.form.errors.expiry_not_here', [], $row, 'expiry');
         }
+
+        // Reserved stock is never taken.
+        $available = (float) $balance->qty_base - (float) $balance->qty_reserved;
 
         if ($available < $needed - 1e-9) {
             throw self::notEnough($product, $warehouseId, $available, $needed, row: $row);
@@ -371,6 +416,7 @@ class Availability
     public static function notEnough(Product $product, string $warehouseId, float $available, float $needed, float $expired = 0, ?string $row = null, ?CarbonInterface $date = null): InsufficientStock
     {
         $converter = $product->converter();
+        $available = max($available, 0.0);
         $params = [
             'qty' => $converter->breakdown($available),
             'item' => $product->name(),
@@ -379,6 +425,13 @@ class Availability
 
         if ($date !== null) {
             return new InsufficientStock('stock.errors.not_enough_on_date', $params + ['date' => Format::date($date)], $available, $needed, $expired, $row);
+        }
+
+        // Part of the stock is held for orders: say so, or the user wonders where it went.
+        $reserved = (float) DB::table('stock_balance')->where('warehouse_id', $warehouseId)->where('product_id', $product->id)->sum('qty_reserved');
+
+        if ($reserved > 0 && $expired <= 0) {
+            return new InsufficientStock('stock.errors.not_enough_reserved', $params + ['reserved' => $converter->breakdown($reserved)], $available, $needed, $expired, $row);
         }
 
         if ($available <= 0 && $expired > 0) {

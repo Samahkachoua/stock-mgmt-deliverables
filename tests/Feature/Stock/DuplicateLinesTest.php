@@ -104,7 +104,7 @@ it('clears a row that repeats another row’s item and unit, says where it is, a
         ->assertSet("lines.$first.qty", '5')
         ->assertDispatched('toast', toast: ['type' => 'warning', 'message' => $message, 'url' => null, 'link' => null])
         ->assertDispatched('focus-field', id: 'line-'.$first.'-qty');
-})->with(['IN', 'OPENING_BALANCE', 'OUT', 'TRANSFER', 'DAMAGE', 'ADJUSTMENT']);
+})->with(['IN', 'OPENING_BALANCE', 'TRANSFER', 'DAMAGE', 'ADJUSTMENT']);
 
 it('clears a row whose unit is changed to the unit of another row of the item', function (string $type) {
     $form = newForm($this->stock, $type, $this->tripoli);
@@ -118,7 +118,7 @@ it('clears a row whose unit is changed to the unit of another row of the item', 
 
     // ...until it is changed to the first row's unit.
     $form->set("lines.$second.unit", 'PC')->assertSet("lines.$second.item", null);
-})->with(['IN', 'OPENING_BALANCE', 'OUT', 'TRANSFER', 'DAMAGE']);
+})->with(['IN', 'OPENING_BALANCE', 'TRANSFER', 'DAMAGE']);
 
 it('allows the same item in another unit on another row', function (string $type) {
     $form = newForm($this->stock, $type, $this->tripoli);
@@ -138,7 +138,7 @@ it('allows the same item in another unit on another row', function (string $type
 
     $form->assertHasNoErrors()->assertRedirect();
     expect(DB::table('stock_transaction')->where('transaction_type', $type)->count())->toBe($before + 1);
-})->with(['IN', 'OPENING_BALANCE', 'OUT', 'TRANSFER', 'DAMAGE']);
+})->with(['IN', 'OPENING_BALANCE', 'TRANSFER', 'DAMAGE']);
 
 it('shows combined availability over rows of the same item in different units', function (string $type) {
     $form = newForm($this->stock, $type, $this->tripoli);
@@ -149,7 +149,7 @@ it('shows combined availability over rows of the same item in different units', 
     $form->set("lines.$second.item", $this->stock->id('BEANS'))->set("lines.$second.qty", '10');
 
     expect($form->html())->toContain(e(__('transactions.form.errors.not_enough', ['qty' => '0 Piece'])));
-})->with(['OUT', 'TRANSFER', 'DAMAGE']);
+})->with(['TRANSFER', 'DAMAGE']);
 
 it('keeps the lot apart: the same item and unit with another expiry date (or batch) is another line', function () {
     $soon = CarbonImmutable::today()->addDays(30)->toDateString();
@@ -159,7 +159,7 @@ it('keeps the lot apart: the same item and unit with another expiry date (or bat
     [$soonLot, $lateLot] = [$soon.'|'.Stock::batch($soon), $late.'|'.Stock::batch($late)];
 
     // Going out: a second row starts on what no row has yet — nearest lot first (FEFO), in another unit.
-    $form = newForm($this->stock, 'OUT');
+    $form = newForm($this->stock, 'DAMAGE');
     [$first] = array_keys($form->get('lines'));
     $form->set("lines.$first.item", $this->stock->id('YOGURT'))->set("lines.$first.qty", '2');
     $second = array_keys($form->get('lines'))[1];
@@ -206,10 +206,10 @@ it('refuses a document with the same item and unit twice, and saves nothing', fu
         ->and(DB::table('stock_transaction')->count())->toBe($transactions)
         ->and(lineCount())->toBe($lines)
         ->and($this->stock->balance('BEANS'))->toBe(60.0);
-})->with(['IN', 'OPENING_BALANCE', 'OUT', 'TRANSFER', 'DAMAGE', 'ADJUSTMENT']);
+})->with(['IN', 'OPENING_BALANCE', 'TRANSFER', 'DAMAGE', 'ADJUSTMENT']);
 
 it('shows both rows in red and refuses to save when repeated rows reach the form anyway', function () {
-    $form = newForm($this->stock, 'OUT');
+    $form = newForm($this->stock, 'DAMAGE');
     [$first] = array_keys($form->get('lines'));
     $form->set("lines.$first.item", $this->stock->id('BEANS'))->set("lines.$first.qty", '2');
     $second = array_keys($form->get('lines'))[1];
@@ -223,14 +223,14 @@ it('shows both rows in red and refuses to save when repeated rows reach the form
         ->toContain(e(__('transactions.form.errors.duplicate_row', ['row' => '1'])));
 
     $form->call('save');
-    expect(DB::table('stock_transaction')->where('transaction_type', 'OUT')->exists())->toBeFalse();
+    expect(DB::table('stock_transaction')->where('transaction_type', 'DAMAGE')->exists())->toBeFalse();
 });
 
 it('allows the same item in another unit on save', function (string $type) {
     $document = postLines($this->stock, $type, [$this->stock->line('BEANS', 2), $this->stock->line('BEANS', 1, 'BOX')], $this->tripoli);
 
     expect(DB::table('stock_transaction_line')->where('transaction_id', $document->id)->count())->toBe(2);
-})->with(['IN', 'OPENING_BALANCE', 'OUT', 'TRANSFER', 'DAMAGE']);
+})->with(['IN', 'OPENING_BALANCE', 'TRANSFER', 'DAMAGE']);
 
 it('counts an item once, whatever the unit', function () {
     expect(fn () => postLines($this->stock, 'ADJUSTMENT', [$this->stock->line('BEANS', 50), $this->stock->line('BEANS', 4, 'BOX')]))
@@ -249,7 +249,7 @@ it('checks availability on the combined quantity of the item’s lines: 5 Box + 
     // Exactly what is there is fine.
     postLines($this->stock, $type, [$this->stock->line('BEANS', 4, 'BOX'), $this->stock->line('BEANS', 12)], $this->tripoli);
     expect($this->stock->balance('BEANS'))->toBe(0.0);
-})->with(['OUT', 'TRANSFER', 'DAMAGE']);
+})->with(['TRANSFER', 'DAMAGE']);
 
 it('takes a receipt of the same item and unit with another expiry date, and refuses the same date', function (string $type) {
     $soon = CarbonImmutable::today()->addDays(30)->toDateString();

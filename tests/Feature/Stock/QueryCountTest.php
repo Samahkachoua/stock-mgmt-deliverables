@@ -33,7 +33,9 @@ function serialNumbers(string $prefix, int $count): array
 }
 
 it('receives and sends serials with the same number of queries, however many there are', function () {
-    $this->stock->post('IN', [$this->stock->line('PHONE', 1, serials: ['WARM-1'])]);
+    // Warm up both ways (the first delivery note also creates the order's branch).
+    $this->stock->post('IN', [$this->stock->line('PHONE', 2, serials: ['WARM-1', 'WARM-2'])]);
+    $this->stock->post('OUT', [$this->stock->line('PHONE', 1, serials: ['WARM-2'])]);
 
     $receiveFew = queryCount(fn () => $this->stock->post('IN', [$this->stock->line('PHONE', 2, serials: serialNumbers('A-', 2))]));
     $receiveMany = queryCount(fn () => $this->stock->post('IN', [$this->stock->line('PHONE', 25, serials: serialNumbers('B-', 25))]));
@@ -43,7 +45,7 @@ it('receives and sends serials with the same number of queries, however many the
     expect($receiveMany)->toBe($receiveFew)
         ->and($sendMany)->toBe($sendFew)
         ->and($this->stock->balance('PHONE'))->toBe(1.0)
-        ->and(DB::table('serial_number')->where('status', 'ISSUED')->count())->toBe(27);
+        ->and(DB::table('serial_number')->where('status', 'ISSUED')->count())->toBe(28);
 });
 
 it('describes the items of a form in one go, with the same stock as one at a time', function () {

@@ -4,6 +4,7 @@ namespace App\Support\Transactions;
 
 use App\Models\Product;
 use App\Models\StockTransaction;
+use App\Services\Stock\PostingService;
 use App\Services\Stock\UnitConverter;
 use App\Support\Batches;
 use App\Support\CompanyTime;
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  * Reads go through StockTransaction, so the warehouse scope (user_warehouse)
  * and the customer scope (customer portal users) always apply.
  *
- * @phpstan-type ListRow array{id: string, reference: string, date: CarbonImmutable, customer_id: string|null, customer: string, status: string, created_by: string, items: int, reason: string|null, draft: string|null, from: string, to_warehouse: string|null, incoming: bool}
+ * @phpstan-type ListRow array{id: string, reference: string, date: CarbonImmutable, customer_id: string|null, customer: string, status: string, created_by: string, items: int, short: bool, reason: string|null, draft: string|null, from: string, to_warehouse: string|null, incoming: bool}
  */
 final class Documents
 {
@@ -70,6 +71,8 @@ final class Documents
             ])
             ->when($type->hasListColumn('draft'), fn ($query) => $query->addSelect('draft.doc_no as draft_reference'))
             ->selectSub(DB::table('stock_transaction_line')->selectRaw('count(*)')->whereColumn('transaction_id', 'stock_transaction.id'), 'line_count')
+            // Delivery notes: delivered with a difference (some line short or replaced).
+            ->when($type->deliverySteps(), fn ($query) => $query->selectSub(DB::table('stock_transaction_line')->selectRaw('count(*) > 0')->whereColumn('transaction_id', 'stock_transaction.id')->whereNotNull('shortage_reason'), 'short'))
             ->when($filters['pending_first'] ?? false, fn ($query) => $query->orderByRaw("(stock_transaction.status = 'PENDING_APPROVAL') DESC"))
             ->orderByDesc('stock_transaction.document_date')
             ->orderByDesc('stock_transaction.created_at');
@@ -83,6 +86,7 @@ final class Documents
             'status' => $row->status,
             'created_by' => (string) $row->getAttribute('creator_name'),
             'items' => (int) $row->getAttribute('line_count'),
+            'short' => (bool) $row->getAttribute('short'),
             // Only for types whose list shows the column.
             'reason' => $type->hasListColumn('reason') ? $row->reason_code : null,
             'draft' => $type->hasListColumn('draft') && $row->getAttribute('draft_reference') !== null ? (string) $row->getAttribute('draft_reference') : null,
@@ -118,6 +122,14 @@ final class Documents
             ['label' => __('transactions.details.date'), 'value' => Format::date($document['date'])],
             ...($ui->dispatchReceive() && $document['dispatched_at'] ? [['label' => __('transfers.details.dispatched_on'), 'value' => Format::dateTime($document['dispatched_at'])]] : []),
             ...($ui->dispatchReceive() && $document['received_at'] ? [['label' => __('transfers.details.received_on'), 'value' => Format::dateTime($document['received_at'])]] : []),
+            // Delivery notes: when it left and arrived, and who took it.
+            ...($ui->deliverySteps() && $document['dispatched_at'] ? [['label' => __('deliveries.details.dispatched_on'), 'value' => Format::dateTime($document['dispatched_at'])]] : []),
+            ...($ui->deliverySteps() && $document['delivered_at'] ? [['label' => __('deliveries.details.delivered_on'), 'value' => Format::dateTime($document['delivered_at'])]] : []),
+            ...($ui->deliverySteps() ? [
+                ['label' => __('deliveries.details.driver'), 'value' => $document['driver_name']],
+                ['label' => __('deliveries.details.driver_phone'), 'value' => $document['driver_phone'], 'ltr' => true],
+                ['label' => __('deliveries.details.truck'), 'value' => $document['truck_no'], 'ltr' => true],
+            ] : []),
             ...($ui->hasHeaderField('reason') && $document['reason'] ? [['label' => __('transactions.details.reason'), 'value' => __('transactions.reasons.'.$document['reason'])]] : []),
             ...($decision ? [['label' => __($decision['approved'] ? 'stock.approval.approved_by' : 'stock.approval.rejected_by'), 'value' => $decision['by']]] : []),
             ...($decision['reason'] ?? null ? [['label' => __('stock.approval.rejection_reason'), 'value' => $decision['reason']]] : []),
@@ -178,6 +190,10 @@ final class Documents
             'to_warehouse' => $header->to_warehouse_name,
             'dispatched_at' => $header->dispatched_at ? CarbonImmutable::parse($header->dispatched_at)->setTimezone(CompanyTime::zone()) : null,
             'received_at' => $header->received_at ? CarbonImmutable::parse($header->received_at)->setTimezone(CompanyTime::zone()) : null,
+            'delivered_at' => $header->delivered_at ? CarbonImmutable::parse($header->delivered_at)->setTimezone(CompanyTime::zone()) : null,
+            'driver_name' => $header->driver_name,
+            'driver_phone' => $header->driver_phone,
+            'truck_no' => $header->truck_no,
             // Created by confirming a draft: its branch and the draft itself.
             'branch' => $header->branch_name,
             'draft' => $header->draft_reference,
@@ -201,9 +217,10 @@ final class Documents
             ->join('unit as u', 'u.id', '=', 'l.unit_id')
             ->where('l.transaction_id', $transactionId)
             ->orderBy('l.line_no')
-            ->get(['l.id', 'l.product_id', 'l.qty_entered', 'l.qty_base', 'l.qty_received', 'l.shortage_reason', 'l.qty_system', 'l.qty_counted', 'u.code as unit', 'l.expiry_date', 'l.batch_no']);
+            ->get(['l.id', 'l.product_id', 'l.qty_entered', 'l.qty_base', 'l.qty_received', 'l.shortage_reason', 'l.replaces_line_id', 'l.qty_system', 'l.qty_counted', 'u.code as unit', 'l.expiry_date', 'l.batch_no']);
 
         $products = Product::withoutGlobalScopes()->with(['baseUnit', 'units.unit'])->findMany($rows->pluck('product_id')->unique())->keyBy('id');
+        $productOfLine = $rows->pluck('product_id', 'id');
 
         // Which lots (expiry date + batch) each line took stock from (a delivery note line may use several).
         $allocations = DB::table('stock_movement')
@@ -223,7 +240,7 @@ final class Documents
             ->get(['ls.line_id', 's.serial_no'])
             ->groupBy('line_id');
 
-        return $rows->map(function ($row) use ($products, $allocations, $serials) {
+        return $rows->map(function ($row) use ($products, $allocations, $serials, $productOfLine) {
             $product = $products[$row->product_id];
             $converter = UnitConverter::forProduct($product);
             $details = [];
@@ -246,10 +263,16 @@ final class Documents
             $received = $row->qty_received === null ? null : $converter->fromBase($row->qty_received, $row->unit);
 
             if ($row->shortage_reason !== null) {
-                $details[] = __('transfers.details.shortage', [
+                // Delivery note lines delivered short have their own reasons.
+                $delivery = in_array($row->shortage_reason, PostingService::DELIVERY_REASONS, true);
+                $details[] = __($delivery ? 'deliveries.details.short' : 'transfers.details.shortage', [
                     'qty' => $converter->breakdown((float) $row->qty_base - (float) $row->qty_received, [$row->unit]),
-                    'reason' => __('transfers.reasons.'.$row->shortage_reason),
+                    'reason' => __(($delivery ? 'deliveries.reasons.' : 'transfers.reasons.').$row->shortage_reason),
                 ]);
+            }
+
+            if ($row->replaces_line_id !== null && ($replaced = $products[$productOfLine[$row->replaces_line_id] ?? ''] ?? null)) {
+                $details[] = __('deliveries.details.instead_of', ['item' => $replaced->name()]);
             }
 
             // Adjustments: what was counted, against what the system had, in the line's unit.
@@ -287,6 +310,7 @@ final class Documents
             'POST' => ['posted', 'success'],
             'DISPATCH' => ['dispatched', 'progress'],
             'RECEIVE' => ['received', 'success'],
+            'DELIVER' => ['delivered', 'success'],
             'CANCEL' => ['cancelled', 'danger'],
             'SUBMIT' => ['sent_for_approval', 'progress'],
             'APPROVE' => ['approved', 'success'],

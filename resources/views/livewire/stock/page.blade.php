@@ -14,7 +14,8 @@
             'customer' => ['label' => __('reports.columns.customer'), 'priority' => 2],
             'warehouse' => ['label' => __('reports.columns.warehouse'), 'priority' => 2],
             'qty' => ['label' => __('reports.columns.qty_base'), 'align' => 'end'],
-            'breakdown' => ['label' => __('reports.columns.qty_larger'), 'priority' => 2, 'card' => 'hide'],
+            'reserved' => ['label' => __('reports.columns.reserved'), 'align' => 'end'],
+            'available' => ['label' => __('reports.columns.available'), 'align' => 'end'],
             'in_transit' => ['label' => __('reports.columns.in_transit'), 'align' => 'end'],
             'expiry' => ['label' => __('reports.columns.nearest_expiry')],
         ]"
@@ -47,7 +48,17 @@
                 <x-data-table.cell col="customer" class="text-fg xl:min-w-32"><bdi>{{ $cells['customer'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="warehouse" class="text-fg"><bdi>{{ $cells['warehouse'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="qty" align="end" class="whitespace-nowrap"><x-report.cell :cell="$cells['qty']" /></x-data-table.cell>
-                <x-data-table.cell col="breakdown" class="whitespace-nowrap text-fg"><x-report.cell :cell="$cells['breakdown']" /></x-data-table.cell>
+                <x-data-table.cell col="reserved" align="end" class="whitespace-nowrap">
+                    @if ($cells['reserved']['text'] !== '')
+                        <span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-small font-semibold {{ config('ui.statuses.pending') }}">
+                            <x-icon name="lock" class="size-4" />
+                            {{ $cells['reserved']['text'] }}
+                        </span>
+                    @else
+                        <span class="text-muted" aria-hidden="true">&mdash;</span>
+                    @endif
+                </x-data-table.cell>
+                <x-data-table.cell col="available" align="end" class="whitespace-nowrap"><x-report.cell :cell="$cells['available']" /></x-data-table.cell>
                 <x-data-table.cell col="in_transit" align="end" class="whitespace-nowrap">
                     @if ($cells['in_transit']['text'] !== '')
                         <span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-small font-semibold {{ config('ui.statuses.transit') }}">

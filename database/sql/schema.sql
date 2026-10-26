@@ -176,6 +176,8 @@ CREATE TABLE customer_branch (
     id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     customer_id BIGINT NOT NULL REFERENCES customer(id),
     code        VARCHAR(20) NOT NULL,
+    -- Required in the form; NULL only on branches created before it existed.
+    manager_email VARCHAR(320),
     name        VARCHAR(150) NOT NULL,
     address     TEXT,
     active      BOOLEAN NOT NULL DEFAULT TRUE,
@@ -184,6 +186,10 @@ CREATE TABLE customer_branch (
     UNIQUE (customer_id, code),
     UNIQUE (id, customer_id)          -- target of the (branch, customer) foreign keys below
 );
+
+-- One branch per customer per manager email (any case).
+CREATE UNIQUE INDEX uq_customer_branch_manager_email
+    ON customer_branch (customer_id, lower(manager_email)) WHERE manager_email IS NOT NULL;
 
 -- Branches a customer user works for (optional). A user with none sees every
 -- branch of their customer.
@@ -395,11 +401,15 @@ CREATE TABLE transaction_type (
     --   uses_expired:      may take expired stock (Damage writes it off);
     --                      otherwise expired stock is skipped.
     posting_direction               movement_direction,
-    uses_expired                    BOOLEAN NOT NULL DEFAULT FALSE
+    uses_expired                    BOOLEAN NOT NULL DEFAULT FALSE,
+    --   delivery_steps:    true only for OUT (Delivery note): created CONFIRMED from
+    --                      an Order (stock stays reserved), then DISPATCHED, then
+    --                      POSTED when delivered (stock leaves then).
+    delivery_steps                  BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE transaction_status (
-    code           VARCHAR(30) PRIMARY KEY,  -- DRAFT, PENDING_APPROVAL, APPROVED, REJECTED, DISPATCHED, RECEIVED, POSTED, CANCELLED
+    code           VARCHAR(30) PRIMARY KEY,  -- DRAFT, PENDING_APPROVAL, APPROVED, REJECTED, DISPATCHED, RECEIVED, POSTED, CANCELLED, CONFIRMED
     name           VARCHAR(100) NOT NULL,
     is_terminal    BOOLEAN NOT NULL DEFAULT FALSE,  -- POSTED, REJECTED, CANCELLED
     affects_stock  BOOLEAN NOT NULL DEFAULT FALSE,  -- true only for POSTED (and DISPATCHED, via in-transit)
@@ -452,6 +462,13 @@ CREATE TABLE stock_transaction (
     dispatched_by    BIGINT REFERENCES app_user(id),
     received_at      TIMESTAMPTZ,
     received_by      BIGINT REFERENCES app_user(id),
+    -- Delivery notes: who takes it out (all optional, given when dispatched)
+    -- and when it was delivered (its stock leaves on that day).
+    driver_name      VARCHAR(100),
+    driver_phone     VARCHAR(30),
+    truck_no         VARCHAR(30),
+    delivered_at     TIMESTAMPTZ,
+    delivered_by     BIGINT REFERENCES app_user(id),
     posted_at        TIMESTAMPTZ,
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT chk_transfer_has_destination
@@ -493,10 +510,16 @@ CREATE TABLE stock_transaction_line (
     unit_id         BIGINT NOT NULL REFERENCES unit(id),
     qty_entered     NUMERIC(18,4) NOT NULL CHECK (qty_entered > 0),
     qty_base        NUMERIC(18,4) NOT NULL CHECK (qty_base > 0),  -- computed: qty_entered * factor_to_base
-    qty_received    NUMERIC(18,4),      -- TRANSFER only: actual qty received (may be < qty_base -> short receipt)
-    -- TRANSFER only: why the line arrived short (required when qty_received < qty_base).
-    -- The codes are labelled in lang/<locale>/transfers.php.
+    -- TRANSFER: actual qty received (may be < qty_base -> short receipt).
+    -- OUT (delivery note): qty delivered to the customer (NULL until delivered;
+    -- qty_base is what the Order asked for). Base units.
+    qty_received    NUMERIC(18,4),
+    -- Why the line arrived / was delivered short (required when qty_received < qty_base).
+    -- Transfer codes are labelled in lang/<locale>/transfers.php, delivery codes
+    -- (NOT_AVAILABLE, REFUSED, DAMAGED, REPLACED) in lang/<locale>/deliveries.php.
     shortage_reason VARCHAR(30),
+    -- OUT only: a line delivered instead of another one (that line is REPLACED).
+    replaces_line_id BIGINT REFERENCES stock_transaction_line(id),
     -- ADJUSTMENT only (user enters what they physically counted):
     --   qty_system  = balance in base units at the moment of saving
     --   qty_counted = counted quantity in base units (may be 0)
@@ -513,7 +536,9 @@ CREATE TABLE stock_transaction_line (
             OR (qty_counted IS NOT NULL AND qty_system IS NOT NULL AND direction IS NOT NULL
                 AND qty_base = abs(qty_counted - qty_system))),
     CONSTRAINT chk_shortage_reason
-        CHECK (shortage_reason IS NULL OR shortage_reason IN ('DAMAGED_IN_TRANSIT', 'MISSING', 'COUNTING_ERROR')),
+        CHECK (shortage_reason IS NULL OR shortage_reason IN (
+            'DAMAGED_IN_TRANSIT', 'MISSING', 'COUNTING_ERROR',
+            'NOT_AVAILABLE', 'REFUSED', 'DAMAGED', 'REPLACED')),
     CONSTRAINT fk_transaction_line_batch FOREIGN KEY (product_id, batch_no, expiry_date)
         REFERENCES product_batch (product_id, batch_no, expiry_date)
 );
@@ -533,10 +558,13 @@ CREATE TABLE stock_transaction_line_serial (   -- serials attached to a transact
 -- ----------------------------------------------------------------------------
 -- DRAFTS (draft receipt / order)
 -- ----------------------------------------------------------------------------
--- A draft never touches stock. It is for one warehouse (in the header, like a
--- receipt / delivery note); it can be edited until it is confirmed. Confirming
--- (App\Services\Stock\PostingService::confirmDraft) creates one posted document
--- of transaction_type in that warehouse, pointing back here (stock_transaction.draft_id).
+-- A draft never moves stock. An Order reserves it (stock_reservation): saved,
+-- edited or cancelled, its reservation follows. It is for one warehouse (in the
+-- header, like a receipt / delivery note); it can be edited until it is
+-- confirmed. Confirming (App\Services\Stock\PostingService::confirmDraft)
+-- creates one document of transaction_type in that warehouse, pointing back
+-- here (stock_transaction.draft_id): a posted receipt, or a CONFIRMED delivery
+-- note that takes over the Order's reservation.
 --   status: DRAFT -> POSTED (shown as "Confirmed") or CANCELLED.
 CREATE TABLE stock_draft (
     id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -639,8 +667,13 @@ CREATE TABLE stock_balance (
     batch_no     VARCHAR(40),
     batch_key    VARCHAR(40) GENERATED ALWAYS AS (COALESCE(batch_no, '')) STORED,
     qty_base     NUMERIC(18,4) NOT NULL DEFAULT 0 CHECK (qty_base >= 0),
+    -- Part of qty_base held for orders / delivery notes not delivered yet: the sum
+    -- of stock_reservation (fn_reserve / fn_release_reservations). Available to
+    -- anything else = qty_base - qty_reserved.
+    qty_reserved NUMERIC(18,4) NOT NULL DEFAULT 0,
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (warehouse_id, customer_id, product_id, expiry_key, batch_key)
+    PRIMARY KEY (warehouse_id, customer_id, product_id, expiry_key, batch_key),
+    CONSTRAINT ck_stock_balance_reserved CHECK (qty_reserved >= 0 AND qty_reserved <= qty_base)
 );
 
 -- In-transit balance while a TRANSFER is dispatched but not yet received.
@@ -654,6 +687,31 @@ CREATE TABLE in_transit_balance (
     qty_base     NUMERIC(18,4) NOT NULL CHECK (qty_base >= 0),
     PRIMARY KEY (transaction_id, product_id, expiry_key, batch_key)
 );
+
+-- Stock held for an Order line (draft_line_id) or, once the Order is confirmed,
+-- its Delivery note line (line_id), until delivered or cancelled: per lot, or
+-- per serial (qty 1). Written only by fn_reserve / fn_release_reservations, which
+-- keep stock_balance.qty_reserved equal to the sum per balance key.
+CREATE TABLE stock_reservation (
+    id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    draft_line_id BIGINT REFERENCES stock_draft_line(id),
+    line_id       BIGINT REFERENCES stock_transaction_line(id),
+    warehouse_id  BIGINT NOT NULL REFERENCES warehouse(id),
+    customer_id   BIGINT NOT NULL REFERENCES customer(id),
+    product_id    BIGINT NOT NULL REFERENCES product(id),
+    expiry_date   DATE,
+    batch_no      VARCHAR(40),
+    serial_id     BIGINT REFERENCES serial_number(id),
+    qty_base      NUMERIC(18,4) NOT NULL CHECK (qty_base > 0),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT ck_stock_reservation_holder CHECK ((draft_line_id IS NULL) <> (line_id IS NULL))
+);
+
+CREATE INDEX idx_reservation_draft_line ON stock_reservation (draft_line_id);
+CREATE INDEX idx_reservation_line ON stock_reservation (line_id);
+CREATE INDEX idx_reservation_balance ON stock_reservation (warehouse_id, customer_id, product_id);
+-- A serial is held by one order / delivery note at a time.
+CREATE UNIQUE INDEX uq_reservation_serial ON stock_reservation (serial_id) WHERE serial_id IS NOT NULL;
 
 -- ----------------------------------------------------------------------------
 -- APPROVALS
@@ -839,8 +897,9 @@ CREATE OR REPLACE FUNCTION fn_apply_balance(
     p_qty_base     NUMERIC
 ) RETURNS VOID AS $$
 DECLARE
-    v_current NUMERIC(18,4);
-    v_delta   NUMERIC(18,4);
+    v_current  NUMERIC(18,4);
+    v_reserved NUMERIC(18,4);
+    v_delta    NUMERIC(18,4);
 BEGIN
     v_delta := CASE WHEN p_direction = 'IN' THEN p_qty_base ELSE -p_qty_base END;
 
@@ -851,7 +910,7 @@ BEGIN
     VALUES (p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, p_batch_no, 0)
     ON CONFLICT (warehouse_id, customer_id, product_id, expiry_key, batch_key) DO NOTHING;
 
-    SELECT qty_base INTO v_current
+    SELECT qty_base, qty_reserved INTO v_current, v_reserved
     FROM stock_balance
     WHERE warehouse_id = p_warehouse_id AND customer_id = p_customer_id
       AND product_id = p_product_id
@@ -862,6 +921,12 @@ BEGIN
     IF v_current + v_delta < 0 THEN
         RAISE EXCEPTION 'Negative stock blocked: warehouse=%, customer=%, product=%, expiry=%, batch=%, available=%, requested_out=%',
             p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, p_batch_no, v_current, p_qty_base;
+    END IF;
+
+    -- Stock reserved for orders / delivery notes can only leave once released.
+    IF v_delta < 0 AND v_current + v_delta < v_reserved THEN
+        RAISE EXCEPTION 'Reserved stock blocked: warehouse=%, customer=%, product=%, expiry=%, batch=%, available=%, requested_out=%',
+            p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, p_batch_no, v_current - v_reserved, p_qty_base;
     END IF;
 
     UPDATE stock_balance
@@ -903,6 +968,92 @@ BEGIN
     RETURNING id INTO v_movement_id;
 
     RETURN v_movement_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Reserves stock for an order line (p_draft_line_id) or a delivery note line
+-- (p_line_id): rows in stock_reservation (one, or one per serial in
+-- p_serial_ids) and qty_reserved on the balance, locked, never more than what
+-- is not reserved yet. Called only through App\Services\Stock\Reservations.
+CREATE OR REPLACE FUNCTION fn_reserve(
+    p_draft_line_id BIGINT,
+    p_line_id       BIGINT,
+    p_warehouse_id  BIGINT,
+    p_customer_id   BIGINT,
+    p_product_id    BIGINT,
+    p_expiry_date   DATE,
+    p_batch_no      VARCHAR,
+    p_serial_ids    BIGINT[],
+    p_qty_base      NUMERIC
+) RETURNS VOID AS $$
+DECLARE
+    v_current  NUMERIC(18,4);
+    v_reserved NUMERIC(18,4);
+BEGIN
+    SELECT qty_base, qty_reserved INTO v_current, v_reserved
+    FROM stock_balance
+    WHERE warehouse_id = p_warehouse_id AND customer_id = p_customer_id
+      AND product_id = p_product_id
+      AND expiry_key = COALESCE(p_expiry_date, DATE '0001-01-01')
+      AND batch_key = COALESCE(p_batch_no, '')
+    FOR UPDATE;
+
+    IF NOT FOUND OR v_reserved + p_qty_base > v_current THEN
+        RAISE EXCEPTION 'Reserved stock exceeded: warehouse=%, customer=%, product=%, expiry=%, batch=%, available=%, requested=%',
+            p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, p_batch_no, COALESCE(v_current - v_reserved, 0), p_qty_base;
+    END IF;
+
+    UPDATE stock_balance
+       SET qty_reserved = v_reserved + p_qty_base, updated_at = now()
+     WHERE warehouse_id = p_warehouse_id AND customer_id = p_customer_id
+       AND product_id = p_product_id
+       AND expiry_key = COALESCE(p_expiry_date, DATE '0001-01-01')
+       AND batch_key = COALESCE(p_batch_no, '');
+
+    IF p_serial_ids IS NULL OR cardinality(p_serial_ids) = 0 THEN
+        INSERT INTO stock_reservation (draft_line_id, line_id, warehouse_id, customer_id, product_id, expiry_date, batch_no, qty_base)
+        VALUES (p_draft_line_id, p_line_id, p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, p_batch_no, p_qty_base);
+    ELSE
+        IF cardinality(p_serial_ids) <> p_qty_base THEN
+            RAISE EXCEPTION 'One reservation per serial: % serials for %', cardinality(p_serial_ids), p_qty_base;
+        END IF;
+
+        INSERT INTO stock_reservation (draft_line_id, line_id, warehouse_id, customer_id, product_id, expiry_date, batch_no, serial_id, qty_base)
+        SELECT p_draft_line_id, p_line_id, p_warehouse_id, p_customer_id, p_product_id, p_expiry_date, p_batch_no, s, 1
+          FROM unnest(p_serial_ids) AS s;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Releases reservations: the rows go, qty_reserved goes down by their
+-- quantities. Balances are locked in key order first, so two releases never
+-- wait for each other in opposite orders.
+CREATE OR REPLACE FUNCTION fn_release_reservations(p_ids BIGINT[]) RETURNS VOID AS $$
+BEGIN
+    PERFORM 1
+       FROM stock_balance b
+       JOIN (SELECT DISTINCT warehouse_id, customer_id, product_id,
+                    COALESCE(expiry_date, DATE '0001-01-01') AS expiry_key, COALESCE(batch_no, '') AS batch_key
+               FROM stock_reservation WHERE id = ANY (p_ids)) k
+         ON k.warehouse_id = b.warehouse_id AND k.customer_id = b.customer_id AND k.product_id = b.product_id
+        AND k.expiry_key = b.expiry_key AND k.batch_key = b.batch_key
+      ORDER BY b.warehouse_id, b.customer_id, b.product_id, b.expiry_key, b.batch_key
+        FOR UPDATE OF b;
+
+    WITH gone AS (
+        DELETE FROM stock_reservation WHERE id = ANY (p_ids) RETURNING *
+    ), released AS (
+        SELECT warehouse_id, customer_id, product_id,
+               COALESCE(expiry_date, DATE '0001-01-01') AS expiry_key, COALESCE(batch_no, '') AS batch_key,
+               SUM(qty_base) AS qty
+          FROM gone
+         GROUP BY 1, 2, 3, 4, 5
+    )
+    UPDATE stock_balance b
+       SET qty_reserved = b.qty_reserved - r.qty, updated_at = now()
+      FROM released r
+     WHERE b.warehouse_id = r.warehouse_id AND b.customer_id = r.customer_id AND b.product_id = r.product_id
+       AND b.expiry_key = r.expiry_key AND b.batch_key = r.batch_key;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -950,13 +1101,13 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 
 
-INSERT INTO transaction_type (code, name, requires_destination_warehouse, requires_dispatch_receive, supports_approval_threshold, display_order, posting_direction, uses_expired) VALUES
-    ('OPENING_BALANCE', 'Opening Balance', FALSE, FALSE, FALSE, 1, 'IN',  FALSE),
-    ('IN',              'Receiving (IN)',  FALSE, FALSE, FALSE, 2, 'IN',  FALSE),
-    ('OUT',             'Delivery note (OUT)', FALSE, FALSE, FALSE, 3, 'OUT', FALSE),
-    ('TRANSFER',        'Transfer',        TRUE,  TRUE,  FALSE, 4, NULL,  FALSE),
-    ('DAMAGE',          'Damage',          FALSE, FALSE, TRUE,  5, 'OUT', TRUE),
-    ('ADJUSTMENT',      'Adjustment',      FALSE, FALSE, TRUE,  6, NULL,  FALSE);
+INSERT INTO transaction_type (code, name, requires_destination_warehouse, requires_dispatch_receive, supports_approval_threshold, display_order, posting_direction, uses_expired, delivery_steps) VALUES
+    ('OPENING_BALANCE', 'Opening Balance', FALSE, FALSE, FALSE, 1, 'IN',  FALSE, FALSE),
+    ('IN',              'Receiving (IN)',  FALSE, FALSE, FALSE, 2, 'IN',  FALSE, FALSE),
+    ('OUT',             'Delivery note (OUT)', FALSE, FALSE, FALSE, 3, 'OUT', FALSE, TRUE),
+    ('TRANSFER',        'Transfer',        TRUE,  TRUE,  FALSE, 4, NULL,  FALSE, FALSE),
+    ('DAMAGE',          'Damage',          FALSE, FALSE, TRUE,  5, 'OUT', TRUE,  FALSE),
+    ('ADJUSTMENT',      'Adjustment',      FALSE, FALSE, TRUE,  6, NULL,  FALSE, FALSE);
 
 INSERT INTO transaction_status (code, name, is_terminal, affects_stock, display_order) VALUES
     ('DRAFT',            'Draft',             FALSE, FALSE, 1),
@@ -966,7 +1117,9 @@ INSERT INTO transaction_status (code, name, is_terminal, affects_stock, display_
     ('DISPATCHED',       'Dispatched',        FALSE, TRUE,  5),
     ('RECEIVED',         'Received',          FALSE, FALSE, 6),
     ('POSTED',           'Posted',            TRUE,  TRUE,  7),
-    ('CANCELLED',        'Cancelled',         TRUE,  FALSE, 8);
+    ('CANCELLED',        'Cancelled',         TRUE,  FALSE, 8),
+    -- Delivery note confirmed from an Order: reserved, not delivered yet.
+    ('CONFIRMED',        'Confirmed',         FALSE, FALSE, 9);
 
 INSERT INTO storage_status (code, temp_min_c, temp_max_c, display_order) VALUES
     ('AMBIENT',      15,  25, 1),
@@ -992,7 +1145,7 @@ INSERT INTO unit (code, name) VALUES
 
 INSERT INTO permission (code, description, module) VALUES
     ('stock.in.create', 'Create IN documents', 'STOCK'),
-    ('stock.out.create', 'Create OUT documents', 'STOCK'),
+    ('stock.out.create', 'Dispatch delivery notes and confirm delivery (they are created from orders)', 'STOCK'),
     ('stock.transfer.dispatch', 'Dispatch a transfer', 'STOCK'),
     ('stock.transfer.receive', 'Receive a transfer', 'STOCK'),
     ('stock.damage.create', 'Create damage documents', 'STOCK'),

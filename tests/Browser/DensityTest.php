@@ -107,14 +107,14 @@ class DensityTest extends DuskTestCase
     }
 
     /**
-     * The New Delivery Note form with three filled lines (and the empty last one).
+     * The New Transfer form with three filled lines (and the empty last one).
      *
      * @return array{visible: int, fit: int, rowHeight: float, firstTop: int}
      */
     private function linesGrid(Browser $browser): array
     {
         $customer = Customer::where('code', 'ACME')->value('id');
-        $browser->visit('/delivery-note/new')->waitFor('main', 10)
+        $browser->visit('/transfer/new')->waitFor('main', 10)
             ->select('#field-customer', (string) $customer)
             ->waitUntilEnabled('[data-line] input[role="combobox"]');
 
@@ -194,7 +194,7 @@ class DensityTest extends DuskTestCase
 
             foreach ([false => 36, true => 44] as $touch => $height) {
                 $this->screen($browser, 1280, 800, (bool) $touch)
-                    ->visit('/delivery-note/new')->waitFor('main', 10)
+                    ->visit('/transfer/new')->waitFor('main', 10)
                     ->select('#field-customer', (string) $customer)
                     ->waitUntilEnabled('[data-line] input[role="combobox"]');
 
@@ -221,7 +221,7 @@ class DensityTest extends DuskTestCase
             foreach (['en' => 12, 'ar' => 13] as $language => $minimum) {
                 User::whereKey(self::$userId)->update(['preferred_lang' => $language]);
 
-                foreach (['/delivery-note', '/stock', '/delivery-note/new', '/items', '/settings/users'] as $path) {
+                foreach (['/delivery-note', '/stock', '/transfer/new', '/items', '/settings/users'] as $path) {
                     $browser->visit($path)->waitFor('main', 10)->pause(350)->waitUntilMissing('tr[aria-hidden="true"]', 10);
                     $smallest["$language $path"] = $browser->script(<<<'JS'
                         let smallest = 99;

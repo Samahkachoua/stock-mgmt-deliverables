@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Drafts\DraftForm;
 use App\Livewire\ItemPicker;
 use App\Livewire\Transactions\TransactionForm;
 use App\Models\CustomerBranch;
@@ -109,12 +110,18 @@ it('saves and confirms an order with a service line', function () {
             'r2' => new DraftLineInput($this->stock->id('PACK'), 'HR', 5),
         ], deliveryDate: CarbonImmutable::today(), priority: 'NORMAL'), $this->stock->user);
 
-    app(PostingService::class)->confirmDraft($draft, $this->stock->user);
+    [$deliveryNote] = app(PostingService::class)->confirmDraft($draft, $this->stock->user);
 
-    $deliveryNote = DB::table('stock_transaction')->where('draft_id', $draft->id)->first();
-
+    // The service reserves nothing; the beans are held until delivered.
     expect(DB::table('stock_transaction_line')->where('transaction_id', $deliveryNote->id)->count())->toBe(2)
-        ->and($this->stock->balance('BEANS'))->toBe(8.0)
+        ->and($this->stock->reserved('BEANS'))->toBe(2.0)
+        ->and(DB::table('stock_reservation')->where('product_id', $this->stock->id('PACK'))->exists())->toBeFalse();
+
+    app(PostingService::class)->dispatchDelivery($deliveryNote, null, null, null, $this->stock->user);
+    app(PostingService::class)->deliver($deliveryNote, Stock::deliveredInFull($deliveryNote), $this->stock->user);
+
+    expect($this->stock->balance('BEANS'))->toBe(8.0)
+        ->and((float) DB::table('stock_transaction_line')->where('product_id', $this->stock->id('PACK'))->value('qty_received'))->toBe(5.0)
         ->and(DB::table('stock_movement')->where('product_id', $this->stock->id('PACK'))->exists())->toBeFalse();
 });
 
@@ -132,8 +139,9 @@ it('offers services in the item picker of receipts and delivery notes only', fun
         ->assertSee(__('transactions.picker.service'));
 });
 
-it('lets a delivery note row of a service go above the stock, with a service hint', function () {
-    $form = Livewire::actingAs($this->stock->user)->test(TransactionForm::class, ['type' => 'OUT'])
+it('lets an order row of a service go above the stock, with a service hint', function () {
+    CustomerBranch::create(['customer_id' => $this->stock->customer->id, 'code' => 'DT', 'name' => 'Downtown']);
+    $form = Livewire::actingAs($this->stock->user)->test(DraftForm::class, ['type' => 'OUT'])
         ->call('chooseCustomer', $this->stock->customer->id);
     $row = array_key_first($form->get('lines'));
 
@@ -146,7 +154,7 @@ it('lets a delivery note row of a service go above the stock, with a service hin
         ->assertHasNoErrors()
         ->assertRedirect();
 
-    expect(DB::table('stock_transaction_line')->where('product_id', $this->stock->id('PACK'))->count())->toBe(1);
+    expect(DB::table('stock_draft_line')->where('product_id', $this->stock->id('PACK'))->count())->toBe(1);
 });
 
 it('does not take a service on a transfer form row', function () {

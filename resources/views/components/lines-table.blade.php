@@ -10,7 +10,10 @@
 @use('App\Support\Format')
 
 @php
-    $mode = $type->dispatchReceive() ? 'transfer' : ($type->hasLineColumn('counted') ? 'count' : 'quantity');
+    // Delivery notes show Ordered | Delivered, like a transfer's Sent | Received.
+    $mode = $type->dispatchReceive() || $type->deliverySteps() ? 'transfer' : ($type->hasLineColumn('counted') ? 'count' : 'quantity');
+    $sentLabel = __($type->deliverySteps() ? 'deliveries.deliver.ordered' : 'transactions.lines.sent');
+    $receivedLabel = __($type->deliverySteps() ? 'deliveries.deliver.delivered' : 'transactions.lines.received');
     $expiries = collect($lines)->contains(fn ($line) => filled($line['expiry'] ?? null))
         && ($type->hasLineColumn('expiry') || $type->hasLineColumn('expiry_pick') || $mode === 'count');
     $batches = $expiries && collect($lines)->contains(fn ($line) => filled($line['batch'] ?? null));
@@ -46,8 +49,8 @@
                         <th scope="col" class="px-cell text-start">{{ __('transactions.lines.expiry') }}</th>
                     @endif
                     @if ($mode === 'transfer')
-                        <th scope="col" class="{{ $num }}">{{ __('transactions.lines.sent') }}</th>
-                        <th scope="col" class="{{ $num }} pe-edge">{{ __('transactions.lines.received') }}</th>
+                        <th scope="col" class="{{ $num }}">{{ $sentLabel }}</th>
+                        <th scope="col" class="{{ $num }} pe-edge">{{ $receivedLabel }}</th>
                     @elseif ($mode === 'count')
                         <th scope="col" class="{{ $num }}">{{ __('transactions.lines.in_system') }}</th>
                         <th scope="col" class="{{ $num }}">{{ __('transactions.lines.counted') }}</th>
@@ -81,8 +84,8 @@
                             <td data-label="{{ __('transactions.lines.expiry') }}" @if (blank($line['expiry'] ?? null)) data-card="hide" @endif class="px-cell text-fg">{{ $line['expiry'] ? Format::date(\Illuminate\Support\Carbon::parse($line['expiry'])) : '' }}</td>
                         @endif
                         @if ($mode === 'transfer')
-                            <td data-label="{{ __('transactions.lines.sent') }}" class="{{ $num }} font-semibold text-fg">{{ Format::qty($line['qty']) }}</td>
-                            <td data-label="{{ __('transactions.lines.received') }}" class="{{ $num }} pe-edge">
+                            <td data-label="{{ $sentLabel }}" class="{{ $num }} font-semibold text-fg">{{ Format::qty($line['qty']) }}</td>
+                            <td data-label="{{ $receivedLabel }}" class="{{ $num }} pe-edge">
                                 <span class="inline-flex items-center gap-2">
                                     @if ($line['received'] === null)
                                         <span class="text-muted" aria-hidden="true">&mdash;</span>

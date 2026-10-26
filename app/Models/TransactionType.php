@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Lang;
  * @property bool $active
  * @property string|null $posting_direction IN / OUT; NULL when decided per line or in two steps
  * @property bool $uses_expired may take expired stock
+ * @property bool $delivery_steps confirmed from an order, then dispatched, then delivered (Delivery note)
  */
 class TransactionType extends Model
 {
@@ -41,6 +42,7 @@ class TransactionType extends Model
             'requires_dispatch_receive' => 'boolean',
             'supports_approval_threshold' => 'boolean',
             'uses_expired' => 'boolean',
+            'delivery_steps' => 'boolean',
             'active' => 'boolean',
         ];
     }

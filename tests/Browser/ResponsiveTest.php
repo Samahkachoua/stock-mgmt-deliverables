@@ -99,7 +99,11 @@ class ResponsiveTest extends DuskTestCase
 
         foreach (['receive', 'delivery-note', 'transfer', 'adjustment', 'damage', 'opening-balance'] as $slug) {
             $pages[$slug.' list'] = '/'.$slug;
-            $pages[$slug.' form'] = '/'.$slug.'/new';
+
+            // A delivery note has no form of its own: it comes from an order.
+            if ($slug !== 'delivery-note') {
+                $pages[$slug.' form'] = '/'.$slug.'/new';
+            }
         }
 
         return $pages + [

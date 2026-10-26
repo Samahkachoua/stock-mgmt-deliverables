@@ -25,6 +25,7 @@ Thumbs.db
 enhancement.txt
 notes.txt
 truncate.sql
+updates.md
 
 # Laravel Dusk (browser tests)
 /tests/Browser/screenshots

@@ -10,8 +10,8 @@ use Livewire\Livewire;
 use Tests\Support\Stock;
 
 dataset('types', fn () => [
+    // A delivery note has no "New" page (it comes from an order): DeliveryStepsTest.
     'Receive' => ['IN', 'receive'],
-    'Delivery note' => ['OUT', 'delivery-note'],
     'Transfer' => ['TRANSFER', 'transfer'],
     'Adjustment' => ['ADJUSTMENT', 'adjustment'],
     'Damage' => ['DAMAGE', 'damage'],
@@ -118,7 +118,12 @@ it('maps statuses in one place and never shows Draft', function () {
         ->and(Statuses::label('REJECTED'))->toBe('Rejected')
         ->and(Statuses::label('CANCELLED'))->toBe('Cancelled')
         ->and(Statuses::options())->not->toHaveKey('DRAFT')
-        ->and(array_keys(Statuses::options()))->toBe(['PENDING_APPROVAL', 'DISPATCHED', 'POSTED', 'REJECTED', 'CANCELLED']);
+        ->and(array_keys(Statuses::options()))->toBe(['PENDING_APPROVAL', 'CONFIRMED', 'DISPATCHED', 'POSTED', 'REJECTED', 'CANCELLED'])
+        // A delivery note names its own steps.
+        ->and(Statuses::label('POSTED', TransactionTypes::get('OUT')))->toBe('Delivered')
+        ->and(Statuses::label('DISPATCHED', TransactionTypes::get('OUT')))->toBe('Dispatched')
+        ->and(Statuses::label('CONFIRMED', TransactionTypes::get('OUT')))->toBe('Confirmed')
+        ->and(array_keys(Statuses::options(TransactionTypes::get('OUT'))))->toBe(['CONFIRMED', 'DISPATCHED', 'POSTED', 'CANCELLED']);
 });
 
 it('shows the reason on the adjustment and damage lists, and no total quantity on any list', function () {
@@ -171,7 +176,8 @@ it('reads behaviour from the transaction_type table', function () {
         ->and(TransactionTypes::get('IN')->supportsApproval())->toBeFalse()
         ->and(TransactionTypes::get('IN')->postingDirection())->toBe('IN')
         ->and(TransactionTypes::get('OUT')->postingDirection())->toBe('OUT')
-        ->and(collect(TransactionTypes::all())->filter->postsDirectly()->keys()->sort()->values()->all())->toBe(['IN', 'OPENING_BALANCE', 'OUT'])
+        ->and(collect(TransactionTypes::all())->filter->postsDirectly()->keys()->sort()->values()->all())->toBe(['IN', 'OPENING_BALANCE'])
+        ->and(collect(TransactionTypes::all())->filter->deliverySteps()->keys()->all())->toBe(['OUT'])
         ->and(TransactionTypes::get('DAMAGE')->usesExpired())->toBeTrue()
         ->and(TransactionTypes::get('OUT')->usesExpired())->toBeFalse();
 });
@@ -179,7 +185,7 @@ it('reads behaviour from the transaction_type table', function () {
 it('hides the New button without the create permission', function () {
     $operator = userWithRole('OPERATOR');
 
-    $this->actingAs($operator)->get(route('delivery-note'))->assertSee('href="'.route('delivery-note.create').'"', false);
+    $this->actingAs($operator)->get(route('receive'))->assertSee('href="'.route('receive.create').'"', false);
     $this->actingAs($operator)->get(route('opening-balance'))
         ->assertOk()
         ->assertDontSee('href="'.route('opening-balance.create').'"', false);

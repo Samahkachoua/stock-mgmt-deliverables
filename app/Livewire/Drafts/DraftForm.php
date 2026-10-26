@@ -59,6 +59,13 @@ class DraftForm extends Component
     #[Locked]
     public string $reference = '';
 
+    /**
+     * The Order being edited (stock_draft.id); '' otherwise. What it holds
+     * counts as available to it (ItemCatalog / Availability $ownDraftId).
+     */
+    #[Locked]
+    public string $draftId = '';
+
     /** stock_draft.updated_at as the form opened it: a draft changed since is not overwritten. */
     #[Locked]
     public string $version = '';
@@ -138,6 +145,7 @@ class DraftForm extends Component
                 'note' => (string) $draft['note'],
                 'deliveryDate' => $draft['delivery_date']?->toDateString() ?? '',
                 'priority' => (string) $draft['priority'],
+                'draftId' => $kind->receives() ? '' : (string) $draft['model']->id,
             ]);
 
             foreach ($draft['lines'] as $line) {
@@ -721,7 +729,7 @@ class DraftForm extends Component
             return [$errors, []];
         }
 
-        $options = app(Availability::class)->serials($this->warehouseId, $item['id']);
+        $options = app(Availability::class)->serials($this->warehouseId, $item['id'], ownDraftId: $this->draftId ?: null);
 
         foreach ($line['picked'] as $serial) {
             if (! in_array($serial, $options, true)) {
@@ -842,7 +850,7 @@ class DraftForm extends Component
             return;
         }
 
-        $found = ItemCatalog::items($this->customerId, array_values($missing), $this->warehouseId, excludeExpired: ! $this->kind()->receives(), withServices: $this->kind()->type->allowsServices());
+        $found = ItemCatalog::items($this->customerId, array_values($missing), $this->warehouseId, excludeExpired: ! $this->kind()->receives(), withServices: $this->kind()->type->allowsServices(), ownDraftId: $this->draftId ?: null);
 
         foreach ($missing as $id) {
             $this->items[$id] = $found[$id] ?? null;
@@ -850,14 +858,15 @@ class DraftForm extends Component
     }
 
     /**
-     * Lots (expiry date + batch) of an item that may go out, nearest first (never expired ones).
+     * Lots (expiry date + batch) of an item that may go out, nearest first
+     * (never expired ones, nor those held entirely by other orders).
      *
      * @param  array<string, mixed>  $item
      * @return list<array{expiry: string, batch: string, lot: string, qty: float, expired: bool}>
      */
     private function pickableExpiries(array $item): array
     {
-        return array_values(array_filter($item['expiries'], fn (array $lot) => ! $lot['expired']));
+        return array_values(array_filter($item['expiries'], fn (array $lot) => ! $lot['expired'] && $lot['qty'] > 0));
     }
 
     /**

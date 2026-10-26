@@ -31,6 +31,8 @@ return [
         'customer' => 'Client',
         'warehouse' => 'Entrepôt',
         'qty_base' => 'Quantité (unité de base)',
+        'reserved' => 'Réservé',
+        'available' => 'Disponible',
         'qty_larger' => 'Quantité (unités supérieures)',
         'in_transit' => 'En transit (à l’arrivée)',
         'nearest_expiry' => 'Péremption la plus proche',
@@ -138,6 +140,11 @@ return [
         'description' => 'Les lignes de transfert arrivées avec moins que l’envoi, et pourquoi.',
     ],
 
+    'delivery_differences' => [
+        'title' => 'Écarts de livraison',
+        'description' => 'Les lignes de bons de livraison où le client a reçu moins que la commande, ou un autre article, et pourquoi.',
+    ],
+
     'audit_log' => [
         'title' => 'Journal d’audit',
         'description' => 'Qui a modifié quoi et quand, avec les valeurs avant et après.',
@@ -228,6 +235,7 @@ return [
         'expiries' => 'Stock par date de péremption',
         'expiry_count' => '{0} Aucune date de péremption|{1} :count date de péremption|[2,*] :count dates de péremption',
         'serials' => 'Numéros de série en stock',
+        'reserved_by' => 'Réservé pour',
         'no_stock' => 'Rien en stock ici.',
         'movements' => ':count derniers mouvements',
         'movements_hint' => 'Les plus récents d’abord, avec le solde après chaque mouvement.',

@@ -9,8 +9,11 @@ use App\Models\StockTransaction;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Reports\StockOnHandReport;
+use App\Services\Stock\Reservations;
 use App\Support\CompanyTime;
+use App\Support\Drafts\DraftTypes;
 use App\Support\Format;
+use App\Support\Transactions\TransactionTypes;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -60,6 +63,13 @@ class ItemStockController extends Controller
             ->where('i.product_id', $product->id)
             ->sum('i.qty_base');
 
+        // Held for orders / delivery notes not delivered yet, and by which.
+        $reserved = (float) StockBalance::query()->where('product_id', $product->id)->where('warehouse_id', $warehouse->id)->sum('qty_reserved');
+        $holders = collect(app(Reservations::class)->holders($warehouse->id, $product->customer_id, $product->id))
+            ->map(fn (array $holder) => $holder + ['url' => $holder['draft']
+                ? DraftTypes::get($holder['type'])->route('show', $holder['reference'])
+                : TransactionTypes::get($holder['type'])->route('show', $holder['reference'])]);
+
         $serials = $product->track_serial
             ? SerialNumber::query()->where('product_id', $product->id)->where('warehouse_id', $warehouse->id)->where('status', 'IN_STOCK')->orderBy('serial_no')->pluck('serial_no')
             : collect();
@@ -75,6 +85,8 @@ class ItemStockController extends Controller
             'expiringDays' => StockOnHandReport::EXPIRING_DAYS,
             'today' => $today,
             'arriving' => $arriving,
+            'reserved' => $reserved,
+            'holders' => $holders,
             'serials' => $serials,
             'stockCard' => Gate::allows('report.view')
                 ? route('reports.stock-card.item', ['product' => $product->id, 'warehouse' => $warehouse->id])

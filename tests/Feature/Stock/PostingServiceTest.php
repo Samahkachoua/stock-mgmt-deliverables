@@ -165,7 +165,8 @@ it('turns the database’s own negative-stock refusal into the same error', func
     expect(counts())->toBe($before);
 });
 
-// FEFO
+// FEFO: a line going out without an expiry date (a transfer line; delivery note
+// lines always carry the date picked on the order).
 
 it('issues the nearest expiry first, across expiry dates, and skips expired stock', function () {
     [$late, $soon, $gone] = [now()->addDays(40)->toDateString(), now()->addDays(10)->toDateString(), now()->subDay()->toDateString()];
@@ -175,9 +176,9 @@ it('issues the nearest expiry first, across expiry dates, and skips expired stoc
         $this->stock->line('YOGURT', 10, expiry: $gone),
     ]);
 
-    $deliveryNote = $this->stock->post('OUT', [$this->stock->line('YOGURT', 15)]);
+    $deliveryNote = $this->stock->dispatch([$this->stock->line('YOGURT', 15)], Warehouse::factory()->create());
 
-    $taken = DB::table('stock_movement')->where('transaction_id', $deliveryNote->id)->orderBy('expiry_date')
+    $taken = DB::table('stock_movement')->where('transaction_id', $deliveryNote->id)->where('direction', 'OUT')->orderBy('expiry_date')
         ->pluck('qty_base', 'expiry_date')->map(fn ($qty) => (float) $qty)->all();
 
     expect($taken)->toBe([$soon => 10.0, $late => 5.0])
@@ -188,7 +189,7 @@ it('issues the nearest expiry first, across expiry dates, and skips expired stoc
 it('can issue stock on its expiry day', function () {
     $this->stock->post('IN', [$this->stock->line('YOGURT', 5, expiry: now('Asia/Beirut')->toDateString())]);
 
-    $this->stock->post('OUT', [$this->stock->line('YOGURT', 5)]);
+    $this->stock->dispatch([$this->stock->line('YOGURT', 5)], Warehouse::factory()->create());
 
     expect($this->stock->balance('YOGURT'))->toBe(0.0);
 });
@@ -199,7 +200,7 @@ it('says how much has expired when there is not enough', function () {
         $this->stock->line('YOGURT', 6, expiry: now()->subDays(3)->toDateString()),
     ]);
 
-    expect(fn () => $this->stock->post('OUT', [$this->stock->line('YOGURT', 5)]))
+    expect(fn () => $this->stock->dispatch([$this->stock->line('YOGURT', 5)], Warehouse::factory()->create()))
         ->toThrow(InsufficientStock::class, __('stock.errors.not_enough_with_expired', ['qty' => '4 Piece', 'expired' => '1 Box', 'item' => 'Yogurt', 'warehouse' => 'Beirut Main']));
 });
 
@@ -207,7 +208,7 @@ it('says so when only expired stock is left', function () {
     $this->stock->post('IN', [$this->stock->line('YOGURT', 6, expiry: now()->subDays(3)->toDateString())]);
 
     try {
-        $this->stock->post('OUT', [$this->stock->line('YOGURT', 1)]);
+        $this->stock->dispatch([$this->stock->line('YOGURT', 1)], Warehouse::factory()->create());
         $this->fail('Expected InsufficientStock');
     } catch (InsufficientStock $e) {
         expect($e->available)->toBe(0.0)
@@ -363,7 +364,11 @@ it('cancels a delivery note by putting the stock back into the same expiry dates
         $this->stock->line('YOGURT', 10, expiry: $late),
         $this->stock->line('PHONE', 1, serials: ['SN-1']),
     ]);
-    $deliveryNote = $this->stock->post('OUT', [$this->stock->line('YOGURT', 6), $this->stock->line('PHONE', 1, serials: ['SN-1'])]);
+    $deliveryNote = $this->stock->post('OUT', [
+        $this->stock->line('YOGURT', 4, expiry: $soon),
+        $this->stock->line('YOGURT', 2, expiry: $late),
+        $this->stock->line('PHONE', 1, serials: ['SN-1']),
+    ]);
 
     app(PostingService::class)->cancel($deliveryNote, $this->stock->user, 'Entered by mistake');
 

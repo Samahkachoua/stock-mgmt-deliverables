@@ -22,8 +22,8 @@ return [
             'title' => 'Orders',
             'singular' => 'Order',
             'new' => 'New Order',
-            'subtitle' => 'Stock requested for a customer branch. Nothing changes in stock until the order is confirmed.',
-            'form_subtitle' => 'List what should go out. Stock changes only when the order is confirmed.',
+            'subtitle' => 'Stock requested for a customer branch. An order reserves its stock; it leaves only when the delivery note is delivered.',
+            'form_subtitle' => 'List what should go out. Saving reserves it, so nothing else can take it.',
             'branch' => 'To branch',
             'branch_hint' => 'The customer branch the goods go to.',
             'delivery_date' => 'Delivery date',
@@ -67,7 +67,7 @@ return [
         'confirmed_on' => 'Confirmed on',
         'cancel_reason' => 'Why it was cancelled',
         'not_in_stock_in' => 'Not in stock yet. Confirming creates the receipt into :warehouse.',
-        'not_in_stock_out' => 'Still in stock. Confirming creates the delivery note from :warehouse.',
+        'not_in_stock_out' => 'Reserved in :warehouse. Confirming creates the delivery note, which keeps it reserved until delivered.',
         'waiting_for_confirmation' => 'Waiting for someone who may confirm it.',
     ],
 
@@ -78,7 +78,7 @@ return [
         'lines_heading' => 'Items',
         'choose_warehouse' => 'Choose…',
         'notice_in' => 'Saving changes no stock. When confirmed, this becomes a receipt.',
-        'notice_out' => 'Saving changes no stock. When confirmed, this becomes a delivery note.',
+        'notice_out' => 'Saving reserves the stock: it stays in the warehouse but nothing else can take it. When confirmed, this becomes a delivery note.',
     ],
 
     'actions' => [
@@ -92,6 +92,7 @@ return [
     'confirm_cancel' => [
         'title' => 'Cancel :type :reference?',
         'body' => 'It can no longer be changed or confirmed. Stock is not affected.',
+        'body_order' => 'It can no longer be changed or confirmed. The stock it reserved is available again.',
         'button' => 'Cancel :type',
         'reason' => 'Why is it cancelled?',
         'reason_placeholder' => 'e.g. The branch withdrew the order',

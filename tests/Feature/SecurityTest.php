@@ -48,7 +48,7 @@ it('does not let the browser change ids that only the server may set', function 
     expect(fn () => Livewire::actingAs($user)->test($component, $params)->set($property, Warehouse::factory()->create()->id))
         ->toThrow(CannotUpdateLockedPropertyException::class);
 })->with([
-    'transaction customer' => [TransactionForm::class, ['type' => 'OUT'], 'customerId'],
+    'transaction customer' => [TransactionForm::class, ['type' => 'TRANSFER'], 'customerId'],
     'record being edited' => [Warehouses::class, [], 'editing'],
 ]);
 

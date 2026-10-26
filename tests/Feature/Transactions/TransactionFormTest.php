@@ -14,13 +14,20 @@ beforeEach(function () {
 });
 
 /**
- * The form for one type, as an admin in the catalog's warehouse, with Acme Foods chosen.
+ * The form for one type, as an admin in the catalog's warehouse, with Acme Foods
+ * chosen. Stock going out is tried on a transfer (to Tripoli): a delivery note has
+ * no form of its own, it comes from an order.
  */
-function form(Catalog $catalog, string $type = 'OUT', bool $chooseAcme = true): Testable
+function form(Catalog $catalog, string $type = 'TRANSFER', bool $chooseAcme = true): Testable
 {
     $form = Livewire::actingAs($catalog->user())->test(TransactionForm::class, ['type' => $type]);
+    $form = $chooseAcme ? $form->call('chooseCustomer', $catalog->acme->id) : $form;
 
-    return $chooseAcme ? $form->call('chooseCustomer', $catalog->acme->id) : $form;
+    if ($type === 'TRANSFER' && $chooseAcme) {
+        $form->set('toWarehouse', (Warehouse::where('code', 'TRP')->first() ?? Warehouse::factory()->create(['code' => 'TRP', 'name' => 'Tripoli']))->id);
+    }
+
+    return $form;
 }
 
 /**
@@ -76,7 +83,7 @@ it('shows the chosen customer as selected, and only that customer\'s items count
     // Another customer's item gets no unit; the chosen customer's item does.
     $form->set("lines.$row.item", $this->catalog->id('OO-1L'))->assertSet("lines.$row.unit", '');
     $form->set("lines.$row.item", $this->catalog->id('CT-T12'))->assertSet("lines.$row.unit", 'PC');
-})->with(['IN', 'OUT', 'DAMAGE', 'ADJUSTMENT', 'OPENING_BALANCE', 'TRANSFER']);
+})->with(['IN', 'DAMAGE', 'ADJUSTMENT', 'OPENING_BALANCE', 'TRANSFER']);
 
 it('only offers active customers', function () {
     $this->catalog->cedar->update(['active' => false]);
@@ -127,8 +134,8 @@ it('ignores the empty last row', function () {
 
     $form->call('save')->assertHasNoErrors();
 
-    $deliveryNote = DB::table('stock_transaction')->where('transaction_type', 'OUT')->first();
-    $form->assertRedirect(route('delivery-note.show', $deliveryNote->doc_no));
+    $deliveryNote = DB::table('stock_transaction')->where('transaction_type', 'TRANSFER')->first();
+    $form->assertRedirect(route('transfer.show', $deliveryNote->doc_no));
 
     expect(DB::table('stock_transaction_line')->where('transaction_id', $deliveryNote->id)->count())->toBe(1);
 });
@@ -267,7 +274,7 @@ it('offers expired stock on a damage only', function () {
     $gone = now()->subDays(2)->toDateString();
     $this->catalog->expiring($this->catalog->items['YG-500'], $gone, 6);
 
-    foreach (['OUT' => false, 'TRANSFER' => false, 'DAMAGE' => true] as $type => $offered) {
+    foreach (['TRANSFER' => false, 'DAMAGE' => true] as $type => $offered) {
         $form = form($this->catalog, $type);
         [$row] = rowKeys($form);
         $form->set("lines.$row.item", $this->catalog->id('YG-500'));
@@ -340,7 +347,7 @@ it('uses only the base unit for serial-numbered items', function () {
 
 it('needs a destination warehouse for transfers', function () {
     $destination = Warehouse::factory()->create();
-    $form = form($this->catalog, 'TRANSFER');
+    $form = form($this->catalog, 'TRANSFER')->set('toWarehouse', '');
     [$row] = rowKeys($form);
     $form->set("lines.$row.item", $this->catalog->id('CB-400'))->set("lines.$row.qty", '2');
 
@@ -432,7 +439,7 @@ it('shows the approval notice above the limit and changes the button', function 
         ->and($form->html())->toContain(e(__('transactions.form.send_for_approval')));
 });
 
-it('posts a delivery note through PostingService and opens it', function () {
+it('posts stock going out through PostingService and opens it', function () {
     $form = form($this->catalog);
     [$row] = rowKeys($form);
     $form->set("lines.$row.item", $this->catalog->id('CB-400'))->set("lines.$row.unit", 'BOX')->set("lines.$row.qty", '2');
@@ -440,15 +447,15 @@ it('posts a delivery note through PostingService and opens it', function () {
     $form->call('save')->assertHasNoErrors();
 
     $deliveryNote = DB::table('stock_transaction')->first();
-    $form->assertRedirect(route('delivery-note.show', $deliveryNote->doc_no));
+    $form->assertRedirect(route('transfer.show', $deliveryNote->doc_no));
 
-    expect($deliveryNote->status)->toBe('POSTED')
+    expect($deliveryNote->status)->toBe('DISPATCHED')
         ->and(DB::table('stock_movement')->where('transaction_id', $deliveryNote->id)->value('qty_base'))->toEqual('24.0000')
         ->and((float) DB::table('stock_balance')->where('product_id', $this->catalog->id('CB-400'))->value('qty_base'))->toBe(40.0)
         ->and(session('toasts'))->toBe([[
             'type' => 'success',
-            'message' => __('feedback.saved', ['type' => __('transactions.types.delivery_note.singular'), 'reference' => $deliveryNote->doc_no]),
-            'url' => route('delivery-note.show', $deliveryNote->doc_no),
+            'message' => __('feedback.dispatched', ['type' => __('transactions.types.transfer.singular'), 'reference' => $deliveryNote->doc_no, 'warehouse' => 'Tripoli']),
+            'url' => route('transfer.show', $deliveryNote->doc_no),
             'link' => __('feedback.view'),
         ]]);
 });
@@ -511,8 +518,9 @@ it('takes serial numbers instead of a quantity for serial-numbered items', funct
     $receipt->set("lines.$row.serials", "SN-100\nSN-101")->call('save')->assertHasNoErrors();
 
     $deliveryNote = Livewire::actingAs($this->catalog->user())
-        ->test(TransactionForm::class, ['type' => 'OUT'])
-        ->call('chooseCustomer', $this->catalog->cedar->id);
+        ->test(TransactionForm::class, ['type' => 'TRANSFER'])
+        ->call('chooseCustomer', $this->catalog->cedar->id)
+        ->set('toWarehouse', Warehouse::factory()->create()->id);
     [$row] = rowKeys($deliveryNote);
     $deliveryNote->set("lines.$row.item", $this->catalog->id('ES-MCH'));
 
@@ -520,7 +528,7 @@ it('takes serial numbers instead of a quantity for serial-numbered items', funct
 
     $deliveryNote->set("lines.$row.picked", ['SN-101'])->call('save')->assertHasNoErrors();
 
-    expect(DB::table('serial_number')->where('serial_no', 'SN-101')->value('status'))->toBe('ISSUED')
+    expect(DB::table('serial_number')->where('serial_no', 'SN-101')->value('status'))->toBe('IN_TRANSIT')
         ->and(DB::table('serial_number')->where('serial_no', 'SN-100')->value('status'))->toBe('IN_STOCK');
 });
 

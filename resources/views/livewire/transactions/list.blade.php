@@ -21,7 +21,7 @@
 
 <div class="flex flex-col gap-section">
     <x-page-header :type="$ui" :title="$ui->label('title')" :subtitle="$ui->label('subtitle')">
-        @if (($ui->dispatchReceive() && Gate::allows('report.view')) || Gate::allows($ui->createPermission()))
+        @if ((($ui->dispatchReceive() || $ui->deliverySteps()) && Gate::allows('report.view')) || ($ui->creatable() && Gate::allows($ui->createPermission())))
             <x-slot:actions>
                 @if ($ui->dispatchReceive())
                     @can('report.view')
@@ -31,7 +31,15 @@
                         </a>
                     @endcan
                 @endif
-                @can($ui->createPermission())
+                @if ($ui->deliverySteps())
+                    @can('report.view')
+                        <a href="{{ route('reports.show', 'delivery-differences') }}" wire:navigate class="flex h-control items-center gap-2 rounded-lg border border-control bg-card px-4 text-body font-semibold text-fg hover:bg-card-hover">
+                            <x-icon name="report" class="text-muted" />
+                            {{ __('reports.delivery_differences.title') }}
+                        </a>
+                    @endcan
+                @endif
+                @if ($ui->creatable() && Gate::allows($ui->createPermission()))
                 <a
                     href="{{ $ui->route('create') }}"
                     wire:navigate
@@ -40,7 +48,7 @@
                     <x-icon name="add" />
                     {{ $ui->label('new') }}
                 </a>
-                @endcan
+                @endif
             </x-slot:actions>
         @endif
     </x-page-header>
@@ -58,7 +66,7 @@
         <x-slot:empty-action>
             @if ($filtered)
                 <x-empty-action action="resetFilters" icon="filter_alt_off" :label="__('transactions.filters.reset')" />
-            @elseif (Gate::allows($ui->createPermission()))
+            @elseif ($ui->creatable() && Gate::allows($ui->createPermission()))
                 <x-empty-action :href="$ui->route('create')" icon="add" :label="$ui->label('new')" primary />
             @endif
         </x-slot:empty-action>
@@ -97,7 +105,15 @@
                         @endif
                     </x-data-table.cell>
                 @endif
-                <x-data-table.cell col="status"><x-status-badge :code="$row['status']" /></x-data-table.cell>
+                <x-data-table.cell col="status">
+                    <span class="inline-flex flex-wrap items-center gap-1.5">
+                        <x-status-badge :code="$row['status']" :type="$ui" />
+                        {{-- Delivered with a difference: see Delivery discrepancies. --}}
+                        @if ($row['short'] ?? false)
+                            <span class="inline-flex h-6 items-center rounded-md border px-2 text-small font-semibold {{ config('ui.statuses.rejected') }}">{{ __('deliveries.list.short') }}</span>
+                        @endif
+                    </span>
+                </x-data-table.cell>
                 <x-data-table.cell col="created_by" class="whitespace-nowrap">
                     <span class="inline-flex items-center gap-2 text-fg">
                         <bdi>{{ $row['created_by'] }}</bdi>

@@ -63,6 +63,7 @@ class CancelTransaction extends Component
     {
         // The modal is only UI: permission and rules are checked again here and in PostingService.
         $transaction = $this->authorizeCancel();
+        $undelivered = in_array($transaction->status, ['CONFIRMED', 'DISPATCHED'], true) && TransactionTypes::get($transaction->transaction_type)->deliverySteps();
 
         try {
             app(PostingService::class)->cancel($transaction, $this->user(), $reason);
@@ -75,7 +76,9 @@ class CancelTransaction extends Component
         $type = TransactionTypes::get($transaction->transaction_type);
         $url = $type->route('show', $transaction->doc_no);
 
-        Notify::success(__('feedback.cancelled', ['type' => $type->label('singular'), 'reference' => $transaction->doc_no]), $url);
+        Notify::success($undelivered
+            ? __('feedback.delivery_cancelled', ['reference' => $transaction->doc_no])
+            : __('feedback.cancelled', ['type' => $type->label('singular'), 'reference' => $transaction->doc_no]), $url);
         $this->redirect($url, navigate: true);
     }
 
@@ -102,7 +105,10 @@ class CancelTransaction extends Component
             $stock = trans_choice('confirm.cancel.more', $others, ['first' => $stock, 'count' => Format::qty($others)]);
         }
 
-        return __($type->postingDirection() === 'IN' ? 'confirm.cancel.removes' : 'confirm.cancel.returns', [
+        // A delivery note not delivered yet only gives back what it reserved.
+        $undelivered = $type->deliverySteps() && in_array($transaction->status, ['CONFIRMED', 'DISPATCHED'], true);
+
+        return __($undelivered ? 'confirm.cancel.releases' : ($type->postingDirection() === 'IN' ? 'confirm.cancel.removes' : 'confirm.cancel.returns'), [
             'stock' => $stock,
             'warehouse' => $document['warehouse'] ?? '',
         ]);

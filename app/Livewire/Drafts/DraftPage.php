@@ -96,7 +96,7 @@ class DraftPage extends Component
             'cancel',
             $draft['id'],
             __('drafts.confirm_cancel.title', ['type' => $name, 'reference' => $draft['reference']]),
-            __('drafts.confirm_cancel.body'),
+            __($this->kind()->receives() ? 'drafts.confirm_cancel.body' : 'drafts.confirm_cancel.body_order'),
             __('drafts.confirm_cancel.button', ['type' => $name]),
             __('drafts.confirm_cancel.reason'),
             __('drafts.confirm_cancel.reason_placeholder'),

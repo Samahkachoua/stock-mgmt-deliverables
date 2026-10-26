@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\DB;
  *
  * In transit is stock arriving at the warehouse: it is available in neither
  * warehouse until it is received, so it is shown apart from the quantity.
+ * Reserved is the part held for Orders / Delivery notes not delivered yet;
+ * Available is what is left for anything else (in stock - reserved).
  */
 final class StockOnHandReport extends Report
 {
@@ -56,7 +58,8 @@ final class StockOnHandReport extends Report
             'customer' => ['label' => 'reports.columns.customer', 'priority' => 2],
             'warehouse' => ['label' => 'reports.columns.warehouse', 'priority' => 2],
             'qty' => ['label' => 'reports.columns.qty_base', 'align' => 'end'],
-            'breakdown' => ['label' => 'reports.columns.qty_larger', 'priority' => 2, 'card' => 'hide'],
+            'reserved' => ['label' => 'reports.columns.reserved', 'align' => 'end'],
+            'available' => ['label' => 'reports.columns.available', 'align' => 'end'],
             'in_transit' => ['label' => 'reports.columns.in_transit', 'align' => 'end'],
             'expiry' => ['label' => 'reports.columns.nearest_expiry'],
         ];
@@ -72,7 +75,7 @@ final class StockOnHandReport extends Report
             ->where('stock_balance.qty_base', '>', 0)
             ->groupBy('stock_balance.warehouse_id', 'stock_balance.customer_id', 'stock_balance.product_id')
             ->select(['stock_balance.warehouse_id', 'stock_balance.customer_id', 'stock_balance.product_id'])
-            ->selectRaw('sum(stock_balance.qty_base) as qty, min(stock_balance.expiry_date) as nearest_expiry');
+            ->selectRaw('sum(stock_balance.qty_base) as qty, sum(stock_balance.qty_reserved) as reserved, min(stock_balance.expiry_date) as nearest_expiry');
 
         // Arriving: dispatched to these warehouses, not yet received.
         $arriving = StockTransaction::query()
@@ -109,6 +112,7 @@ final class StockOnHandReport extends Report
                 $as('customer_id'),
                 $as('product_id'),
                 DB::raw('coalesce(h.qty, 0) as qty'),
+                DB::raw('coalesce(h.reserved, 0) as reserved'),
                 DB::raw('coalesce(t.qty, 0) as in_transit'),
                 'h.nearest_expiry',
                 'c.name as customer_name',
@@ -129,7 +133,8 @@ final class StockOnHandReport extends Report
             'customer' => (string) $row->customer_name,
             'warehouse' => (string) $row->warehouse_name,
             'qty' => $this->qtyCell($row->qty, $row->product_id) + ['strong' => true],
-            'breakdown' => (float) $row->qty > 0 ? $this->breakdown($row->qty, $row->product_id) : '',
+            'reserved' => (float) $row->reserved > 0 ? $this->qtyCell($row->reserved, $row->product_id) : ['text' => '', 'value' => 0],
+            'available' => $this->qtyCell((float) $row->qty - (float) $row->reserved, $row->product_id) + ['strong' => true],
             'in_transit' => (float) $row->in_transit > 0 ? $this->qtyCell($row->in_transit, $row->product_id) : ['text' => '', 'value' => 0],
             'expiry' => $this->expiryCell($row->nearest_expiry, self::EXPIRING_DAYS),
         ];

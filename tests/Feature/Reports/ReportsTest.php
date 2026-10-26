@@ -98,14 +98,14 @@ function column(array $rows, string $key): array
 
 // Stock on hand (the Stock page)
 
-it('shows stock on hand with the larger-unit breakdown, in transit and nearest expiry', function () {
+it('shows stock on hand in the base unit (no larger-unit column), in transit and nearest expiry', function () {
     $d = $this->data;
     $here = onScreen($d->admin, $d->beirut, 'stock-on-hand');
 
     expect($here['total'])->toBe(4)
         ->and(column($here['rows'], 'item'))->toBe(['Canned Beans', 'Phone', 'Rice 5kg', 'Yogurt'])
         ->and(array_column(array_column($here['rows'], 'qty'), 'value'))->toBe([28.0, 2.0, 9.0, 20.0])
-        ->and($here['rows'][0]['breakdown']['text'])->toBe('2 Box + 4 Piece')
+        ->and($here['rows'][0])->not->toHaveKey('breakdown')
         ->and($here['rows'][3]['expiry']['tone'])->toBe('rejected'); // part of it has expired
 
     // All my warehouses: Tripoli adds its rice, and the beans on their way there.

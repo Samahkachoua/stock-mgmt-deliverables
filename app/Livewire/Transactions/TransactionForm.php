@@ -126,6 +126,8 @@ class TransactionForm extends Component
     public function mount(string $type): void
     {
         $ui = TransactionTypes::get($type);
+        // A Delivery note has no "New" page: it comes from an Order.
+        abort_unless($ui->creatable(), 404);
         Gate::authorize($ui->createPermission());
 
         $this->type = $ui->code;
@@ -274,7 +276,7 @@ class TransactionForm extends Component
             // Counting serial items: suggest that every piece is there; the user unticks what is missing.
             if ($item !== null && $item['serial'] && $this->ui()->countsStock()) {
                 $warehouse = $this->chosenWarehouse();
-                $this->lines[$key]['picked'] = $warehouse === null ? [] : app(Availability::class)->serials($warehouse->id, $item['id']);
+                $this->lines[$key]['picked'] = $warehouse === null ? [] : app(Availability::class)->serials($warehouse->id, $item['id'], withReserved: true);
                 $this->lines[$key]['qty'] = (string) count($this->lines[$key]['picked']);
             }
         }
@@ -820,9 +822,12 @@ class TransactionForm extends Component
         $perExpiry = $counted || ($needsExpiry && $pick);
         $stockKey = ($item['id'] ?? '').($perExpiry ? '|'.$line['expiry'] : '');
 
+        // A count compares with the whole balance; stock going out only with what is not reserved.
+        $lot = $perExpiry && $line['expiry'] !== '' ? collect($item['expiries'] ?? [])->firstWhere('lot', $line['expiry']) : null;
         $inStock = $item === null ? 0.0 : ($perExpiry && $line['expiry'] !== ''
-            ? (float) (collect($item['expiries'])->firstWhere('lot', $line['expiry'])['qty'] ?? 0)
-            : $item['available']);
+            ? (float) ($lot[$counted ? 'total' : 'qty'] ?? 0)
+            : ($counted ? $item['in_stock'] : $item['available']));
+        $reserved = $item === null ? 0.0 : (float) ($perExpiry && $line['expiry'] !== '' ? ($lot['reserved'] ?? 0) : $item['reserved']);
         $remaining = max($inStock - (float) ($used[$stockKey] ?? 0), 0);
 
         if ($qty === '') {
@@ -839,6 +844,11 @@ class TransactionForm extends Component
             $errors['qty'] = __('transactions.form.errors.too_large', ['max' => Format::qty(PostingService::MAX_QTY)]);
         } elseif ($converter !== null && $factor !== null) {
             $base = $converter->toBase($qty, $line['unit']);
+
+            // Stock held for orders can't be counted away (the server refuses it too).
+            if ($counted && $base < $reserved - 1e-9) {
+                $errors['qty'] = __('stock.errors.count_below_reserved_short', ['qty' => $converter->breakdown($reserved, [$line['unit']])]);
+            }
 
             // A service has no stock: never limited by it.
             if ($ui->limitedByStock() && ! $item['service'] && $base > $remaining + 1e-9) {
@@ -989,7 +999,8 @@ class TransactionForm extends Component
     {
         $usesExpired = $this->ui()->usesExpired();
 
-        return array_values(array_filter($item['expiries'], fn (array $lot) => $usesExpired || ! $lot['expired']));
+        // A lot held entirely for orders can't be taken.
+        return array_values(array_filter($item['expiries'], fn (array $lot) => ($usesExpired || ! $lot['expired']) && $lot['qty'] > 0));
     }
 
     /**
@@ -1030,7 +1041,8 @@ class TransactionForm extends Component
         }
 
         $warehouse = $this->chosenWarehouse();
-        $options = $warehouse === null ? [] : app(Availability::class)->serials($warehouse->id, $item['id'], $this->stockDate());
+        // A count finds reserved serials on the shelf too; anything else may only take free ones.
+        $options = $warehouse === null ? [] : app(Availability::class)->serials($warehouse->id, $item['id'], $this->stockDate(), withReserved: $ui->countsStock());
 
         foreach ($line['picked'] as $serial) {
             if (! in_array($serial, $options, true)) {

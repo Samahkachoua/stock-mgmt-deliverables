@@ -31,6 +31,8 @@ return [
         'customer' => 'Customer',
         'warehouse' => 'Warehouse',
         'qty_base' => 'Quantity (base unit)',
+        'reserved' => 'Reserved',
+        'available' => 'Available',
         'qty_larger' => 'Quantity (larger units)',
         'in_transit' => 'In transit (arriving)',
         'nearest_expiry' => 'Nearest expiry',
@@ -138,6 +140,11 @@ return [
         'description' => 'Transfer lines that arrived with less than was sent, and why.',
     ],
 
+    'delivery_differences' => [
+        'title' => 'Delivery discrepancies',
+        'description' => 'Delivery note lines where the customer got less than the order asked for, or another item, and why.',
+    ],
+
     'audit_log' => [
         'title' => 'Audit log',
         'description' => 'Who changed what, and when, with the values before and after.',
@@ -228,6 +235,7 @@ return [
         'expiries' => 'Stock per expiry date',
         'expiry_count' => '{0} No expiry dates|{1} :count expiry date|[2,*] :count expiry dates',
         'serials' => 'Serial numbers in stock',
+        'reserved_by' => 'Reserved for',
         'no_stock' => 'Nothing in stock here.',
         'movements' => 'Last :count movements',
         'movements_hint' => 'Newest first, with the balance after each movement.',

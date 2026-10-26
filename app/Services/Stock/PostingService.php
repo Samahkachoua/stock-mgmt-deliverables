@@ -20,6 +20,7 @@ use App\Services\Stock\Exceptions\StockException;
 use App\Support\Audit;
 use App\Support\Batches;
 use App\Support\CompanyTime;
+use App\Support\Deliveries\DeliveryNotifier;
 use App\Support\Drafts\DraftTypes;
 use App\Support\Format;
 use App\Support\Transactions\TransactionTypes;
@@ -35,13 +36,15 @@ use Illuminate\Support\Str;
  * The only code that changes stock (CLAUDE.md rule 1).
  *
  * post() saves a document of a type that posts at once (Opening Balance,
- * Receive, Delivery note: TypeUi::postsDirectly()) as POSTED and writes its movements;
+ * Receive: TypeUi::postsDirectly()) as POSTED and writes its movements;
  * dispatches a Transfer (receive() completes it); and saves a Damage /
  * Adjustment either POSTED or, at its approval limit, PENDING_APPROVAL with no
  * movements until approve() (or reject()) — unless its creator may approve
  * that type: then it is posted at once. cancel() reverses a posted
- * document. confirmDraft() turns a draft receipt / order into one posted
- * document in its warehouse. Each runs in one DB::transaction: the
+ * document. confirmDraft() turns a draft receipt into one posted receipt, and
+ * an Order into a CONFIRMED Delivery note that keeps the Order's reservation;
+ * dispatchDelivery() and deliver() take it to DISPATCHED and POSTED (only
+ * then does its stock leave). Each runs in one DB::transaction: the
  * reference number, header, lines, serials, movements and audit entry are
  * saved together or not at all. Every movement goes through fn_post_movement,
  * which updates stock_balance and refuses negative stock.
@@ -59,6 +62,7 @@ final class PostingService
     public function __construct(
         private readonly Availability $availability,
         private readonly DocumentNumbers $numbers,
+        private readonly Reservations $reservations,
     ) {}
 
     /**
@@ -108,9 +112,10 @@ final class PostingService
 
         $type = TransactionTypes::get($document->type);
 
-        // Opening Balance / Receive / Delivery note post at once; a Transfer is dispatched
-        // here and posted at the destination by receive(); Damage / Adjustment post
-        // at once or wait for approve() when a line reaches its approval limit.
+        // Opening Balance / Receive post at once; a Transfer is dispatched here and
+        // posted at the destination by receive(); Damage / Adjustment post at once
+        // or wait for approve() when a line reaches its approval limit. A Delivery
+        // note only comes from confirming an Order (confirmDraft()).
         if (! $type->postsDirectly() && ! $type->dispatchReceive() && ! $type->supportsApproval()) {
             throw new PostingRejected('stock.errors.type_not_supported');
         }
@@ -156,7 +161,9 @@ final class PostingService
     /**
      * Reverses every movement of a posted Opening Balance / Receive / Delivery note and
      * marks it CANCELLED. A receipt can't be cancelled once part of its stock
-     * has gone out (StockAlreadyUsed); a delivery note puts the stock back.
+     * has gone out or is reserved for an order (StockAlreadyUsed); a delivered
+     * delivery note puts the stock back. A delivery note not delivered yet
+     * (Confirmed, Dispatched) only releases what it holds.
      *
      * @throws StockException
      */
@@ -183,7 +190,13 @@ final class PostingService
                 return;
             }
 
-            if ($header->status !== 'POSTED' || ! $type->postsDirectly()) {
+            if ($type->deliverySteps() && in_array($header->status, self::UNDELIVERED, true)) {
+                $this->cancelUndelivered($header, $by, $reason);
+
+                return;
+            }
+
+            if ($header->status !== 'POSTED' || ! ($type->postsDirectly() || $type->deliverySteps())) {
                 throw new PostingRejected('stock.errors.cannot_cancel_status');
             }
 
@@ -194,10 +207,10 @@ final class PostingService
             $movements = DB::table('stock_movement')->where('transaction_id', $header->id)->orderBy('seq')->get();
             $products = Product::withoutGlobalScopes()->with(['baseUnit', 'units.unit'])->findMany($movements->pluck('product_id')->unique())->keyBy('id');
 
-            // Receipts: everything received must still be here, per item and lot (expiry date + batch).
+            // Receipts: everything received must still be here and not reserved, per item and lot (expiry date + batch).
             foreach ($movements->where('direction', 'IN')->groupBy(fn ($m) => $m->product_id.'|'.Batches::key($m->expiry_date, $m->batch_no)) as $group) {
                 $first = $group->first();
-                $balance = $this->lockBalance($first->warehouse_id, $first->customer_id, $first->product_id, $first->expiry_date, $first->batch_no);
+                $balance = $this->lockBalance($first->warehouse_id, $first->customer_id, $first->product_id, $first->expiry_date, $first->batch_no, available: true);
                 $received = (float) $group->sum('qty_base');
 
                 if ($balance < $received) {
@@ -712,10 +725,12 @@ final class PostingService
     }
 
     /**
-     * Confirms a draft receipt / order: its lines become one posted document of
-     * the draft's type in the draft's warehouse, linked to the draft and its
-     * branch, dated today in that warehouse. All lines or none: when one line
-     * can't be posted (not enough stock, a serial gone...), nothing is.
+     * Confirms a draft receipt / order: its lines become one document of the
+     * draft's type in the draft's warehouse, linked to the draft and its
+     * branch, dated today in that warehouse: a posted receipt, or a Delivery
+     * note in CONFIRMED that takes over the Order's reservation (no stock moves
+     * until it is delivered). All lines or none: when one line can't be posted
+     * (not enough stock, a serial gone...), nothing is.
      *
      * Anyone with the type's confirm permission who works in the draft's
      * warehouse may confirm it, its creator included.
@@ -759,30 +774,35 @@ final class PostingService
                 ]);
             }
 
-            $documentLines = [];
+            if ($kind->type->deliverySteps()) {
+                // An Order: a Delivery note waiting to be dispatched, holding the Order's stock.
+                $created = [$this->createDeliveryNote($kind->type, $header, $lines, $by)];
+            } else {
+                $documentLines = [];
 
-            foreach ($lines as $line) {
-                $documentLines[(string) $line->id] = new DocumentLine(
-                    productId: $line->product_id,
-                    unit: $line->unit_code,
-                    qty: (string) (int) round((float) $line->qty_entered),
-                    expiry: $line->expiry_date,
-                    serials: json_decode((string) $line->serials, true) ?: [],
-                    // A picked lot without a batch is saved with batch_no NULL: '' = that stock.
-                    batch: $line->batch_no ?? ($line->expiry_date === null ? null : ''),
-                );
+                foreach ($lines as $line) {
+                    $documentLines[(string) $line->id] = new DocumentLine(
+                        productId: $line->product_id,
+                        unit: $line->unit_code,
+                        qty: (string) (int) round((float) $line->qty_entered),
+                        expiry: $line->expiry_date,
+                        serials: json_decode((string) $line->serials, true) ?: [],
+                        // A picked lot without a batch is saved with batch_no NULL: '' = that stock.
+                        batch: $line->batch_no ?? ($line->expiry_date === null ? null : ''),
+                    );
+                }
+
+                $created = [$this->postDocument($kind->type, new Document(
+                    type: $kind->type->code,
+                    warehouseId: $warehouseId,
+                    customerId: $header->customer_id,
+                    date: $this->availability->today($warehouseId),
+                    note: $header->reference_note,
+                    lines: $documentLines,
+                    draftId: $header->id,
+                    branchId: $header->customer_branch_id,
+                ), $by)];
             }
-
-            $created = [$this->postDocument($kind->type, new Document(
-                type: $kind->type->code,
-                warehouseId: $warehouseId,
-                customerId: $header->customer_id,
-                date: $this->availability->today($warehouseId),
-                note: $header->reference_note,
-                lines: $documentLines,
-                draftId: $header->id,
-                branchId: $header->customer_branch_id,
-            ), $by)];
 
             DB::table('stock_draft')->where('id', $header->id)->update([
                 'status' => 'POSTED',
@@ -799,6 +819,498 @@ final class PostingService
 
             return $created;
         }));
+    }
+
+    /** A Delivery note's statuses before it is delivered. */
+    private const UNDELIVERED = ['CONFIRMED', 'DISPATCHED'];
+
+    /** Why a Delivery note line was delivered short (stock_transaction_line.shortage_reason). */
+    public const DELIVERY_REASONS = ['NOT_AVAILABLE', 'REFUSED', 'DAMAGED', 'REPLACED'];
+
+    /** Longest driver name, phone number and truck number on a Delivery note. */
+    public const MAX_DRIVER = ['driver_name' => 100, 'driver_phone' => 30, 'truck_no' => 30];
+
+    /**
+     * The Delivery note of a confirmed Order: CONFIRMED, today, with the Order's
+     * lines (and serials), taking over the Order's reservations. Lines the Order
+     * holds nothing for (saved before reservations existed) are reserved now.
+     * An expired lot is refused, as it could not be delivered.
+     *
+     * @param  \Illuminate\Support\Collection<int, \stdClass>  $lines  the Order's lines, with unit_code
+     */
+    private function createDeliveryNote(TypeUi $type, object $draft, $lines, User $by): StockTransaction
+    {
+        $warehouseId = (string) $draft->warehouse_id;
+
+        if (! DB::table('warehouse')->where('id', $warehouseId)->where('active', true)->exists()) {
+            throw new PostingRejected('stock.errors.warehouse_inactive');
+        }
+
+        if (! DB::table('customer')->where('id', $draft->customer_id)->where('active', true)->exists()) {
+            throw new PostingRejected('stock.errors.customer_inactive');
+        }
+
+        /** @var Collection<string, Product> $products */
+        $products = Product::withoutGlobalScopes()
+            ->with(['baseUnit', 'units.unit'])
+            ->where('customer_id', $draft->customer_id)
+            ->where('active', true)
+            ->findMany($lines->pluck('product_id')->unique())
+            ->keyBy('id');
+        $today = $this->availability->today($warehouseId)->toDateString();
+        $held = DB::table('stock_reservation')
+            ->whereIn('draft_line_id', $lines->pluck('id'))
+            ->groupBy('draft_line_id')
+            ->selectRaw('draft_line_id, sum(qty_base) as qty')
+            ->pluck('qty', 'draft_line_id');
+        $unreserved = [];
+
+        foreach ($lines as $line) {
+            $key = (string) $line->id;
+            $product = $products[$line->product_id] ?? throw new PostingRejected('transactions.form.errors.choose_item', [], $key, 'item');
+
+            if ($line->expiry_date !== null && $line->expiry_date < $today) {
+                throw new PostingRejected('stock.errors.expiry_expired', ['date' => Format::date(CarbonImmutable::parse($line->expiry_date))], $key, 'expiry');
+            }
+
+            if (! $product->is_service && (float) ($held[$line->id] ?? 0) <= 0) {
+                $unreserved[] = [
+                    'draft_line_id' => $key,
+                    'product' => $product,
+                    'qty_base' => (float) $line->qty_base,
+                    'expiry' => $line->expiry_date,
+                    'batch' => $line->batch_no,
+                    'serials' => json_decode((string) $line->serials, true) ?: [],
+                    'key' => $key,
+                ];
+            }
+        }
+
+        $this->reservations->reserveOrder($warehouseId, $draft->customer_id, $unreserved);
+
+        $transactionId = (string) DB::table('stock_transaction')->insertGetId([
+            'doc_no' => $this->numbers->next($type, CompanyTime::now()->year),
+            'transaction_type' => $type->code,
+            'status' => 'CONFIRMED',
+            'warehouse_id' => $warehouseId,
+            'customer_id' => $draft->customer_id,
+            'reference_note' => $draft->reference_note,
+            'document_date' => $today,
+            'created_by' => $by->id,
+            'draft_id' => $draft->id,
+            'customer_branch_id' => $draft->customer_branch_id,
+        ], 'id');
+
+        $lineIds = [];
+        $lineNo = 0;
+
+        foreach ($lines as $line) {
+            $lineId = (string) DB::table('stock_transaction_line')->insertGetId([
+                'transaction_id' => $transactionId,
+                'line_no' => ++$lineNo,
+                'product_id' => $line->product_id,
+                'expiry_date' => $line->expiry_date,
+                'batch_no' => $line->batch_no,
+                'unit_id' => $line->unit_id,
+                'qty_entered' => $line->qty_entered,
+                'qty_base' => $line->qty_base,
+            ], 'id');
+            $lineIds[(string) $line->id] = $lineId;
+            $serials = json_decode((string) $line->serials, true) ?: [];
+
+            if ($serials !== []) {
+                $this->linkSerials($lineId, DB::table('serial_number')
+                    ->where('product_id', $line->product_id)
+                    ->whereIn('serial_no', $serials)
+                    ->pluck('id')
+                    ->map(fn ($id) => (string) $id)
+                    ->all());
+            }
+        }
+
+        $this->reservations->moveToDeliveryNote($lineIds);
+        $transaction = StockTransaction::withoutGlobalScopes()->findOrFail($transactionId);
+
+        Audit::record('stock_transaction', $transactionId, 'CREATE', null, [
+            'doc_no' => $transaction->doc_no,
+            'type' => $type->code,
+            'status' => 'CONFIRMED',
+            'lines' => $lineNo,
+        ], $by->id);
+
+        return $transaction;
+    }
+
+    /**
+     * A Delivery note leaves the warehouse: CONFIRMED -> DISPATCHED, with the
+     * driver's name, phone and the truck number (each optional). Stock doesn't
+     * change: it stays reserved until delivered.
+     *
+     * @throws StockException with field driver_name / driver_phone / truck_no when one is too long
+     */
+    public function dispatchDelivery(StockTransaction $transaction, ?string $driver, ?string $phone, ?string $truck, User $by): void
+    {
+        $values = [];
+
+        foreach (['driver_name' => $driver, 'driver_phone' => $phone, 'truck_no' => $truck] as $field => $value) {
+            $value = trim((string) $value);
+
+            if (mb_strlen($value) > self::MAX_DRIVER[$field]) {
+                throw new PostingRejected('settings.errors.too_long', ['max' => self::MAX_DRIVER[$field]], null, $field);
+            }
+
+            $values[$field] = $value === '' ? null : $value;
+        }
+
+        DB::transaction(function () use ($transaction, $values, $by) {
+            $header = $this->lockUndelivered($transaction, $by);
+
+            if ($header->status !== 'CONFIRMED') {
+                throw $this->alreadyProcessed('deliveries.errors.already_dispatched', $header->dispatched_by, $header->dispatched_at, null);
+            }
+
+            DB::table('stock_transaction')->where('id', $header->id)->update($values + [
+                'status' => 'DISPATCHED',
+                'dispatched_at' => now(),
+                'dispatched_by' => $by->id,
+                'updated_at' => now(),
+            ]);
+
+            Audit::record('stock_transaction', $header->id, 'DISPATCH',
+                ['doc_no' => $header->doc_no, 'status' => 'CONFIRMED'],
+                ['doc_no' => $header->doc_no, 'status' => 'DISPATCHED'] + array_filter($values),
+                $by->id,
+            );
+        });
+    }
+
+    /**
+     * Confirms what reached the customer (Delivery note DISPATCHED -> POSTED;
+     * a Confirmed one must be dispatched first): per line the quantity delivered (0 to what was ordered; less
+     * needs a reason), the serials delivered, and optionally another item
+     * delivered instead (reason REPLACED: a new line pointing at this one).
+     * The note's reservation is released first; then only what was delivered
+     * leaves stock, from the line's lot. The rest is available again.
+     *
+     * @param  array<string, DeliveredLine>  $delivered  keyed by stock_transaction_line.id
+     *
+     * @throws StockException with the line id as row and field received / reason / serials,
+     *                        or item / unit / qty / expiry for the item delivered instead
+     */
+    public function deliver(StockTransaction $transaction, array $delivered, User $by): void
+    {
+        $this->translateDatabaseErrors(fn () => DB::transaction(function () use ($transaction, $delivered, $by) {
+            $header = $this->lockUndelivered($transaction, $by);
+            $type = TransactionTypes::get($header->transaction_type);
+
+            // Only what has left the warehouse can be delivered.
+            if ($header->status !== 'DISPATCHED') {
+                throw new PostingRejected('deliveries.errors.not_dispatched');
+            }
+
+            $lines = DB::table('stock_transaction_line as l')
+                ->join('unit as u', 'u.id', '=', 'l.unit_id')
+                ->where('l.transaction_id', $header->id)
+                ->orderBy('l.line_no')
+                ->get(['l.*', 'u.code as unit_code']);
+            $products = Product::withoutGlobalScopes()->with(['baseUnit', 'units.unit'])->findMany($lines->pluck('product_id')->unique())->keyBy('id');
+            // The serials ordered on every line, in one query (locked in id order).
+            $serialsByLine = DB::table('stock_transaction_line_serial as ls')
+                ->join('stock_transaction_line as l', 'l.id', '=', 'ls.line_id')
+                ->join('serial_number as s', 's.id', '=', 'ls.serial_id')
+                ->where('l.transaction_id', $header->id)
+                ->orderBy('s.id')
+                ->lockForUpdate()
+                ->get(['ls.line_id', 's.id', 's.serial_no'])
+                ->groupBy('line_id');
+            $plan = [];
+
+            // Check every line first; nothing is written until all are valid.
+            foreach ($lines as $line) {
+                $entry = $delivered[$line->id] ?? throw new PostingRejected('deliveries.errors.delivered_required', [], $line->id, 'received');
+                $product = $products[$line->product_id];
+                $orderedBase = (float) $line->qty_base;
+                $ordered = $serialsByLine->get($line->id, collect())->pluck('serial_no', 'id')->all();
+                $text = trim((string) $entry->qty);
+
+                if (! self::whole($text)) {
+                    throw new PostingRejected('transactions.form.errors.number', [], $line->id, 'received');
+                }
+
+                if ((float) $text < 0) {
+                    throw new PostingRejected('transactions.form.errors.not_negative', [], $line->id, 'received');
+                }
+
+                if (self::tooLarge($text)) {
+                    throw self::tooLargeError($line->id, 'received');
+                }
+
+                $deliveredBase = $product->converter()->toBase($text, $line->unit_code);
+
+                if ($deliveredBase > $orderedBase + 1e-9) {
+                    throw new PostingRejected('deliveries.errors.more_than_ordered', ['qty' => $product->converter()->breakdown($orderedBase, [$line->unit_code])], $line->id, 'received');
+                }
+
+                if (round($deliveredBase, 4) != $deliveredBase) {
+                    throw new PostingRejected('stock.errors.not_exact', [], $line->id, 'received');
+                }
+
+                $deliveredSerials = [];
+
+                if ($ordered !== []) {
+                    $deliveredSerials = array_values(array_unique($entry->serials));
+                    $unknown = array_diff($deliveredSerials, $ordered);
+
+                    if ($unknown !== []) {
+                        throw new SerialProblem('deliveries.errors.serial_not_ordered', ['serial' => reset($unknown)], (string) reset($unknown), $line->id);
+                    }
+
+                    if (count($deliveredSerials) !== (int) $deliveredBase) {
+                        throw new PostingRejected('stock.errors.serial_count', ['count' => Format::qty($deliveredBase)], $line->id, 'serials');
+                    }
+                }
+
+                $short = $deliveredBase < $orderedBase - 1e-9;
+                $reason = $short ? $entry->reason : null;
+
+                if ($short && ! in_array($reason, self::DELIVERY_REASONS, true)) {
+                    throw new PostingRejected('deliveries.errors.reason_required', [], $line->id, 'reason');
+                }
+
+                if ($entry->instead !== null && $reason !== 'REPLACED') {
+                    throw new PostingRejected('deliveries.errors.instead_needs_replaced', [], $line->id, 'reason');
+                }
+
+                if ($reason === 'REPLACED' && $entry->instead === null) {
+                    throw new PostingRejected('deliveries.errors.instead_required', [], $line->id, 'item');
+                }
+
+                $plan[] = compact('line', 'product', 'deliveredBase', 'reason', 'ordered', 'deliveredSerials') + ['instead' => $entry->instead];
+            }
+
+            // Released first: what was delivered leaves stock now, the rest is available again.
+            $this->reservations->releaseDeliveryNote($header->id);
+
+            foreach ($plan as ['line' => $line, 'product' => $product, 'deliveredBase' => $deliveredBase, 'reason' => $reason, 'ordered' => $ordered, 'deliveredSerials' => $deliveredSerials]) {
+                if ($deliveredBase > 0 && ! $product->is_service) {
+                    $this->deliverStock($header, $line, $product, $deliveredBase, array_keys(array_intersect($ordered, $deliveredSerials)));
+                }
+
+                // The line keeps only the serials that were delivered.
+                $notDelivered = array_keys(array_diff($ordered, $deliveredSerials));
+
+                if ($notDelivered !== []) {
+                    DB::table('stock_transaction_line_serial')->where('line_id', $line->id)->whereIn('serial_id', $notDelivered)->delete();
+                }
+
+                DB::table('stock_transaction_line')->where('id', $line->id)->update(['qty_received' => $deliveredBase, 'shortage_reason' => $reason]);
+            }
+
+            // Items delivered instead: new lines, after the note's own (rule 12: never a repeat).
+            $keys = [];
+            foreach ($lines as $line) {
+                $product = $products[$line->product_id];
+                $keys[$type->lineKey($product->id, $line->unit_code, $line->expiry_date, $product->track_expiry, (string) $line->batch_no)] = ['id' => (string) $line->id, 'number' => (int) $line->line_no];
+            }
+
+            $lineNo = (int) $lines->max('line_no');
+            $seenSerials = [];
+
+            foreach ($plan as ['line' => $line, 'instead' => $instead]) {
+                if ($instead !== null) {
+                    $this->deliverInstead($type, $header, $line, $instead, ++$lineNo, $keys, $seenSerials);
+                }
+            }
+
+            DB::table('stock_transaction')->where('id', $header->id)->update([
+                'status' => 'POSTED',
+                'delivered_at' => now(),
+                'delivered_by' => $by->id,
+                'posted_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            Audit::record('stock_transaction', $header->id, 'DELIVER',
+                ['doc_no' => $header->doc_no, 'status' => $header->status],
+                ['doc_no' => $header->doc_no, 'status' => 'POSTED', 'short_lines' => count(array_filter($plan, fn ($p) => $p['reason'] !== null))],
+                $by->id,
+            );
+
+            // Made from an order: its branch manager hears about it (sent only once this commits).
+            app(DeliveryNotifier::class)->delivered((string) $header->id);
+        }));
+    }
+
+    /**
+     * Takes what was delivered of one Delivery note line out of stock: from the
+     * line's lot (expiry items), or the item's balance; serial items by the
+     * serials delivered (which become ISSUED). Expired stock can't be delivered.
+     *
+     * @param  list<string>  $serialIds
+     */
+    private function deliverStock(object $header, object $line, Product $product, float $qty, array $serialIds): void
+    {
+        $key = (string) $line->id;
+
+        if ($product->track_expiry && $line->expiry_date !== null) {
+            $this->availability->takeLot($product, $header->warehouse_id, $header->customer_id, $line->expiry_date, (string) $line->batch_no, $qty, false, $key);
+            $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, $line->expiry_date, $line->batch_no, 'OUT', $qty);
+
+            return;
+        }
+
+        if ($product->track_expiry) {
+            foreach ($this->availability->allocate($product, $header->warehouse_id, $header->customer_id, $qty, false, $key) as $allocation) {
+                $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, $allocation['expiry'], self::batchColumn($allocation['batch']), 'OUT', $allocation['qty']);
+            }
+
+            return;
+        }
+
+        $available = $this->availability->lockNoExpiry($header->warehouse_id, $header->customer_id, $product->id);
+
+        if ($available < $qty - 1e-9) {
+            throw Availability::notEnough($product, $header->warehouse_id, $available, $qty, row: $key);
+        }
+
+        if ($serialIds !== []) {
+            $rows = DB::table('serial_number')->whereIn('id', $serialIds)->get(['id', 'serial_no', 'status', 'warehouse_id']);
+
+            foreach ($rows as $row) {
+                if ($row->status !== 'IN_STOCK' || $row->warehouse_id !== $header->warehouse_id) {
+                    throw new SerialProblem('stock.errors.serial_not_in_stock', ['serial' => $row->serial_no], $row->serial_no, $key);
+                }
+            }
+
+            $this->assertSerialsFree($product->id, $rows->pluck('serial_no')->all(), $key);
+            DB::table('serial_number')->whereIn('id', $serialIds)->update(['warehouse_id' => null, 'status' => 'ISSUED', 'updated_at' => now()]);
+        }
+
+        $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, null, null, 'OUT', $qty);
+    }
+
+    /**
+     * Another item delivered instead of $replaced: one new line of the note
+     * (delivered in full, pointing at the line it replaces), taken out of stock
+     * that is not reserved, like any line going out.
+     *
+     * @param  array<string, array{id: string, number: int}>  $keys  line keys already on the note (rule 12)
+     * @param  array<string, true>  $seenSerials
+     */
+    private function deliverInstead(TypeUi $type, object $header, object $replaced, DocumentLine $line, int $lineNo, array &$keys, array &$seenSerials): void
+    {
+        $key = (string) $replaced->id;
+        $product = Product::withoutGlobalScopes()
+            ->with(['baseUnit', 'units.unit'])
+            ->where('customer_id', $header->customer_id)
+            ->where('active', true)
+            ->find($line->productId)
+            ?? throw new PostingRejected('transactions.form.errors.choose_item', [], $key, 'item');
+
+        if ($product->is_service && ! $type->allowsServices()) {
+            throw new PostingRejected('transactions.form.errors.service_not_here', ['item' => $product->name(), 'type' => $type->label('singular')], $key, 'item');
+        }
+
+        if (! $product->converter()->has($line->unit)) {
+            throw new PostingRejected('transactions.form.errors.choose_unit', [], $key, 'unit');
+        }
+
+        if ($product->track_serial && $product->track_expiry) {
+            throw new PostingRejected('stock.errors.serial_and_expiry', [], $key, 'item');
+        }
+
+        $qty = $this->quantity($line->qty, $key);
+        $qtyBase = $product->converter()->toBase($qty, $line->unit);
+
+        if (self::tooLarge((string) $qty, $qtyBase)) {
+            throw self::tooLargeError($key);
+        }
+
+        if (round($qtyBase, 4) != $qtyBase) {
+            throw new PostingRejected('stock.errors.not_exact', [], $key, 'qty');
+        }
+
+        $expiry = $product->track_expiry ? $this->chosenExpiry($line, $key) : null;
+        $batch = $expiry === null ? null : $this->lotBatch($product, $header->warehouse_id, $header->customer_id, $expiry, $this->chosenBatch($line, $key), $key);
+        $lineKey = $type->lineKey($product->id, $line->unit, $expiry, $product->track_expiry, $batch);
+
+        if (isset($keys[$lineKey])) {
+            [$message, $params] = $type->duplicateMessage($product->name(), $line->unit, $expiry, $product->track_expiry, $keys[$lineKey]['number'], $batch);
+
+            throw new DuplicateLine($message, $params, $key, $keys[$lineKey]['id']);
+        }
+
+        $keys[$lineKey] = ['id' => $key, 'number' => $lineNo];
+
+        $context = [
+            'transaction' => $header->id,
+            'line_no' => $lineNo,
+            'warehouse' => $header->warehouse_id,
+            'customer' => $header->customer_id,
+            'unit' => $product->units->firstWhere('unit.code', $line->unit)->unit_id,
+            'qty' => $qty,
+            'qty_base' => $qtyBase,
+            'date' => $this->availability->today($header->warehouse_id),
+        ];
+
+        $lineId = $product->is_service
+            ? $this->insertLine($context, $product, null)
+            : $this->postOut($context, $product, $expiry, $batch, $product->track_serial ? $this->serials($line, $qtyBase, $seenSerials, $key) : [], false, $key);
+
+        DB::table('stock_transaction_line')->where('id', $lineId)->update(['qty_received' => $qtyBase, 'replaces_line_id' => $replaced->id]);
+    }
+
+    /**
+     * A Delivery note cancelled before delivery: what it holds is released;
+     * no stock had left.
+     */
+    private function cancelUndelivered(object $header, User $by, string $reason): void
+    {
+        if (! $by->canAccessWarehouse($header->warehouse_id)) {
+            throw new NotAllowed('stock.errors.warehouse_not_allowed');
+        }
+
+        $this->reservations->releaseDeliveryNote($header->id);
+        DB::table('stock_transaction')->where('id', $header->id)->update(['status' => 'CANCELLED', 'updated_at' => now()]);
+
+        Audit::record('stock_transaction', $header->id, 'CANCEL',
+            ['doc_no' => $header->doc_no, 'status' => $header->status],
+            ['doc_no' => $header->doc_no, 'status' => 'CANCELLED', 'released' => true, 'reason' => $reason],
+            $by->id,
+        );
+    }
+
+    /**
+     * Locks a Delivery note that is not delivered yet and that $by may dispatch /
+     * deliver (the type's permission, in its warehouse). One delivered or
+     * cancelled meanwhile is refused with who did it.
+     */
+    private function lockUndelivered(StockTransaction $transaction, User $by): object
+    {
+        $header = DB::table('stock_transaction')->where('id', $transaction->id)->lockForUpdate()->first();
+        $type = TransactionTypes::get($header->transaction_type);
+
+        if (! $type->deliverySteps()) {
+            throw new PostingRejected('stock.errors.type_not_supported');
+        }
+
+        if ($header->status === 'POSTED') {
+            throw $this->alreadyProcessed('deliveries.errors.already_delivered', $header->delivered_by, $header->delivered_at, null);
+        }
+
+        if (! in_array($header->status, self::UNDELIVERED, true)) {
+            throw new AlreadyProcessed('deliveries.errors.cancelled');
+        }
+
+        if (! $by->hasPermission($type->createPermission())) {
+            throw new NotAllowed('deliveries.errors.not_allowed');
+        }
+
+        if (! $by->canAccessWarehouse($header->warehouse_id)) {
+            throw new NotAllowed('stock.errors.warehouse_not_allowed');
+        }
+
+        return $header;
     }
 
     /**
@@ -997,6 +1509,8 @@ final class PostingService
                 $serialIds[] = $row->id;
             }
 
+            $this->assertSerialsFree($product->id, $picked, $key);
+
             $this->checkSerialsOnDate($warehouseId, $product->id, $picked, $date, $key);
             $seen['serials'] = $seenSerials;
         }
@@ -1128,6 +1642,20 @@ final class PostingService
             }
         }
 
+        // Stock held for orders can't be counted away: those orders must change first.
+        $reserved = $this->reservations->reservedOn($warehouseId, $customerId, $product->id, $expiry, $batch);
+
+        if ($counted < $reserved - 1e-9) {
+            throw new PostingRejected('stock.errors.count_below_reserved', [
+                'qty' => $converter->breakdown($reserved, [$line->unit]),
+                'orders' => $this->holderReferences($warehouseId, $customerId, $product->id),
+            ], $key, $product->track_serial ? 'serials' : 'qty');
+        }
+
+        if ($missing !== [] && ($held = DB::table('stock_reservation as r')->join('serial_number as s', 's.id', '=', 'r.serial_id')->whereIn('r.serial_id', $missing)->value('s.serial_no')) !== null) {
+            throw new SerialProblem('stock.errors.serial_reserved_missing', ['serial' => $held], $held, $key);
+        }
+
         $difference = round($counted - $system, 4);
 
         if ($difference == 0) {
@@ -1228,6 +1756,7 @@ final class PostingService
                     throw new SerialProblem('stock.errors.serial_not_in_stock', ['serial' => $gone->serial_no], $gone->serial_no, $key);
                 }
 
+                $this->assertSerialsFree($product->id, $serials->pluck('serial_no')->all(), $key);
                 $this->checkSerialsOnDate($header->warehouse_id, $product->id, $serials->pluck('serial_no')->all(), $date, $key);
 
                 $this->move($header->id, $line->id, $header->warehouse_id, $header->customer_id, $product->id, null, null, 'OUT', (float) $line->qty_base);
@@ -1249,18 +1778,21 @@ final class PostingService
     }
 
     /**
-     * Locks one balance row (item, and lot or none) and returns it; 0 when there is none.
+     * Locks one balance row (item, and lot or none) and returns it; 0 when there
+     * is none. With $available, only what is not reserved.
      */
-    private function lockBalance(string $warehouseId, string $customerId, string $productId, ?string $expiry, ?string $batch = null): float
+    private function lockBalance(string $warehouseId, string $customerId, string $productId, ?string $expiry, ?string $batch = null, bool $available = false): float
     {
-        return (float) (DB::table('stock_balance')
+        $row = DB::table('stock_balance')
             ->where('warehouse_id', $warehouseId)
             ->where('customer_id', $customerId)
             ->where('product_id', $productId)
             ->where('expiry_key', $expiry ?? self::NO_EXPIRY)
             ->where('batch_key', (string) $batch)
             ->lockForUpdate()
-            ->value('qty_base') ?? 0);
+            ->first(['qty_base', 'qty_reserved']);
+
+        return $row === null ? 0.0 : (float) $row->qty_base - ($available ? (float) $row->qty_reserved : 0.0);
     }
 
     /** stock_balance.expiry_key / in_transit_balance.expiry_key of items without expiry. */
@@ -1363,7 +1895,7 @@ final class PostingService
      * @param  array<string, mixed>  $context
      * @param  list<string>  $serials
      */
-    private function postOut(array $context, Product $product, ?string $expiry, ?string $batch, array $serials, bool $useExpired, string $key, bool $inTransit = false): void
+    private function postOut(array $context, Product $product, ?string $expiry, ?string $batch, array $serials, bool $useExpired, string $key, bool $inTransit = false): string
     {
         $needed = $context['qty_base'];
         $date = $context['date'];
@@ -1388,7 +1920,7 @@ final class PostingService
                 }
             }
 
-            return;
+            return $lineId;
         }
 
         $available = $this->availability->lockNoExpiry($context['warehouse'], $context['customer'], $product->id);
@@ -1416,6 +1948,7 @@ final class PostingService
             $serialIds[] = $row->id;
         }
 
+        $this->assertSerialsFree($product->id, $serials, $key);
         $this->checkSerialsOnDate($context['warehouse'], $product->id, $serials, $date, $key);
 
         $lineId = $this->insertLine($context, $product, null);
@@ -1429,6 +1962,33 @@ final class PostingService
             DB::table('serial_number')->whereIn('id', $serialIds)->update(['warehouse_id' => null, 'status' => $inTransit ? 'IN_TRANSIT' : 'ISSUED', 'updated_at' => now()]);
             $this->linkSerials($lineId, $serialIds);
         }
+
+        return $lineId;
+    }
+
+    /**
+     * Serials held by an Order / Delivery note can't go out on anything else.
+     *
+     * @param  list<string>  $serials
+     */
+    private function assertSerialsFree(string $productId, array $serials, ?string $key): void
+    {
+        $held = $this->availability->reservedSerials($productId, $serials);
+
+        if ($held !== []) {
+            throw new SerialProblem('stock.errors.serial_reserved', ['serial' => $held[0]], $held[0], $key);
+        }
+    }
+
+    /**
+     * "ORD-2026-000045, DN-2026-000012": the Orders / Delivery notes holding an
+     * item here (at most three named).
+     */
+    private function holderReferences(string $warehouseId, string $customerId, string $productId): string
+    {
+        $references = array_column($this->reservations->holders($warehouseId, $customerId, $productId), 'reference');
+
+        return implode(', ', array_slice($references, 0, 3)).(count($references) > 3 ? ' …' : '');
     }
 
     /**
@@ -1546,7 +2106,8 @@ final class PostingService
             return $batch;
         }
 
-        $batches = $this->availability->batchesOn($warehouseId, $customerId, $product->id, $expiry);
+        // Taking stock: batches with stock that is not reserved. Counting ($required): all.
+        $batches = $this->availability->batchesOn($warehouseId, $customerId, $product->id, $expiry, available: ! $required);
 
         return match (count($batches)) {
             1 => $batches[0],
@@ -1666,7 +2227,8 @@ final class PostingService
         try {
             return $callback();
         } catch (QueryException $e) {
-            if (! str_contains($e->getMessage(), 'Negative stock blocked')) {
+            // "Reserved stock blocked": the stock is there but held for an order.
+            if (! str_contains($e->getMessage(), 'Negative stock blocked') && ! str_contains($e->getMessage(), 'Reserved stock blocked')) {
                 throw $e;
             }
 

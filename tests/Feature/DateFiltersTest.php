@@ -234,8 +234,8 @@ it('dates, filters and orders the stock card by the documents’ own dates, not 
     $today = CarbonImmutable::now('Asia/Beirut')->startOfDay();
     // Entered in this order today, but dated 10 days ago, 3 days ago and 5 days ago.
     $first = datedDocument($this->stock, 'IN', $today->subDays(10)->toDateString(), 60);
-    $last = datedDocument($this->stock, 'OUT', $today->subDays(3)->toDateString(), 12);
-    $middle = datedDocument($this->stock, 'OUT', $today->subDays(5)->toDateString(), 6);
+    $last = datedDocument($this->stock, 'DAMAGE', $today->subDays(3)->toDateString(), 12, 'HANDLING');
+    $middle = datedDocument($this->stock, 'DAMAGE', $today->subDays(5)->toDateString(), 6, 'HANDLING');
     $filters = ['customer' => $this->stock->customer->id, 'item' => $this->stock->id('BEANS'), 'warehouse' => $this->stock->warehouse->id];
     $cells = fn (Testable $page, string $cell) => collect($page->viewData('rows')->items())
         ->map(fn (array $row) => is_array($row['cells'][$cell]) ? ($row['cells'][$cell]['value'] ?? $row['cells'][$cell]['text']) : $row['cells'][$cell])->all();

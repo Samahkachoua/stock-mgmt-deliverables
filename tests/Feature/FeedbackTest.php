@@ -33,11 +33,12 @@ use Tests\Support\Stock;
 /**
  * A new form of $type in the fixture warehouse, with the fixture customer chosen.
  */
-function feedbackForm(Stock $stock, string $type = 'OUT'): Testable
+function feedbackForm(Stock $stock, string $type = 'TRANSFER'): Testable
 {
-
-    return Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => $type])
+    $form = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => $type])
         ->call('chooseCustomer', $stock->customer->id);
+
+    return $type === 'TRANSFER' ? $form->set('toWarehouse', Warehouse::factory()->create(['name' => 'Tripoli'])->id) : $form;
 }
 
 /**
@@ -114,16 +115,16 @@ it('says what was saved, with the reference and a link, after the redirect', fun
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 10)]);
 
-    $form = feedbackForm($stock);
+    $form = feedbackForm($stock, 'IN');
     $row = array_key_first($form->get('lines'));
     $form->set("lines.$row.item", $stock->id('BEANS'))->set("lines.$row.qty", '4')->call('save');
 
-    $deliveryNote = DB::table('stock_transaction')->where('transaction_type', 'OUT')->first();
+    $receipt = DB::table('stock_transaction')->where('transaction_type', 'IN')->orderByDesc('id')->first();
 
     expect(session(Notify::SESSION_KEY))->toBe([[
         'type' => 'success',
-        'message' => 'Delivery note '.$deliveryNote->doc_no.' saved',
-        'url' => route('delivery-note.show', $deliveryNote->doc_no),
+        'message' => __('feedback.saved', ['type' => __('transactions.types.receive.singular'), 'reference' => $receipt->doc_no]),
+        'url' => route('receive.show', $receipt->doc_no),
         'link' => 'View',
     ]]);
 });
@@ -177,7 +178,7 @@ it('summarises invalid rows in a red toast and keeps what was entered', function
         ]);
 
     expect($form->get("lines.$first.qty"))->toBe('500')
-        ->and(DB::table('stock_transaction')->where('transaction_type', 'OUT')->count())->toBe(0);
+        ->and(DB::table('stock_transaction')->where('transaction_type', 'TRANSFER')->count())->toBe(0);
 });
 
 it('summarises a failed validation of any form, but not validation while typing', function () {
@@ -209,7 +210,7 @@ it('says how much of which item is available in which warehouse', function () {
     // Only expired stock left is its own error.
     $stock->post('IN', [$stock->line('YOGURT', 6, expiry: now()->subDays(3)->toDateString())]);
 
-    expect(fn () => $stock->post('OUT', [$stock->line('YOGURT', 1)]))
+    expect(fn () => $stock->dispatch([$stock->line('YOGURT', 1)], Warehouse::factory()->create()))
         ->toThrow(OnlyExpiredStock::class, 'The remaining 1 Box of Yogurt in Beirut Main are expired.');
 });
 

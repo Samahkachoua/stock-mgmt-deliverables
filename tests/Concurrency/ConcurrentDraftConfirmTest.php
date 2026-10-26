@@ -19,7 +19,8 @@ use Tests\Support\Stock;
 /*
  * Two separate processes, each with its own database connection, confirm the
  * same order at the same moment. Exactly one may: the draft becomes one
- * delivery note, and stock goes out once.
+ * delivery note, which takes over the order's reservation once (no stock
+ * leaves until it is delivered).
  *
  * This test commits real rows, so it can't run inside RefreshDatabase's
  * transaction (tests/Pest.php gives this folder no database trait). It cleans
@@ -54,6 +55,7 @@ afterEach(function () {
     $lines = DB::table('stock_transaction_line')->whereIn('transaction_id', $transactions)->pluck('id');
     $drafts = DB::table('stock_draft')->where('customer_id', $this->customer->id)->pluck('id');
 
+    DB::table('stock_reservation')->where('customer_id', $this->customer->id)->delete();
     DB::table('audit_log')->where('entity', 'stock_transaction')->whereIn('entity_id', $transactions)->delete();
     DB::table('audit_log')->where('entity', 'stock_draft')->whereIn('entity_id', $drafts)->delete();
     DB::table('stock_movement')->whereIn('transaction_id', $transactions)->delete();
@@ -82,8 +84,10 @@ it('confirms a draft once when two people confirm it at the same moment', functi
         ->and($failed)->toHaveCount(1)
         ->and(array_values($failed)[0]['error'])->toBe('AlreadyProcessed')
         ->and(DB::table('stock_transaction')->where('draft_id', $this->draft->id)->count())->toBe(1)
-        ->and(DB::table('stock_movement')->where('product_id', $this->product->id)->where('direction', 'OUT')->count())->toBe(1)
-        ->and((float) DB::table('stock_balance')->where('product_id', $this->product->id)->sum('qty_base'))->toBe(0.0)
+        ->and(DB::table('stock_movement')->where('product_id', $this->product->id)->where('direction', 'OUT')->exists())->toBeFalse()
+        ->and((float) DB::table('stock_balance')->where('product_id', $this->product->id)->sum('qty_base'))->toBe(10.0)
+        ->and((float) DB::table('stock_balance')->where('product_id', $this->product->id)->sum('qty_reserved'))->toBe(10.0)
+        ->and(DB::table('stock_reservation')->where('customer_id', $this->customer->id)->whereNotNull('line_id')->count())->toBe(1)
         ->and(DB::table('stock_draft')->where('id', $this->draft->id)->value('status'))->toBe('POSTED')
         ->and(Stock::ledgerMismatches())->toBe([]);
 });

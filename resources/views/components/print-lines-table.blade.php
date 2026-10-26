@@ -12,7 +12,9 @@
 @use('App\Support\Format')
 
 @php
-    $mode = $type === null ? 'quantity' : ($type->dispatchReceive() ? 'transfer' : ($type->hasLineColumn('counted') ? 'count' : 'quantity'));
+    $mode = $type === null ? 'quantity' : ($type->dispatchReceive() || $type->deliverySteps() ? 'transfer' : ($type->hasLineColumn('counted') ? 'count' : 'quantity'));
+    $sentLabel = __($type?->deliverySteps() ? 'deliveries.deliver.ordered' : 'transactions.lines.sent');
+    $receivedLabel = __($type?->deliverySteps() ? 'deliveries.deliver.delivered' : 'transactions.lines.received');
     $expiries = collect($lines)->contains(fn ($line) => filled($line['expiry'] ?? null))
         && ($type === null || $type->hasLineColumn('expiry') || $type->hasLineColumn('expiry_pick') || $mode === 'count');
     $batches = $expiries && collect($lines)->contains(fn ($line) => filled($line['batch'] ?? null));
@@ -38,8 +40,8 @@
                 <th scope="col" class="{{ $th }}">{{ __('transactions.lines.expiry') }}</th>
             @endif
             @if ($mode === 'transfer')
-                <th scope="col" class="{{ $th }}">{{ __('transactions.lines.sent') }}</th>
-                <th scope="col" class="{{ $th }}">{{ __('transactions.lines.received') }}</th>
+                <th scope="col" class="{{ $th }}">{{ $sentLabel }}</th>
+                <th scope="col" class="{{ $th }}">{{ $receivedLabel }}</th>
             @elseif ($mode === 'count')
                 <th scope="col" class="{{ $th }}">{{ __('transactions.lines.in_system') }}</th>
                 <th scope="col" class="{{ $th }}">{{ __('transactions.lines.counted') }}</th>

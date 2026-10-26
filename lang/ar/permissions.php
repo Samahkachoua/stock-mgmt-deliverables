@@ -14,7 +14,7 @@ return [
     'labels' => [
         'stock_view' => 'عرض المخزون والمستندات',
         'stock_in_create' => 'إنشاء الاستلامات',
-        'stock_out_create' => 'إنشاء أذونات التسليم',
+        'stock_out_create' => 'شحن أذونات التسليم وتأكيد تسليمها',
         'stock_transfer_dispatch' => 'إرسال التحويلات',
         'stock_transfer_receive' => 'استلام التحويلات',
         'stock_damage_create' => 'تسجيل التالف',

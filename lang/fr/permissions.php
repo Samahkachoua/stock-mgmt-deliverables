@@ -14,7 +14,7 @@ return [
     'labels' => [
         'stock_view' => 'Voir le stock et les documents',
         'stock_in_create' => 'Créer des réceptions',
-        'stock_out_create' => 'Créer des bons de livraison',
+        'stock_out_create' => 'Expédier les bons de livraison et confirmer la livraison',
         'stock_transfer_dispatch' => 'Expédier des transferts',
         'stock_transfer_receive' => 'Recevoir des transferts',
         'stock_damage_create' => 'Enregistrer la casse',

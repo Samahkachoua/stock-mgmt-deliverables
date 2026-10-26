@@ -8,7 +8,6 @@
 @import '@fontsource/ibm-plex-sans-arabic/700.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
 @source '../../config/ui.php';

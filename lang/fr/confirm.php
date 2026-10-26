@@ -68,6 +68,7 @@ return [
         'title' => 'Annuler :type :reference ?',
         'returns' => 'Cela remet :stock dans le stock de :warehouse. Cette action est irréversible.',
         'removes' => 'Cela retire de nouveau :stock du stock de :warehouse. Cette action est irréversible.',
+        'releases' => 'Rien n’a encore été livré : :stock réservé à :warehouse redevient disponible. Cette action est irréversible.',
         'more' => '{1} :first et 1 autre article|[2,*] :first et :count autres articles',
         'stock' => ':qty de :item',
         'button' => 'Annuler :type',

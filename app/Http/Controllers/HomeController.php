@@ -64,7 +64,8 @@ class HomeController extends Controller
 
         return collect(DraftTypes::all())->values()
             ->concat($types->values())
-            ->filter(fn (TypeUi|DraftUi $kind) => $user->hasPermission($kind->createPermission()))
+            // A Delivery note has no "New" page: it comes from an Order.
+            ->filter(fn (TypeUi|DraftUi $kind) => ($kind instanceof DraftUi || $kind->creatable()) && $user->hasPermission($kind->createPermission()))
             ->sortBy(fn (TypeUi|DraftUi $kind) => array_search($kind->slug(), $order, true))
             ->values();
     }

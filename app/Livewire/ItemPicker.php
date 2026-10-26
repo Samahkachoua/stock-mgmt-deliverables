@@ -41,6 +41,9 @@ class ItemPicker extends Component
     /** Offer service items too (types that take them, TypeUi::allowsServices()). */
     public bool $services = false;
 
+    /** The Order being edited (stock_draft.id): what it holds is shown as available to it. */
+    public string $ownDraft = '';
+
     /** id for the search input / chosen-item button, so labels and focus can target it. */
     public string $inputId = '';
 
@@ -57,7 +60,7 @@ class ItemPicker extends Component
     #[Computed]
     public function results(): array
     {
-        return $this->customer === '' ? [] : ItemCatalog::search($this->customer, $this->search, $this->warehouseId(), self::MAX_RESULTS, withServices: $this->services);
+        return $this->customer === '' ? [] : ItemCatalog::search($this->customer, $this->search, $this->warehouseId(), self::MAX_RESULTS, withServices: $this->services, ownDraftId: $this->ownDraft ?: null);
     }
 
     /**
@@ -66,7 +69,7 @@ class ItemPicker extends Component
     #[Computed]
     public function chosen(): ?array
     {
-        return $this->customer === '' ? null : ItemCatalog::item($this->customer, $this->value, $this->warehouseId(), withServices: $this->services);
+        return $this->customer === '' ? null : ItemCatalog::item($this->customer, $this->value, $this->warehouseId(), withServices: $this->services, ownDraftId: $this->ownDraft ?: null);
     }
 
     public function updatedSearch(): void

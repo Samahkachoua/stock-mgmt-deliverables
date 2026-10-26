@@ -372,14 +372,14 @@ it('never asks for saving what can be cancelled, approving, confirming a receipt
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 36)]);
 
-    // A delivery note can be cancelled later: Save posts at once.
-    $deliveryNote = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'OUT'])->call('chooseCustomer', $stock->customer->id);
-    $row = array_key_first($deliveryNote->get('lines'));
-    $deliveryNote->set("lines.$row.item", $stock->id('BEANS'))->set("lines.$row.qty", '1')
+    // A receipt can be cancelled later: Save posts at once.
+    $receipt = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'IN'])->call('chooseCustomer', $stock->customer->id);
+    $row = array_key_first($receipt->get('lines'));
+    $receipt->set("lines.$row.item", $stock->id('BEANS'))->set("lines.$row.qty", '1')
         ->call('save')
         ->assertSet('confirm', null)
         ->assertRedirect();
-    expect($stock->balance('BEANS'))->toBe(35.0);
+    expect($stock->balance('BEANS'))->toBe(37.0);
 
     // Sending for approval changes no stock yet: no question either.
     DB::table('approval_threshold')->insert(['scope' => 'GLOBAL', 'transaction_type' => 'DAMAGE', 'qty_base' => 10]);
@@ -403,7 +403,7 @@ it('never asks for saving what can be cancelled, approving, confirming a receipt
     expect($damage->fresh()->status)->toBe('POSTED');
 
     // A line of a form that isn't saved yet just goes.
-    $form = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'OUT'])->call('chooseCustomer', $stock->customer->id);
+    $form = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'IN'])->call('chooseCustomer', $stock->customer->id);
     $row = array_key_first($form->get('lines'));
     $form->set("lines.$row.item", $stock->id('BEANS'))->set("lines.$row.qty", '2')->call('deleteLine', $row);
     expect($form->get('lines'))->not->toHaveKey($row);

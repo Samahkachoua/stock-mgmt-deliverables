@@ -28,7 +28,7 @@ final class DraftTypes
         $types = TransactionTypes::all();
 
         foreach (config('transactions.drafts') as $code => $config) {
-            if (isset($types[$code]) && $types[$code]->postsDirectly()) {
+            if (isset($types[$code]) && ($types[$code]->postsDirectly() || $types[$code]->deliverySteps())) {
                 $drafts[$code] = new DraftUi($code, $config, $types[$code]);
             }
         }

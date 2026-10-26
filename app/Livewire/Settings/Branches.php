@@ -31,7 +31,7 @@ class Branches extends MasterDataPage
 
     protected function blank(): array
     {
-        return ['customer_id' => '', 'code' => '', 'name' => '', 'address' => '', 'active' => true];
+        return ['customer_id' => '', 'code' => '', 'manager_email' => '', 'name' => '', 'address' => '', 'active' => true];
     }
 
     protected function rules(): array
@@ -39,6 +39,10 @@ class Branches extends MasterDataPage
         return [
             'form.customer_id' => ['required', 'integer', 'exists:customer,id'],
             'form.code' => ['required', 'string', 'max:20', Rule::unique('customer_branch', 'code')
+                ->where('customer_id', $this->form['customer_id'] ?? null)
+                ->ignore($this->editing ?: null)],
+            // One branch per customer per manager email (stored lower case; the database checks it too).
+            'form.manager_email' => ['required', 'string', 'max:320', 'email', Rule::unique('customer_branch', 'manager_email')
                 ->where('customer_id', $this->form['customer_id'] ?? null)
                 ->ignore($this->editing ?: null)],
             'form.name' => ['required', 'string', 'max:150'],
@@ -56,6 +60,10 @@ class Branches extends MasterDataPage
             'form.code.required' => __('settings.branches.errors.code_required'),
             'form.code.max' => __('settings.errors.too_long', ['max' => 20]),
             'form.code.unique' => __('settings.branches.errors.code_taken'),
+            'form.manager_email.required' => __('settings.branches.errors.manager_email_required'),
+            'form.manager_email.email' => __('settings.branches.errors.manager_email_invalid'),
+            'form.manager_email.max' => __('settings.errors.too_long', ['max' => 320]),
+            'form.manager_email.unique' => __('settings.branches.errors.manager_email_taken'),
             'form.name.required' => __('settings.branches.errors.name_required'),
             'form.name.max' => __('settings.errors.too_long', ['max' => 150]),
             'form.address.max' => __('settings.errors.too_long', ['max' => 500]),
@@ -73,6 +81,21 @@ class Branches extends MasterDataPage
         }
 
         return [];
+    }
+
+    /**
+     * The manager email is kept trimmed and lower case, so "Rana@Acme.com " and
+     * "rana@acme.com" are the same email.
+     */
+    protected function normalize(array $form): array
+    {
+        $form = parent::normalize($form);
+
+        if (is_string($form['manager_email'] ?? null)) {
+            $form['manager_email'] = mb_strtolower(trim($form['manager_email']));
+        }
+
+        return $form;
     }
 
     protected function applySearch(Builder $query, string $search): void

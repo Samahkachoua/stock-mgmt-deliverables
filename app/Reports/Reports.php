@@ -21,6 +21,7 @@ final class Reports
         AdjustmentsReport::class,
         TransfersInTransitReport::class,
         TransferShortagesReport::class,
+        DeliveryDifferencesReport::class,
         AuditLogReport::class,
     ];
 

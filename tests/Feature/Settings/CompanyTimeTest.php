@@ -58,13 +58,13 @@ it('starts forms on today in the company time zone, not in UTC', function () {
     $stock = Stock::create();
     $stock->post('IN', [$stock->line('BEANS', 10)], date: CompanyTime::today());
 
-    $form = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'OUT']);
+    $form = Livewire::actingAs($stock->user)->test(TransactionForm::class, ['type' => 'DAMAGE']);
 
     expect($form->get('date'))->toBe('2026-10-22')
         ->and($form->html())->toContain('max="2026-10-22"');
 
     // Dated today there: not refused as "in the future", and not backdated either.
-    $deliveryNote = $stock->post('OUT', [$stock->line('BEANS', 4)], date: CarbonImmutable::parse('2026-10-22'));
+    $deliveryNote = $stock->post('DAMAGE', [$stock->line('BEANS', 4)], $stock->user, reason: 'HANDLING', date: CarbonImmutable::parse('2026-10-22'));
     expect($deliveryNote->status)->toBe('POSTED')
         ->and(substr((string) $deliveryNote->getRawOriginal('document_date'), 0, 10))->toBe('2026-10-22');
 });

@@ -160,11 +160,12 @@ it('edits a draft, and lets a confirmer change a quantity and confirm in one ste
 
     $form->set("lines.$first.qty", '3')->call('saveAndConfirm')->assertHasNoErrors();
 
-    // One delivery note, from the order's warehouse only.
+    // One delivery note, from the order's warehouse only, holding the 3 until delivered.
     expect($draft->fresh()->status)->toBe('POSTED')
         ->and(DB::table('stock_transaction')->where('draft_id', $draft->id)->pluck('warehouse_id')->all())->toBe([$this->depot->id])
-        ->and($this->stock->balance('BEANS'))->toBe(10.0)
-        ->and($this->stock->balance('BEANS', warehouse: $this->depot))->toBe(7.0);
+        ->and($this->stock->balance('BEANS', warehouse: $this->depot))->toBe(10.0)
+        ->and($this->stock->reserved('BEANS', warehouse: $this->depot))->toBe(3.0)
+        ->and($this->stock->reserved('BEANS'))->toBe(0.0);
 });
 
 it('offers no "Save and confirm" to whoever may not confirm', function () {
@@ -216,6 +217,8 @@ it('refuses a draft that repeats an item and unit (rule 12)', function () {
 it('shows why a confirmation failed under the line concerned', function () {
     $this->stock->post('IN', [$this->stock->line('BEANS', 5)]);
     $draft = savedDraft($this, 'OUT', [5]);
+    // An order saved before reservations existed holds nothing: others could take its stock.
+    DB::select('SELECT fn_release_reservations(ARRAY(SELECT id FROM stock_reservation))');
     $this->stock->post('OUT', [$this->stock->line('BEANS', 2)]);
     $line = DB::table('stock_draft_line')->where('draft_id', $draft->id)->value('id');
 
@@ -266,13 +269,14 @@ it('lists drafts the user may see, and opens list, details and print pages', fun
 
 it('offers New Draft Receipt / Order on Home to whoever may create them, above the document they become', function () {
     // OPERATOR creates both drafts and the documents: each draft sits just above its document.
+    // A delivery note has no "New": it always comes from an order.
     $operator = userWithRole('OPERATOR', $this->stock->warehouse);
     $labels = $this->actingAs($operator)->get(route('home'))->viewData('create')->map(fn ($kind) => $kind->label('new'))->all();
 
     expect(array_slice($labels, 0, 4))->toBe([
         __('drafts.types.receipt.new'), __('transactions.types.receive.new'),
-        __('drafts.types.order.new'), __('transactions.types.delivery_note.new'),
-    ]);
+        __('drafts.types.order.new'), __('transactions.types.transfer.new'),
+    ])->and($labels)->not->toContain(__('transactions.types.delivery_note.new'));
     $this->get(route('home'))
         ->assertSee(route('draft-receipts.create'), false)
         ->assertSee(route('orders.create'), false);
@@ -328,6 +332,7 @@ it('adds branches in Settings, each code once per customer', function () {
         ->set('form.customer_id', $this->stock->customer->id)
         ->set('form.name', 'Harbour')
         ->set('form.code', 'hb')
+        ->set('form.manager_email', 'hb@acme.test')
         ->call('save')
         ->assertHasNoErrors()
         ->call('add')
@@ -336,6 +341,7 @@ it('adds branches in Settings, each code once per customer', function () {
         ->assertHasErrors(['form.code' => 'unique'])
         ->set('form.customer_id', $other->id)
         ->set('form.name', 'Downtown')
+        ->set('form.manager_email', 'dt@other.test')
         ->call('save')
         ->assertHasNoErrors();
 

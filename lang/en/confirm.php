@@ -68,6 +68,7 @@ return [
         'title' => 'Cancel :type :reference?',
         'returns' => 'This returns :stock to :warehouse stock and can’t be undone.',
         'removes' => 'This takes :stock out of :warehouse stock again and can’t be undone.',
+        'releases' => 'Nothing was delivered yet: :stock reserved in :warehouse becomes available again. This can’t be undone.',
         'more' => '{1} :first and 1 other item|[2,*] :first and :count other items',
         'stock' => ':qty of :item',
         'button' => 'Cancel :type',

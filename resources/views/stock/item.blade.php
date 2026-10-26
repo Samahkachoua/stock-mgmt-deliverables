@@ -56,6 +56,14 @@
                     <dd class="text-end font-semibold text-fg tabular">{{ Format::qtyUnit($total, $base) }} <span class="font-normal text-muted">({{ $converter->breakdown($total) }})</span></dd>
                 </div>
                 <div class="flex justify-between gap-4 py-2 text-body">
+                    <dt class="text-muted">{{ __('reports.columns.reserved') }}</dt>
+                    <dd class="text-end font-semibold text-fg tabular">{{ $reserved > 0 ? Format::qtyUnit($reserved, $base) : '—' }}</dd>
+                </div>
+                <div class="flex justify-between gap-4 py-2 text-body">
+                    <dt class="text-muted">{{ __('reports.columns.available') }}</dt>
+                    <dd class="text-end font-semibold text-fg tabular">{{ Format::qtyUnit($total - $reserved, $base) }}</dd>
+                </div>
+                <div class="flex justify-between gap-4 py-2 text-body">
                     <dt class="text-muted">{{ __('reports.columns.in_transit') }}</dt>
                     <dd class="text-end font-semibold text-fg tabular">{{ $arriving > 0 ? Format::qtyUnit($arriving, $base) : '—' }}</dd>
                 </div>
@@ -138,6 +146,21 @@
                         @endforeach
                     </ul>
                 @endif
+            </section>
+        @endif
+
+        {{-- Who holds part of it: orders and delivery notes not delivered yet. --}}
+        @if ($holders->isNotEmpty())
+            <section class="rounded-xl border border-default bg-card p-card shadow-card" aria-labelledby="reserved-by">
+                <h2 id="reserved-by" class="text-h3 font-semibold text-fg">{{ __('reports.item.reserved_by') }}</h2>
+                <ul class="mt-3 flex flex-col divide-y divide-default">
+                    @foreach ($holders as $holder)
+                        <li class="flex flex-wrap items-center justify-between gap-3 py-2 text-body">
+                            <a href="{{ $holder['url'] }}" wire:navigate class="inline-flex min-h-control items-center font-semibold text-brand hover:underline"><span dir="ltr" class="tabular">{{ $holder['reference'] }}</span></a>
+                            <span class="font-semibold text-fg tabular">{{ Format::qtyUnit($holder['qty'], $base) }}</span>
+                        </li>
+                    @endforeach
+                </ul>
             </section>
         @endif
 

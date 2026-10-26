@@ -10,9 +10,16 @@
     // Transfers: only the destination receives, only the source cancels, and only while In transit.
     // Other posted documents are read-only; the only action on them is Cancel.
     $canReceive = $inTransit && Gate::allows('stock.transfer.receive') && $user->canAccessWarehouse($document['to_warehouse_id']);
+    // Delivery notes: Confirmed (reserved) -> Dispatched -> Delivered, by whoever delivers from its warehouse.
+    $undelivered = $ui->deliverySteps() && in_array($status, ['CONFIRMED', 'DISPATCHED'], true);
+    $mayDeliver = $undelivered && Gate::allows($ui->createPermission()) && $user->canAccessWarehouse($document['warehouse_id']);
+    // Dispatched first, then delivered: never straight from Confirmed.
+    $canDispatch = $mayDeliver && $status === 'CONFIRMED';
+    $canDeliver = $mayDeliver && $status === 'DISPATCHED';
+
     $canCancelPosted = $ui->cancellable() && Gate::allows($ui->cancelPermission()) && ($ui->dispatchReceive()
         ? $inTransit && $user->canAccessWarehouse($document['warehouse_id'])
-        : $status === 'POSTED');
+        : ($status === 'POSTED' || $undelivered));
 
     // Waiting for approval: approvers get Approve / Reject (which explains when it's their own document).
     $pending = $status === 'PENDING_APPROVAL';
@@ -23,11 +30,14 @@
     <div class="flex flex-col gap-section">
         <x-page-header :type="$ui" :title="$document['reference']" :back="$ui->route()" :back-label="$ui->label('title')" ltr>
             <x-slot:badge>
-                <x-status-badge :code="$status" />
+                <x-status-badge :code="$status" :type="$ui" />
             </x-slot:badge>
             <x-slot:actions>
                 @if ($canDecide)
                     <livewire:transactions.decide-approval :transaction-id="$document['id']" />
+                @endif
+                @if ($canDispatch)
+                    <livewire:transactions.dispatch-delivery :transaction-id="$document['id']" />
                 @endif
                 {{-- The print view (A4, always light) opens in a new tab and prints itself. --}}
                 <a href="{{ $ui->route('print', $document['reference']) }}" target="_blank" rel="noopener" class="flex h-control items-center gap-2 rounded-lg border border-control bg-card px-4 text-body font-semibold text-fg shadow-card hover:bg-card-hover">
@@ -49,9 +59,29 @@
 
         <x-transaction-summary :rows="$summary" />
 
+        @if ($undelivered)
+            <p class="flex items-center gap-2 rounded-lg border px-4 py-3 text-body font-semibold {{ config('ui.statuses.pending') }}" role="status">
+                <x-icon name="lock" />
+                {{ __('deliveries.deliver.reserved_notice') }}
+            </p>
+        @endif
+
         @if ($canReceive)
             <livewire:transactions.receive-transfer :transaction-id="$document['id']" />
+        @elseif ($canDeliver)
+            <livewire:transactions.deliver-note :transaction-id="$document['id']" />
         @else
+            @if ($canDispatch)
+                <p class="flex items-center gap-2 rounded-lg border px-4 py-3 text-body font-semibold {{ config('ui.statuses.transit') }}" role="status">
+                    <x-icon name="local_shipping" />
+                    {{ __('deliveries.deliver.dispatch_first') }}
+                </p>
+            @elseif ($undelivered)
+                <p class="flex items-center gap-2 rounded-lg border px-4 py-3 text-body font-semibold {{ config('ui.statuses.transit') }}" role="status">
+                    <x-icon name="local_shipping" />
+                    {{ __('deliveries.deliver.read_only', ['warehouse' => $document['warehouse']]) }}
+                </p>
+            @endif
             @if ($inTransit)
                 <p class="flex items-center gap-2 rounded-lg border px-4 py-3 text-body font-semibold {{ config('ui.statuses.transit') }}" role="status">
                     <x-icon name="local_shipping" />

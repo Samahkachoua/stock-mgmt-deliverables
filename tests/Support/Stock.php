@@ -3,13 +3,19 @@
 namespace Tests\Support;
 
 use App\Models\Customer;
+use App\Models\CustomerBranch;
 use App\Models\Product;
+use App\Models\StockDraft;
 use App\Models\StockTransaction;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\Stock\DeliveredLine;
 use App\Services\Stock\Document;
 use App\Services\Stock\DocumentLine;
+use App\Services\Stock\DraftInput;
+use App\Services\Stock\DraftLineInput;
+use App\Services\Stock\DraftService;
 use App\Services\Stock\PostingService;
 use App\Support\Transactions\TransactionTypes;
 use Carbon\CarbonImmutable;
@@ -36,6 +42,8 @@ final class Stock
     public readonly User $user;
 
     private ?User $requester = null;
+
+    private ?CustomerBranch $branch = null;
 
     private function __construct(
         public readonly Warehouse $warehouse,
@@ -92,11 +100,16 @@ final class Stock
      * Posts a document of $type with the given lines (keyed r1, r2, ...).
      * Damage and Adjustment need a $reason; they may end up waiting for approval,
      * and are created by requester() unless $by is given. Dated today unless $date is given.
+     * A Delivery note goes the only way it can: an Order, confirmed, delivered in full.
      *
      * @param  list<DocumentLine>  $lines
      */
     public function post(string $type, array $lines, ?User $by = null, ?Warehouse $warehouse = null, ?string $reason = null, ?CarbonImmutable $date = null): StockTransaction
     {
+        if (TransactionTypes::get($type)->deliverySteps()) {
+            return $this->deliver($lines, $by, $warehouse);
+        }
+
         $keyed = [];
         foreach ($lines as $i => $line) {
             $keyed['r'.($i + 1)] = $this->withBatch($type, $line);
@@ -106,6 +119,88 @@ final class Stock
             new Document($type, ($warehouse ?? $this->warehouse)->id, $this->customer->id, $date ?? CarbonImmutable::today(), null, $keyed, reason: $reason),
             $by ?? (TransactionTypes::get($type)->supportsApproval() ? $this->requester() : $this->user),
         );
+    }
+
+    /**
+     * Saves an Order for the fixture customer (it reserves its lines), in the
+     * fixture warehouse unless $warehouse is given.
+     *
+     * @param  list<DocumentLine>  $lines
+     */
+    public function order(array $lines, ?User $by = null, ?Warehouse $warehouse = null): StockDraft
+    {
+        $keyed = [];
+        foreach ($lines as $i => $line) {
+            $keyed['r'.($i + 1)] = new DraftLineInput($line->productId, $line->unit, (string) $line->qty, $line->expiry, $line->serials, $line->batch);
+        }
+
+        $this->branch ??= CustomerBranch::firstOrCreate(['customer_id' => $this->customer->id, 'code' => 'MAIN'], ['name' => 'Main branch']);
+        $today = CarbonImmutable::today();
+
+        return app(DraftService::class)->save(new DraftInput(
+            'OUT', $this->customer->id, $this->branch->id, ($warehouse ?? $this->warehouse)->id, $today, null, $keyed,
+            deliveryDate: $today, priority: 'NORMAL',
+        ), $by ?? $this->user);
+    }
+
+    /**
+     * An Order confirmed: its Delivery note, CONFIRMED (stock still reserved).
+     *
+     * @param  list<DocumentLine>  $lines
+     */
+    public function confirmOrder(array $lines, ?User $by = null, ?Warehouse $warehouse = null): StockTransaction
+    {
+        $draft = $this->order($lines, $by, $warehouse);
+
+        return app(DraftService::class)->confirm($draft, $by ?? $this->user)[0];
+    }
+
+    /**
+     * An Order confirmed, dispatched and delivered in full: the Delivery note, POSTED.
+     *
+     * @param  list<DocumentLine>  $lines
+     */
+    public function deliver(array $lines, ?User $by = null, ?Warehouse $warehouse = null): StockTransaction
+    {
+        $note = $this->confirmOrder($lines, $by, $warehouse);
+        app(PostingService::class)->dispatchDelivery($note, null, null, null, $by ?? $this->user);
+        app(PostingService::class)->deliver($note, self::deliveredInFull($note), $by ?? $this->user);
+
+        return $note->fresh();
+    }
+
+    /**
+     * Every line of a Delivery note delivered as ordered, keyed by line id.
+     *
+     * @return array<string, DeliveredLine>
+     */
+    public static function deliveredInFull(StockTransaction $note): array
+    {
+        $serials = DB::table('stock_transaction_line_serial as ls')
+            ->join('serial_number as s', 's.id', '=', 'ls.serial_id')
+            ->join('stock_transaction_line as l', 'l.id', '=', 'ls.line_id')
+            ->where('l.transaction_id', $note->id)
+            ->get(['ls.line_id', 's.serial_no'])
+            ->groupBy('line_id');
+
+        return DB::table('stock_transaction_line')->where('transaction_id', $note->id)->get()
+            ->mapWithKeys(fn ($line) => [(string) $line->id => new DeliveredLine(
+                (string) (int) round((float) $line->qty_entered),
+                serials: $serials->get($line->id, collect())->pluck('serial_no')->all(),
+            )])
+            ->all();
+    }
+
+    /**
+     * Base quantity of an item reserved here (all lots), or of one expiry date.
+     */
+    public function reserved(string $code, ?string $expiry = null, ?Warehouse $warehouse = null): float
+    {
+        return (float) DB::table('stock_balance')
+            ->where('warehouse_id', ($warehouse ?? $this->warehouse)->id)
+            ->where('product_id', $this->id($code))
+            ->when($expiry, fn ($query) => $query->where('expiry_date', $expiry))
+            ->sum('qty_reserved');
     }
 
     /**

@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $id
  * @property string $customer_id
  * @property string $code
+ * @property string|null $manager_email required in the form; null on branches from before it existed
  * @property string $name
  * @property string|null $address
  * @property bool $active
@@ -31,6 +32,7 @@ class CustomerBranch extends Model
     protected $fillable = [
         'customer_id',
         'code',
+        'manager_email',
         'name',
         'address',
         'active',

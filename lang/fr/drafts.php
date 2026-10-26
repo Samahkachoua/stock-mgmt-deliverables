@@ -22,8 +22,8 @@ return [
             'title' => 'Commandes',
             'singular' => 'Commande',
             'new' => 'Nouvelle commande',
-            'subtitle' => 'Stock demandé pour une agence du client. Le stock ne change pas tant que la commande n’est pas confirmée.',
-            'form_subtitle' => 'Indiquez ce qui doit sortir. Le stock change seulement à la confirmation.',
+            'subtitle' => 'Stock demandé pour une agence du client. Une commande réserve son stock ; il ne sort qu’à la livraison du bon de livraison.',
+            'form_subtitle' => 'Indiquez ce qui doit sortir. L’enregistrer le réserve : rien d’autre ne peut le prendre.',
             'branch' => 'Agence de destination',
             'branch_hint' => 'L’agence du client où vont les marchandises.',
             'delivery_date' => 'Date de livraison',
@@ -67,7 +67,7 @@ return [
         'confirmed_on' => 'Confirmé le',
         'cancel_reason' => 'Motif de l’annulation',
         'not_in_stock_in' => 'Pas encore en stock. La confirmation crée la réception dans :warehouse.',
-        'not_in_stock_out' => 'Toujours en stock. La confirmation crée le bon de livraison depuis :warehouse.',
+        'not_in_stock_out' => 'Réservé à :warehouse. La confirmation crée le bon de livraison, qui le garde réservé jusqu’à la livraison.',
         'waiting_for_confirmation' => 'En attente d’une personne autorisée à le confirmer.',
     ],
 
@@ -78,7 +78,7 @@ return [
         'lines_heading' => 'Articles',
         'choose_warehouse' => 'Choisir…',
         'notice_in' => 'Enregistrer ne change pas le stock. Une fois confirmé, ce sera une réception.',
-        'notice_out' => 'Enregistrer ne change pas le stock. Une fois confirmée, ce sera un bon de livraison.',
+        'notice_out' => 'Enregistrer réserve le stock : il reste dans l’entrepôt mais rien d’autre ne peut le prendre. Une fois confirmée, ce sera un bon de livraison.',
     ],
 
     'actions' => [
@@ -92,6 +92,7 @@ return [
     'confirm_cancel' => [
         'title' => 'Annuler :type :reference ?',
         'body' => 'Il ne pourra plus être modifié ni confirmé. Le stock n’est pas touché.',
+        'body_order' => 'Elle ne pourra plus être modifiée ni confirmée. Le stock qu’elle réservait redevient disponible.',
         'button' => 'Annuler :type',
         'reason' => 'Pourquoi est-il annulé ?',
         'reason_placeholder' => 'ex. L’agence a retiré la commande',

@@ -55,9 +55,23 @@ final class TypeUi
         return 'documents.'.$this->slug();
     }
 
+    /**
+     * The permission to act on documents of the type: create them on the "New"
+     * page, or for a type that is never created by hand (Delivery note, which
+     * comes from an Order) dispatch and deliver them.
+     */
     public function createPermission(): string
     {
         return $this->config['create'];
+    }
+
+    /**
+     * Whether the type has a "New" page. A Delivery note doesn't: it is always
+     * created by confirming an Order.
+     */
+    public function creatable(): bool
+    {
+        return $this->config['new'] ?? true;
     }
 
     public function approvePermission(): ?string
@@ -116,6 +130,15 @@ final class TypeUi
     }
 
     /**
+     * Confirmed from an Order (stock reserved), then dispatched, then delivered:
+     * stock leaves only on delivery (Delivery note).
+     */
+    public function deliverySteps(): bool
+    {
+        return $this->row->delivery_steps;
+    }
+
+    /**
      * IN or OUT for types that move stock one way; null for Adjustment / Transfer.
      */
     public function postingDirection(): ?string
@@ -132,12 +155,13 @@ final class TypeUi
     }
 
     /**
-     * Saving posts at once: one direction, no approval step, no dispatch/receive.
-     * Today that is Opening Balance, Receive and Delivery note (App\Services\Stock\PostingService).
+     * Saving posts at once: one direction, no approval step, no dispatch/receive,
+     * no delivery steps. Today that is Opening Balance and Receive
+     * (App\Services\Stock\PostingService).
      */
     public function postsDirectly(): bool
     {
-        return $this->postingDirection() !== null && ! $this->supportsApproval() && ! $this->dispatchReceive();
+        return $this->postingDirection() !== null && ! $this->supportsApproval() && ! $this->dispatchReceive() && ! $this->deliverySteps();
     }
 
     /**
@@ -151,12 +175,13 @@ final class TypeUi
 
     /**
      * Whether a document of this type can be cancelled: posted Opening Balance /
-     * Receive / Delivery note, or a transfer In transit. Damage and Adjustment can't: a
-     * wrong count is corrected by counting again.
+     * Receive, a Delivery note (before or after delivery), or a transfer In
+     * transit. Damage and Adjustment can't: a wrong count is corrected by
+     * counting again.
      */
     public function cancellable(): bool
     {
-        return $this->postsDirectly() || $this->dispatchReceive();
+        return $this->postsDirectly() || $this->dispatchReceive() || $this->deliverySteps();
     }
 
     /**
@@ -272,6 +297,15 @@ final class TypeUi
     public function limitedByStock(): bool
     {
         return $this->hint() === 'available';
+    }
+
+    /**
+     * This type's own label key for a status (`status_labels`), e.g. POSTED is
+     * "Delivered" on a Delivery note; null for the usual label.
+     */
+    public function statusLabel(string $code): ?string
+    {
+        return $this->config['status_labels'][$code] ?? null;
     }
 
     /**
