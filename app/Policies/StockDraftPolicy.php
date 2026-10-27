@@ -49,12 +49,13 @@ class StockDraftPolicy
     }
 
     /**
-     * Cancel a draft: still a draft, and the type's create permission.
+     * Cancel a draft: still a draft, and the kind's cancel permission
+     * (draft.in.cancel / draft.out.cancel).
      */
     public function cancel(User $user, StockDraft $draft): bool
     {
         return $draft->isDraft()
-            && $user->hasPermission(DraftTypes::get($draft->transaction_type)->createPermission())
+            && $user->hasPermission(DraftTypes::get($draft->transaction_type)->cancelPermission())
             && DraftService::canSee($this->header($draft), $user);
     }
 

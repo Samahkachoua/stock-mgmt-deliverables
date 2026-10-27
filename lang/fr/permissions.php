@@ -53,6 +53,8 @@ return [
         'stock_in_cancel' => 'Annuler des réceptions',
         'stock_out_cancel' => 'Annuler des bons de livraison',
         'stock_opening_cancel' => 'Annuler des stocks initiaux',
+        'draft_in_cancel' => 'Annuler des brouillons de réception',
+        'draft_out_cancel' => 'Annuler des commandes',
     ],
 
     'report' => 'Voir le rapport « :report »',

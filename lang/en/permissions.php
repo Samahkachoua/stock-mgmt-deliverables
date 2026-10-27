@@ -53,6 +53,8 @@ return [
         'stock_in_cancel' => 'Cancel receipts',
         'stock_out_cancel' => 'Cancel delivery notes',
         'stock_opening_cancel' => 'Cancel opening balances',
+        'draft_in_cancel' => 'Cancel draft receipts',
+        'draft_out_cancel' => 'Cancel orders',
     ],
 
     'report' => 'See the :report report',

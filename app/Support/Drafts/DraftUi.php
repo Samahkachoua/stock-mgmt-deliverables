@@ -46,6 +46,11 @@ final class DraftUi
         return $this->config['confirm'];
     }
 
+    public function cancelPermission(): string
+    {
+        return $this->config['cancel'];
+    }
+
     /**
      * The app_user column that says whether a confirmer gets an email about
      * these drafts (e.g. notify_new_orders).

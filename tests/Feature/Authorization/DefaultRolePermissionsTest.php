@@ -46,14 +46,14 @@ it('grants the default permissions to each role', function (string $role, array 
         'stock.opening.create', 'stock.view', ...REPORT_VIEWS, 'masterdata.manage',
         'product.manage', 'product.import', 'stock.in.cancel', 'stock.out.cancel', 'stock.opening.cancel',
         'draft.in.create', 'draft.in.confirm', 'draft.out.create', 'draft.out.confirm',
-        'draft.in.view', 'draft.out.view', ...LIST_VIEWS,
+        'draft.in.view', 'draft.out.view', 'draft.in.cancel', 'draft.out.cancel', ...LIST_VIEWS,
     ]],
     'OPERATOR' => ['OPERATOR', [
         'stock.in.create', 'stock.out.create', 'stock.damage.create', 'stock.adjustment.create',
         'stock.transfer.dispatch', 'stock.transfer.receive', 'stock.view',
-        'draft.in.create', 'draft.out.create', 'draft.in.view', 'draft.out.view', ...LIST_VIEWS,
+        'draft.in.create', 'draft.out.create', 'draft.in.view', 'draft.out.view', 'draft.in.cancel', 'draft.out.cancel', ...LIST_VIEWS,
     ]],
     'DATA_ENTRY' => ['DATA_ENTRY', ['product.manage', 'product.import', 'masterdata.manage', 'stock.view', ...LIST_VIEWS]],
     'AUDITOR' => ['AUDITOR', ['stock.view', ...REPORT_VIEWS, 'audit.view', 'stock.in.cancel', 'stock.out.cancel', 'stock.opening.cancel', ...LIST_VIEWS]],
-    'CUSTOMER' => ['CUSTOMER', ['stock.view', 'draft.in.create', 'draft.out.create', 'draft.in.view', 'draft.out.view', ...LIST_VIEWS]],
+    'CUSTOMER' => ['CUSTOMER', ['stock.view', 'draft.in.create', 'draft.out.create', 'draft.in.view', 'draft.out.view', 'draft.in.cancel', 'draft.out.cancel', ...LIST_VIEWS]],
 ]);

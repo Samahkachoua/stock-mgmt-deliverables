@@ -247,6 +247,28 @@ it('cancels a draft after asking, with a reason', function () {
     expect($draft->fresh()->status)->toBe('CANCELLED');
 });
 
+it('cancels an order only with the cancel orders permission', function () {
+    $this->stock->post('IN', [$this->stock->line('BEANS', 5)]);
+    $order = savedDraft($this, 'OUT', [1]);
+    $editor = userWithPermissions($this->stock->warehouse, ['draft.out.view', 'draft.out.create']);
+    $canceller = userWithPermissions($this->stock->warehouse, ['draft.out.view', 'draft.out.cancel']);
+
+    Livewire::actingAs($editor)
+        ->test(DraftPage::class, ['type' => 'OUT', 'reference' => $order->doc_no])
+        ->assertViewHas('canCancel', false)
+        ->call('askCancel')
+        ->assertForbidden();
+
+    Livewire::actingAs($canceller)
+        ->test(DraftPage::class, ['type' => 'OUT', 'reference' => $order->doc_no])
+        ->assertViewHas('canCancel', true)
+        ->call('askCancel')
+        ->set('confirmReason', 'Customer called it off')
+        ->call('runConfirmed');
+
+    expect($order->fresh()->status)->toBe('CANCELLED');
+});
+
 it('lists drafts the user may see, and opens list, details and print pages', function () {
     $draft = savedDraft($this, 'IN', [1]);
 

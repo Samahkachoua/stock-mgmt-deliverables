@@ -53,6 +53,8 @@ return [
         'stock_in_cancel' => 'إلغاء الاستلامات',
         'stock_out_cancel' => 'إلغاء أذونات التسليم',
         'stock_opening_cancel' => 'إلغاء الأرصدة الافتتاحية',
+        'draft_in_cancel' => 'إلغاء مسودات الاستلام',
+        'draft_out_cancel' => 'إلغاء الطلبيات',
     ],
 
     'report' => 'عرض تقرير :report',

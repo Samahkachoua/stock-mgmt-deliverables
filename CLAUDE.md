@@ -96,7 +96,8 @@ needs less explanation, not the one that is more configurable.
    `view` in config/transactions.php). Creating or approving/confirming a type
    opens it too (gates `documents.<slug>`, `drafts.in.open` / `drafts.out.open`).
    `stock.view` is only the Stock page. Each type cancels with its own
-   permission (`stock.in.cancel`, `stock.out.cancel`, `stock.opening.cancel`;
+   permission (`stock.in.cancel`, `stock.out.cancel`, `stock.opening.cancel`,
+   drafts `draft.in.cancel` / `draft.out.cancel`;
    `cancel` in config/transactions.php; a transfer In transit: its dispatcher).
    Each report has its own (`Report::permission()`, `report.<key>.view`).
    Settings › Roles shows one section per type (`permission.module`,
@@ -320,8 +321,13 @@ components — never per page.
   tooltips). Phone: sidebar hidden, opened as a drawer from a menu button
   in the top bar (closes on navigation / outside tap; slides from the
   correct side in Arabic).
-- Phone top bar: menu button, page title, user menu; theme and language
-  move into the user menu. No warehouse selector (see rule 7).
+- Phone top bar: menu button, page title, search button, user menu; theme
+  and language move into the user menu. No warehouse selector (see rule 7).
+- Top bar search (`App\Support\Search\GlobalSearch`, `livewire:global-search`):
+  documents/drafts by number or reference note, items (name, code, barcode),
+  customers, serials, batches — each group only with the permission of the
+  page it opens, always through the scoped models. "/" or Ctrl+K focuses it;
+  a phone opens it as a full-screen panel. Nothing else goes in it.
 
 **Filters bar**
 - The search input keeps its current size and position.

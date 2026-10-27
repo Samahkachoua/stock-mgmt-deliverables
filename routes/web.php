@@ -77,6 +77,15 @@ Route::middleware(['auth', 'warehouse'])->group(function () {
         ->name('stock.item')
         ->whereNumber(['product', 'warehouse'])
         ->middleware('can:stock.view');
+    // From the top bar search: the Stock page filtered to an item or a customer.
+    Route::get('/stock/for-item/{product}', [ListPresetController::class, 'stockItem'])
+        ->name('stock.for-item')
+        ->whereNumber('product')
+        ->middleware('can:stock.view');
+    Route::get('/stock/for-customer/{customer}', [ListPresetController::class, 'stockCustomer'])
+        ->name('stock.for-customer')
+        ->whereNumber('customer')
+        ->middleware('can:stock.view');
 
     // Reports (the add-report skill). Each report checks its own permission
     // (Report::permission(): report.<key>.view; the audit log audit.view). Filters live in the session,

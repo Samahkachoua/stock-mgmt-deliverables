@@ -176,6 +176,7 @@ return [
     |             to whoever may create or confirm drafts of this kind)
     |   create    permission to create and edit drafts
     |   confirm   permission to confirm (and to change a draft while confirming it)
+    |   cancel    permission to cancel a draft (releases an Order's reserved stock)
     |   lang      key under lang/<locale>/drafts.php `types` and `mail`
     |   notify    app_user column: whether a confirmer gets an email when one is
     |             added, changed or cancelled (Settings › Users)
@@ -191,6 +192,7 @@ return [
             'view' => 'draft.in.view',
             'create' => 'draft.in.create',
             'confirm' => 'draft.in.confirm',
+            'cancel' => 'draft.in.cancel',
             'lang' => 'receipt',
             'notify' => 'notify_draft_receipts',
         ],
@@ -202,6 +204,7 @@ return [
             'view' => 'draft.out.view',
             'create' => 'draft.out.create',
             'confirm' => 'draft.out.confirm',
+            'cancel' => 'draft.out.cancel',
             'lang' => 'order',
             'notify' => 'notify_new_orders',
             // Asks for a delivery date and a priority.

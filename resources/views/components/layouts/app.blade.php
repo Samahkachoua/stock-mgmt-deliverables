@@ -132,6 +132,11 @@
                 </button>
                 <p class="min-w-0 flex-1 truncate text-lead font-semibold text-fg md:hidden" aria-hidden="true">{{ $title }}</p>
 
+                {{-- Documents, items, customers, serials and batches (phone: a button opening a search panel). --}}
+                @auth
+                    <livewire:global-search />
+                @endauth
+
                 <div class="ms-auto flex shrink-0 items-center gap-2 xl:gap-4">
                     <div class="hidden items-center gap-2 md:flex xl:gap-4">
                         <livewire:theme-switcher />

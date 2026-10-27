@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -36,6 +37,40 @@ class ListPresetController extends Controller
         ]);
 
         return redirect()->route('reports.show', $report->key());
+    }
+
+    /**
+     * An item from the top bar search: the Stock page showing that item in
+     * all of the user's warehouses.
+     */
+    public function stockItem(Request $request, Product $product): RedirectResponse
+    {
+        return $this->stockPage($request, ['customer' => $product->customer_id, 'search' => $product->sku]);
+    }
+
+    /**
+     * A customer from the top bar search: the Stock page showing what that
+     * customer has in all of the user's warehouses.
+     */
+    public function stockCustomer(Request $request, Customer $customer): RedirectResponse
+    {
+        return $this->stockPage($request, ['customer' => $customer->id]);
+    }
+
+    /**
+     * @param  array<string, string>  $filters
+     */
+    private function stockPage(Request $request, array $filters): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+
+        // The Stock page is the stock-on-hand report under its own list state key (StockPage).
+        ListState::put('stock', [
+            'filters' => Reports::get('stock-on-hand')->normalize($filters + ['warehouse' => 'all'], $user),
+        ]);
+
+        return redirect()->route('stock');
     }
 
     /**

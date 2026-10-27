@@ -149,7 +149,7 @@ final class DraftService
 
             $this->assertStillDraft($header);
 
-            if (! $by->hasPermission($kind->createPermission()) || ! self::canSee($header, $by)) {
+            if (! $by->hasPermission($kind->cancelPermission()) || ! self::canSee($header, $by)) {
                 throw new NotAllowed('drafts.errors.cannot_cancel');
             }
 
