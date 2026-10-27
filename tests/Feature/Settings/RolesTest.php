@@ -41,9 +41,9 @@ it('offers an "all permissions" box under every role, listing every permission',
 
 it('saves the matrix and the change applies at once', function () {
     $operator = userWithRole('OPERATOR');
-    expect(Gate::forUser($operator)->allows('report.view'))->toBeFalse();
+    expect(Gate::forUser($operator)->allows('report.expiry.view'))->toBeFalse();
 
-    $grants = role('OPERATOR')->permissions()->pluck('permission.id')->push(permissionId('report.view'))->all();
+    $grants = role('OPERATOR')->permissions()->pluck('permission.id')->push(permissionId('report.expiry.view'))->all();
 
     Livewire::actingAs(userWithRole('ADMIN'))
         ->test(Roles::class)
@@ -53,7 +53,7 @@ it('saves the matrix and the change applies at once', function () {
         ->assertDispatched('toast', toast: ['type' => 'success', 'message' => __('settings.roles.saved'), 'url' => null, 'link' => null]);
 
     // The cached permission map was cleared: no manual flush needed.
-    expect(Gate::forUser(User::find($operator->id))->allows('report.view'))->toBeTrue();
+    expect(Gate::forUser(User::find($operator->id))->allows('report.expiry.view'))->toBeTrue();
 });
 
 it('records each changed role in the audit log', function () {
@@ -61,7 +61,7 @@ it('records each changed role in the audit log', function () {
 
     Livewire::actingAs($admin)
         ->test(Roles::class)
-        ->set('grants.'.role('CUSTOMER')->id, [permissionId('stock.view'), permissionId('report.view')])
+        ->set('grants.'.role('CUSTOMER')->id, [permissionId('stock.view'), permissionId('report.expiry.view')])
         ->call('save');
 
     $rows = DB::table('audit_log')->where('entity', 'role')->get();
@@ -71,7 +71,7 @@ it('records each changed role in the audit log', function () {
         ->and($rows[0]->action)->toBe('UPDATE')
         ->and($rows[0]->user_id)->toBe($admin->id)
         ->and(json_decode($rows[0]->before_data, true)['permissions'])->toBe(['draft.in.create', 'draft.in.view', 'draft.out.create', 'draft.out.view', 'stock.adjustment.view', 'stock.damage.view', 'stock.in.view', 'stock.opening.view', 'stock.out.view', 'stock.transfer.view', 'stock.view'])
-        ->and(json_decode($rows[0]->after_data, true)['permissions'])->toBe(['report.view', 'stock.view']);
+        ->and(json_decode($rows[0]->after_data, true)['permissions'])->toBe(['report.expiry.view', 'stock.view']);
 });
 
 it('does not let an administrator remove their own user management', function () {

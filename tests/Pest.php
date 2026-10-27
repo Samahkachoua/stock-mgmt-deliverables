@@ -3,7 +3,9 @@
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Support\Permissions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /*
@@ -85,6 +87,25 @@ function userWithRole(string $role, Warehouse ...$warehouses): User
 
     $user->roles()->attach(Role::where('code', $role)->firstOrFail());
     $user->warehouses()->attach(collect($warehouses ?: [Warehouse::factory()->create()])->pluck('id'));
+
+    return $user;
+}
+
+/**
+ * An active user in $warehouse whose only role grants exactly $codes.
+ *
+ * @param  list<string>  $codes
+ */
+function userWithPermissions(Warehouse $warehouse, array $codes): User
+{
+    $role = Role::create(['code' => 'TEST_'.strtoupper(uniqid()), 'name' => 'Test '.uniqid()]);
+    DB::table('role_permission')->insert(DB::table('permission')->whereIn('code', $codes)->pluck('id')
+        ->map(fn ($id) => ['role_id' => $role->id, 'permission_id' => $id])->all());
+    Permissions::flush();
+
+    $user = User::factory()->create();
+    $user->roles()->attach($role->id);
+    $user->warehouses()->attach($warehouse->id);
 
     return $user;
 }

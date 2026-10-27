@@ -64,7 +64,9 @@ class Roles extends Component
     #[Computed]
     public function modules(): \Illuminate\Support\Collection
     {
-        return Permission::orderBy('module')->orderBy('code')->get()->groupBy('module');
+        return Permission::all()
+            ->sortBy(fn (Permission $permission) => [Permission::moduleRank($permission->module), $permission->module, $permission->actionRank(), $permission->code])
+            ->groupBy('module');
     }
 
     public function save(): void

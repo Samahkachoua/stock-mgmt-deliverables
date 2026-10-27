@@ -72,24 +72,24 @@
                                 'value' => $tiles['transit']['count'], 'when' => __('dashboard.now'),
                                 'note' => trans_choice('dashboard.tiles.transit_late', $tiles['transit']['late'], ['count' => Format::qty($tiles['transit']['late']), 'days' => Format::qty(Dashboard::LATE_TRANSIT_DAYS)]),
                                 'tone' => $tiles['transit']['late'] > 0 ? 'pending' : null,
-                                'opens' => $canReports,
+                                'opens' => $canReport['transfers-in-transit'],
                             ],
                             [
                                 'target' => 'expiry', 'icon' => 'lock_clock', 'label' => __('dashboard.tiles.expiry', ['days' => Format::qty(Dashboard::EXPIRY_DAYS)]),
                                 'value' => $tiles['expiry']['count'], 'when' => __('dashboard.now'),
                                 'note' => trans_choice('dashboard.tiles.expired', $tiles['expiry']['expired'], ['count' => Format::qty($tiles['expiry']['expired'])]),
                                 'tone' => $tiles['expiry']['expired'] > 0 ? 'rejected' : ($tiles['expiry']['count'] > 0 ? 'pending' : null),
-                                'opens' => $canReports,
+                                'opens' => $canReport['expiry'],
                             ],
                             [
                                 'target' => 'damage', 'icon' => 'report', 'label' => __('dashboard.tiles.damage'),
                                 'value' => $tiles['damage']['lines'], 'when' => $periodText, 'note' => null, 'tone' => null,
-                                'opens' => $canReports,
+                                'opens' => $canReport['damage'],
                             ],
                             [
                                 'target' => 'adjustments', 'icon' => 'tune', 'label' => __('dashboard.tiles.adjustments'),
                                 'value' => $tiles['adjustments']['lines'], 'when' => $periodText, 'note' => null, 'tone' => null,
-                                'opens' => $canReports,
+                                'opens' => $canReport['adjustments'],
                             ],
                         ];
                     @endphp
@@ -269,7 +269,7 @@
                                         </li>
                                     @endforeach
                                 </ul>
-                                @if ($canReports)
+                                @if ($canReport[$table['key']])
                                     <button type="button" wire:click="open('{{ $table['key'] }}')" class="flex h-control items-center gap-1 self-start rounded-lg px-1 text-body font-semibold text-brand hover:underline">
                                         {{ __('dashboard.see_all', ['count' => Format::qty($table['data']['total'])]) }}
                                         <x-icon name="chevron_right" class="rtl:-scale-x-100" />

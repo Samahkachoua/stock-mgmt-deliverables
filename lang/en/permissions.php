@@ -2,9 +2,18 @@
 
 // Permission names for the Roles screen. `labels` is keyed by permission.code with
 // dots written as underscores; codes without an entry show their stored description.
+// A report's permission (report.<key>.view) reads `report` with the report's title.
 return [
     'modules' => [
         'STOCK' => 'Stock',
+        'DRAFT_IN' => 'Draft receipts',
+        'IN' => 'Receipts',
+        'DRAFT_OUT' => 'Orders',
+        'OUT' => 'Delivery notes',
+        'TRANSFER' => 'Transfers',
+        'ADJUSTMENT' => 'Adjustments',
+        'DAMAGE' => 'Damage',
+        'OPENING_BALANCE' => 'Opening balances',
         'PRODUCT' => 'Items',
         'MASTERDATA' => 'Master data',
         'REPORT' => 'Reports',
@@ -12,7 +21,7 @@ return [
     ],
 
     'labels' => [
-        'stock_view' => 'See stock and documents',
+        'stock_view' => 'See stock',
         'stock_in_create' => 'Create receipts',
         'stock_out_create' => 'Dispatch and deliver delivery notes',
         'stock_transfer_dispatch' => 'Dispatch transfers',
@@ -22,11 +31,9 @@ return [
         'stock_adjustment_create' => 'Create adjustments',
         'stock_adjustment_approve' => 'Approve adjustments',
         'stock_opening_create' => 'Enter opening balances',
-        'transaction_cancel' => 'Cancel documents',
         'product_manage' => 'Add and edit items',
         'product_import' => 'Import items from Excel',
         'masterdata_manage' => 'Manage warehouses, customers and units',
-        'report_view' => 'See reports',
         'audit_view' => 'See the activity log',
         'admin_users_manage' => 'Manage users and roles',
         'admin_settings_manage' => 'Manage approval limits and settings',
@@ -43,5 +50,10 @@ return [
         'draft_in_view' => 'See draft receipts',
         'draft_out_view' => 'See orders',
         'dashboard_view' => 'See the owner dashboard',
+        'stock_in_cancel' => 'Cancel receipts',
+        'stock_out_cancel' => 'Cancel delivery notes',
+        'stock_opening_cancel' => 'Cancel opening balances',
     ],
+
+    'report' => 'See the :report report',
 ];

@@ -70,6 +70,14 @@ return new class extends Migration
 
     public function up(): void
     {
+        // Built from schema.sql: it has these permissions already (and newer
+        // ones in place of report.view / transaction.cancel).
+        if (DB::table('permission')->where('code', 'stock.view')->exists()) {
+            Permissions::flush();
+
+            return;
+        }
+
         DB::table('permission')->insertOrIgnore(self::NEW_PERMISSIONS);
 
         $roles = $this->roleIds();

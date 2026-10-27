@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Http\Middleware\EnsureHasWarehouse;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Reports\Reports;
 use App\Support\CompanyTime;
 use App\Support\Format;
 use App\Support\Notify;
@@ -95,8 +96,8 @@ class AppServiceProvider extends ServiceProvider
             $warehouse instanceof Warehouse ? $warehouse->id : $warehouse,
         ));
 
-        // Reports open for anyone who may see a report (the audit log needs audit.view only).
-        Gate::define('reports.open', fn (User $user) => $user->hasPermission('report.view') || $user->hasPermission('audit.view'));
+        // The Reports page opens for anyone who may open at least one report on it.
+        Gate::define('reports.open', fn (User $user) => Reports::listedFor($user) !== []);
 
         // Each type's list, details and print pages (documents.receive, documents.delivery-note...):
         // its view permission, or creating / approving it (no dead end after saving).

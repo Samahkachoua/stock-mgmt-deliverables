@@ -2,9 +2,18 @@
 
 // Permission names for the Roles screen. `labels` is keyed by permission.code with
 // dots written as underscores; codes without an entry show their stored description.
+// A report's permission (report.<key>.view) reads `report` with the report's title.
 return [
     'modules' => [
         'STOCK' => 'Stock',
+        'DRAFT_IN' => 'Brouillons de réception',
+        'IN' => 'Réceptions',
+        'DRAFT_OUT' => 'Commandes',
+        'OUT' => 'Bons de livraison',
+        'TRANSFER' => 'Transferts',
+        'ADJUSTMENT' => 'Ajustements',
+        'DAMAGE' => 'Casse',
+        'OPENING_BALANCE' => 'Stocks initiaux',
         'PRODUCT' => 'Articles',
         'MASTERDATA' => 'Données de base',
         'REPORT' => 'Rapports',
@@ -12,7 +21,7 @@ return [
     ],
 
     'labels' => [
-        'stock_view' => 'Voir le stock et les documents',
+        'stock_view' => 'Voir le stock',
         'stock_in_create' => 'Créer des réceptions',
         'stock_out_create' => 'Expédier les bons de livraison et confirmer la livraison',
         'stock_transfer_dispatch' => 'Expédier des transferts',
@@ -22,11 +31,9 @@ return [
         'stock_adjustment_create' => 'Créer des ajustements',
         'stock_adjustment_approve' => 'Approuver les ajustements',
         'stock_opening_create' => 'Saisir le stock initial',
-        'transaction_cancel' => 'Annuler des documents',
         'product_manage' => 'Ajouter et modifier des articles',
         'product_import' => 'Importer des articles depuis Excel',
         'masterdata_manage' => 'Gérer entrepôts, clients et unités',
-        'report_view' => 'Voir les rapports',
         'audit_view' => 'Voir le journal d’activité',
         'admin_users_manage' => 'Gérer les utilisateurs et les rôles',
         'admin_settings_manage' => 'Gérer les limites d’approbation et les paramètres',
@@ -43,5 +50,10 @@ return [
         'draft_in_view' => 'Voir les brouillons de réception',
         'draft_out_view' => 'Voir les commandes',
         'dashboard_view' => 'Voir le tableau de bord du propriétaire',
+        'stock_in_cancel' => 'Annuler des réceptions',
+        'stock_out_cancel' => 'Annuler des bons de livraison',
+        'stock_opening_cancel' => 'Annuler des stocks initiaux',
     ],
+
+    'report' => 'Voir le rapport « :report »',
 ];

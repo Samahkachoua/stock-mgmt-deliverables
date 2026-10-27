@@ -20,7 +20,7 @@ use Livewire\Component;
 
 /**
  * "Cancel document" on a posted document's details page (TypeUi::cancelPermission():
- * transaction.cancel, or for a transfer In transit its sender's dispatch permission).
+ * the type's own cancel permission, or for a transfer In transit its sender's dispatch permission).
  * Asks first, in the confirmation modal, with what happens to the stock and a
  * required reason (CLAUDE.md "Confirmations"); then reverses the stock through
  * PostingService::cancel(). A document that can't be cancelled (its stock has
@@ -127,7 +127,9 @@ class CancelTransaction extends Component
     private function authorizeCancel(): StockTransaction
     {
         $transaction = StockTransaction::query()->findOrFail($this->transactionId);
-        Gate::authorize(TransactionTypes::get($transaction->transaction_type)->cancelPermission());
+        $type = TransactionTypes::get($transaction->transaction_type);
+        abort_unless($type->cancellable(), 403);
+        Gate::authorize($type->cancelPermission());
 
         return $transaction;
     }

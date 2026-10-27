@@ -39,6 +39,14 @@ export link that carries the filters). A link that must open the report
 already filtered goes through a route that names the record and stores the
 filters in the session (see `ListPresetController`).
 
+Give the report its own permission: `Report::permission()` is
+`report.<key>.view` (`-` as `_`, e.g. `report.stock_card.view`). Add that
+row (module `REPORT`) to `schema.sql` and in a migration (skip when it is
+there), granted to ADMIN and to the roles that should see it. Its name in
+Settings › Roles comes from the report's title (`permissions.report`).
+The Reports page, dashboard figures and links to the report check that
+permission, never a shared one.
+
 ## 4. Add the UI
 - Filters at the top, results table below, export button — match the layout
   of the existing reports so users don't have to relearn the pattern.

@@ -13,7 +13,7 @@ it('allows what the user\'s roles grant and nothing else', function () {
         ->and(Gate::forUser($operator)->allows('stock.view'))->toBeTrue()
         ->and(Gate::forUser($operator)->allows('stock.damage.approve'))->toBeFalse()
         ->and(Gate::forUser($operator)->allows('stock.opening.create'))->toBeFalse()
-        ->and(Gate::forUser($operator)->allows('transaction.cancel'))->toBeFalse();
+        ->and(Gate::forUser($operator)->allows('stock.in.cancel'))->toBeFalse();
 });
 
 it('combines the permissions of several roles', function () {
@@ -92,7 +92,9 @@ it('explains a refused page in the user\'s language', function () {
 });
 
 it('lets managers and auditors cancel documents', function (string $role, bool $allowed) {
-    expect(Gate::forUser(userWithRole($role))->allows('transaction.cancel'))->toBe($allowed);
+    foreach (['stock.in.cancel', 'stock.out.cancel', 'stock.opening.cancel'] as $code) {
+        expect(Gate::forUser(userWithRole($role))->allows($code))->toBe($allowed);
+    }
 })->with([
     ['ADMIN', true],
     ['MANAGER', true],

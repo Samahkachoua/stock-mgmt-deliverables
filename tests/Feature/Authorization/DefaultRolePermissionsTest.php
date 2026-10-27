@@ -17,7 +17,8 @@ function permissionCodesForRole(string $roleCode): array
 
 it('adds the permissions missing from the base schema', function () {
     expect(DB::table('permission')->pluck('code')->all())
-        ->toContain('stock.opening.create', 'stock.view', 'masterdata.manage', 'transaction.cancel')
+        ->toContain('stock.opening.create', 'stock.view', 'masterdata.manage', 'stock.in.cancel', 'stock.out.cancel', 'stock.opening.cancel')
+        ->not->toContain('transaction.cancel', 'report.view')
         ->toContain('draft.in.create', 'draft.in.confirm', 'draft.out.create', 'draft.out.confirm');
 });
 
@@ -29,14 +30,21 @@ it('grants every permission to ADMIN', function () {
 /** Every role that sees stock and documents sees each type's list. */
 const LIST_VIEWS = ['stock.in.view', 'stock.out.view', 'stock.transfer.view', 'stock.adjustment.view', 'stock.damage.view', 'stock.opening.view'];
 
+/** One permission per report (Stock on hand is stock.view, the audit log audit.view). */
+const REPORT_VIEWS = [
+    'report.stock_card.view', 'report.expiry.view', 'report.dormant_stock.view', 'report.damage.view',
+    'report.adjustments.view', 'report.transfers_in_transit.view', 'report.transfer_shortages.view',
+    'report.delivery_differences.view',
+];
+
 it('grants the default permissions to each role', function (string $role, array $expected) {
     expect(permissionCodesForRole($role))->toEqualCanonicalizing($expected);
 })->with([
     'MANAGER' => ['MANAGER', [
         'stock.in.create', 'stock.out.create', 'stock.transfer.dispatch', 'stock.transfer.receive',
         'stock.damage.create', 'stock.damage.approve', 'stock.adjustment.create', 'stock.adjustment.approve',
-        'stock.opening.create', 'stock.view', 'report.view', 'masterdata.manage',
-        'product.manage', 'product.import', 'transaction.cancel',
+        'stock.opening.create', 'stock.view', ...REPORT_VIEWS, 'masterdata.manage',
+        'product.manage', 'product.import', 'stock.in.cancel', 'stock.out.cancel', 'stock.opening.cancel',
         'draft.in.create', 'draft.in.confirm', 'draft.out.create', 'draft.out.confirm',
         'draft.in.view', 'draft.out.view', ...LIST_VIEWS,
     ]],
@@ -46,6 +54,6 @@ it('grants the default permissions to each role', function (string $role, array 
         'draft.in.create', 'draft.out.create', 'draft.in.view', 'draft.out.view', ...LIST_VIEWS,
     ]],
     'DATA_ENTRY' => ['DATA_ENTRY', ['product.manage', 'product.import', 'masterdata.manage', 'stock.view', ...LIST_VIEWS]],
-    'AUDITOR' => ['AUDITOR', ['stock.view', 'report.view', 'audit.view', 'transaction.cancel', ...LIST_VIEWS]],
+    'AUDITOR' => ['AUDITOR', ['stock.view', ...REPORT_VIEWS, 'audit.view', 'stock.in.cancel', 'stock.out.cancel', 'stock.opening.cancel', ...LIST_VIEWS]],
     'CUSTOMER' => ['CUSTOMER', ['stock.view', 'draft.in.create', 'draft.out.create', 'draft.in.view', 'draft.out.view', ...LIST_VIEWS]],
 ]);

@@ -21,23 +21,28 @@
 
 <div class="flex flex-col gap-section">
     <x-page-header :type="$ui" :title="$ui->label('title')" :subtitle="$ui->label('subtitle')">
-        @if ((($ui->dispatchReceive() || $ui->deliverySteps()) && Gate::allows('report.view')) || ($ui->creatable() && Gate::allows($ui->createPermission())))
+        @php
+            // The report this list links to, when the user may open it.
+            $reportKey = $ui->dispatchReceive() ? 'transfer-shortages' : ($ui->deliverySteps() ? 'delivery-differences' : null);
+            $showsReport = $reportKey !== null && Gate::allows(\App\Reports\Reports::get($reportKey)->permission());
+        @endphp
+        @if ($showsReport || ($ui->creatable() && Gate::allows($ui->createPermission())))
             <x-slot:actions>
                 @if ($ui->dispatchReceive())
-                    @can('report.view')
+                    @if ($showsReport)
                         <a href="{{ route('reports.show', 'transfer-shortages') }}" wire:navigate class="flex h-control items-center gap-2 rounded-lg border border-control bg-card px-4 text-body font-semibold text-fg hover:bg-card-hover">
                             <x-icon name="report" class="text-muted" />
                             {{ __('transfers.shortages.link') }}
                         </a>
-                    @endcan
+                    @endif
                 @endif
                 @if ($ui->deliverySteps())
-                    @can('report.view')
+                    @if ($showsReport)
                         <a href="{{ route('reports.show', 'delivery-differences') }}" wire:navigate class="flex h-control items-center gap-2 rounded-lg border border-control bg-card px-4 text-body font-semibold text-fg hover:bg-card-hover">
                             <x-icon name="report" class="text-muted" />
                             {{ __('reports.delivery_differences.title') }}
                         </a>
-                    @endcan
+                    @endif
                 @endif
                 @if ($ui->creatable() && Gate::allows($ui->createPermission()))
                 <a

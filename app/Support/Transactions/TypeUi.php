@@ -5,6 +5,7 @@ namespace App\Support\Transactions;
 use App\Models\TransactionType;
 use App\Support\Format;
 use Carbon\CarbonImmutable;
+use LogicException;
 
 /**
  * Everything a transaction screen needs to know about one type: presentation
@@ -81,12 +82,16 @@ final class TypeUi
 
     /**
      * Who may cancel. A transfer In transit is taken back by its sender (anyone
-     * who may dispatch, in the source warehouse); other documents need
-     * transaction.cancel.
+     * who may dispatch, in the source warehouse); other documents need their
+     * type's own cancel permission (`cancel`: stock.in.cancel, stock.out.cancel...).
      */
     public function cancelPermission(): string
     {
-        return $this->dispatchReceive() ? $this->createPermission() : 'transaction.cancel';
+        if ($this->dispatchReceive()) {
+            return $this->createPermission();
+        }
+
+        return $this->config['cancel'] ?? throw new LogicException("Transaction type {$this->code} has no cancel permission.");
     }
 
     /**

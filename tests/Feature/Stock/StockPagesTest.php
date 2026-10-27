@@ -187,7 +187,7 @@ it('explains when a document can’t be cancelled because its stock was used', f
     expect($receipt->fresh()->status)->toBe('POSTED');
 });
 
-it('only lets users with transaction.cancel cancel', function () {
+it('only lets users with the type\'s cancel permission cancel', function () {
     $receipt = $this->stock->post('IN', [$this->stock->line('BEANS', 3)]);
     $operator = userWithRole('OPERATOR', $this->stock->warehouse);
 

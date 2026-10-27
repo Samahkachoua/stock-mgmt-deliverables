@@ -1143,40 +1143,55 @@ INSERT INTO unit (code, name) VALUES
     ('KG', 'Kilogram'),
     ('CTN', 'Carton');
 
+-- module = the section of Settings › Roles: STOCK (the Stock page), one per
+-- document type and draft kind, then items, master data, reports, admin.
 INSERT INTO permission (code, description, module) VALUES
-    ('stock.in.create', 'Create IN documents', 'STOCK'),
-    ('stock.out.create', 'Dispatch delivery notes and confirm delivery (they are created from orders)', 'STOCK'),
-    ('stock.transfer.dispatch', 'Dispatch a transfer', 'STOCK'),
-    ('stock.transfer.receive', 'Receive a transfer', 'STOCK'),
-    ('stock.damage.create', 'Create damage documents', 'STOCK'),
-    ('stock.damage.approve', 'Approve damage documents', 'STOCK'),
-    ('stock.adjustment.create', 'Create adjustment documents', 'STOCK'),
-    ('stock.adjustment.approve', 'Approve adjustment documents', 'STOCK'),
+    ('stock.view', 'View stock balances', 'STOCK'),
+    -- Each type: its list, details and print pages (view; creating / approving
+    -- it opens them too), what it lets the user do, and cancelling it.
+    ('draft.in.view', 'View draft receipts', 'DRAFT_IN'),
+    ('draft.in.create', 'Create and edit draft receipts', 'DRAFT_IN'),
+    ('draft.in.confirm', 'Confirm draft receipts (creates the receipts)', 'DRAFT_IN'),
+    ('stock.in.view', 'View receipts', 'IN'),
+    ('stock.in.create', 'Create IN documents', 'IN'),
+    ('stock.in.cancel', 'Cancel receipts', 'IN'),
+    ('draft.out.view', 'View orders', 'DRAFT_OUT'),
+    ('draft.out.create', 'Create and edit orders', 'DRAFT_OUT'),
+    ('draft.out.confirm', 'Confirm orders (creates the delivery notes)', 'DRAFT_OUT'),
+    ('stock.out.view', 'View delivery notes', 'OUT'),
+    ('stock.out.create', 'Dispatch delivery notes and confirm delivery (they are created from orders)', 'OUT'),
+    ('stock.out.cancel', 'Cancel delivery notes', 'OUT'),
+    -- A transfer In transit is taken back by whoever may dispatch it: no cancel permission.
+    ('stock.transfer.view', 'View transfers', 'TRANSFER'),
+    ('stock.transfer.dispatch', 'Dispatch a transfer', 'TRANSFER'),
+    ('stock.transfer.receive', 'Receive a transfer', 'TRANSFER'),
+    -- Adjustments and damage can't be cancelled (count again instead).
+    ('stock.adjustment.view', 'View adjustments', 'ADJUSTMENT'),
+    ('stock.adjustment.create', 'Create adjustment documents', 'ADJUSTMENT'),
+    ('stock.adjustment.approve', 'Approve adjustment documents', 'ADJUSTMENT'),
+    ('stock.damage.view', 'View damage documents', 'DAMAGE'),
+    ('stock.damage.create', 'Create damage documents', 'DAMAGE'),
+    ('stock.damage.approve', 'Approve damage documents', 'DAMAGE'),
+    ('stock.opening.view', 'View opening balances', 'OPENING_BALANCE'),
+    ('stock.opening.create', 'Create opening balance documents', 'OPENING_BALANCE'),
+    ('stock.opening.cancel', 'Cancel opening balances', 'OPENING_BALANCE'),
     ('product.manage', 'Create/edit products', 'PRODUCT'),
     ('product.import', 'Import products from Excel', 'PRODUCT'),
-    ('report.view', 'View reports', 'REPORT'),
-    ('admin.users.manage', 'Manage users and roles', 'ADMIN'),
-    ('admin.settings.manage', 'Manage thresholds and system settings', 'ADMIN'),
-    ('audit.view', 'View audit log', 'ADMIN'),
-    ('stock.opening.create', 'Create opening balance documents', 'STOCK'),
-    ('stock.view', 'View stock balances and documents', 'STOCK'),
     ('masterdata.manage', 'Manage warehouses, customers and units', 'MASTERDATA'),
-    ('transaction.cancel', 'Cancel stock documents', 'STOCK'),
-    ('draft.in.create', 'Create and edit draft receipts', 'STOCK'),
-    ('draft.in.confirm', 'Confirm draft receipts (creates the receipts)', 'STOCK'),
-    ('draft.out.create', 'Create and edit orders', 'STOCK'),
-    ('draft.out.confirm', 'Confirm orders (creates the delivery notes)', 'STOCK'),
-    -- List, details and print pages of each type (creating / approving it opens them too).
-    ('stock.in.view', 'View receipts', 'STOCK'),
-    ('stock.out.view', 'View delivery notes', 'STOCK'),
-    ('stock.transfer.view', 'View transfers', 'STOCK'),
-    ('stock.adjustment.view', 'View adjustments', 'STOCK'),
-    ('stock.damage.view', 'View damage documents', 'STOCK'),
-    ('stock.opening.view', 'View opening balances', 'STOCK'),
-    ('draft.in.view', 'View draft receipts', 'STOCK'),
-    ('draft.out.view', 'View orders', 'STOCK'),
-    -- The owner dashboard (/dashboard). Only ADMIN at first (it gets every permission).
-    ('dashboard.view', 'View the owner dashboard', 'REPORT');
+    -- One per report (Report::permission(): report.<key>.view; Stock on hand is
+    -- the Stock page, stock.view). The owner dashboard: only ADMIN at first.
+    ('report.stock_card.view', 'View the stock card report', 'REPORT'),
+    ('report.expiry.view', 'View the expiry report', 'REPORT'),
+    ('report.dormant_stock.view', 'View the dormant stock report', 'REPORT'),
+    ('report.damage.view', 'View the damage report', 'REPORT'),
+    ('report.adjustments.view', 'View the adjustments report', 'REPORT'),
+    ('report.transfers_in_transit.view', 'View the transfers in transit report', 'REPORT'),
+    ('report.transfer_shortages.view', 'View the transfer shortages report', 'REPORT'),
+    ('report.delivery_differences.view', 'View the delivery discrepancies report', 'REPORT'),
+    ('audit.view', 'View audit log', 'REPORT'),
+    ('dashboard.view', 'View the owner dashboard', 'REPORT'),
+    ('admin.users.manage', 'Manage users and roles', 'ADMIN'),
+    ('admin.settings.manage', 'Manage thresholds and system settings', 'ADMIN');
 
 -- Default grants for the system roles. ADMIN gets every permission.
 INSERT INTO role_permission (role_id, permission_id)
@@ -1189,9 +1204,9 @@ SELECT r.id, p.id
     ('MANAGER', 'stock.transfer.dispatch'), ('MANAGER', 'stock.transfer.receive'),
     ('MANAGER', 'stock.damage.create'), ('MANAGER', 'stock.damage.approve'),
     ('MANAGER', 'stock.adjustment.create'), ('MANAGER', 'stock.adjustment.approve'),
-    ('MANAGER', 'stock.opening.create'), ('MANAGER', 'stock.view'), ('MANAGER', 'report.view'),
+    ('MANAGER', 'stock.opening.create'), ('MANAGER', 'stock.view'),
     ('MANAGER', 'masterdata.manage'), ('MANAGER', 'product.manage'), ('MANAGER', 'product.import'),
-    ('MANAGER', 'transaction.cancel'),
+    ('MANAGER', 'stock.in.cancel'), ('MANAGER', 'stock.out.cancel'), ('MANAGER', 'stock.opening.cancel'),
     ('MANAGER', 'draft.in.create'), ('MANAGER', 'draft.in.confirm'),
     ('MANAGER', 'draft.out.create'), ('MANAGER', 'draft.out.confirm'),
     ('OPERATOR', 'draft.in.create'), ('OPERATOR', 'draft.out.create'),
@@ -1205,14 +1220,21 @@ SELECT r.id, p.id
     ('OPERATOR', 'stock.view'),
     ('DATA_ENTRY', 'product.manage'), ('DATA_ENTRY', 'product.import'),
     ('DATA_ENTRY', 'masterdata.manage'), ('DATA_ENTRY', 'stock.view'),
-    ('AUDITOR', 'stock.view'), ('AUDITOR', 'report.view'), ('AUDITOR', 'audit.view'),
-    ('AUDITOR', 'transaction.cancel'),
+    ('AUDITOR', 'stock.view'), ('AUDITOR', 'audit.view'),
+    ('AUDITOR', 'stock.in.cancel'), ('AUDITOR', 'stock.out.cancel'), ('AUDITOR', 'stock.opening.cancel'),
     ('CUSTOMER', 'stock.view')
   ) AS g (role_code, permission_code)
   JOIN role r ON r.code = g.role_code
   JOIN permission p ON p.code = g.permission_code;
 
--- Each type's list: every role that sees stock and documents (stock.view).
+-- Every report: the roles that see reports (MANAGER, AUDITOR).
+INSERT INTO role_permission (role_id, permission_id)
+SELECT r.id, p.id
+  FROM role r
+  JOIN permission p ON p.code LIKE 'report.%.view'
+ WHERE r.code IN ('MANAGER', 'AUDITOR');
+
+-- Each type's list: every role that sees stock (stock.view) at first.
 INSERT INTO role_permission (role_id, permission_id)
 SELECT rp.role_id, p.id
   FROM role_permission rp

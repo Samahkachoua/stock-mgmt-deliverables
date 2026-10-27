@@ -26,6 +26,9 @@
 |   status_labels  this type's own label for a status (code => label key under
 |                  lang/<locale>/transactions.php `status`), e.g. Delivered
 |   approve        permission to approve/reject (types that support approval)
+|   cancel         permission to cancel a document of this type (types that can be
+|                  cancelled; a transfer In transit is taken back by its sender:
+|                  the dispatch permission, no cancel permission)
 |   header_fields  extra header fields besides Customer, Date and Reference note:
 |                  reason  (choices from `reasons`); the To-warehouse field is added
 |                  automatically when the type requires a destination warehouse
@@ -60,6 +63,7 @@ return [
             'icon' => 'move_to_inbox',
             'prefix' => 'REC',
             'view' => 'stock.in.view',
+            'cancel' => 'stock.in.cancel',
             'create' => 'stock.in.create',
             'header_fields' => [],
             // The Draft receipt it was confirmed from, if any.
@@ -76,6 +80,7 @@ return [
             'icon' => 'outbox',
             'prefix' => 'DN',
             'view' => 'stock.out.view',
+            'cancel' => 'stock.out.cancel',
             // Dispatch and confirm delivery: delivery notes are created from Orders.
             'create' => 'stock.out.create',
             'new' => false,
@@ -143,6 +148,7 @@ return [
             'icon' => 'account_balance_wallet',
             'prefix' => 'OPB',
             'view' => 'stock.opening.view',
+            'cancel' => 'stock.opening.cancel',
             'create' => 'stock.opening.create',
             'header_fields' => [],
             'line_columns' => ['expiry'],

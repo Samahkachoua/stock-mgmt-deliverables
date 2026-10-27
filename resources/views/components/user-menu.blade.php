@@ -41,7 +41,12 @@
             </div>
         </div>
 
-        <form method="POST" action="{{ route('logout') }}" class="pt-2">
+        <a href="{{ route('account.password') }}" wire:navigate role="menuitem" class="mt-2 flex h-control w-full items-center gap-3 rounded-lg px-3 text-body font-semibold text-fg hover:bg-card-hover">
+            <x-icon name="lock" class="size-5 text-muted" />
+            {{ __('account.password.menu') }}
+        </a>
+
+        <form method="POST" action="{{ route('logout') }}">
             @csrf
             <button type="submit" role="menuitem" class="flex h-control w-full items-center gap-3 rounded-lg px-3 text-body font-semibold text-fg hover:bg-card-hover">
                 <x-icon name="logout" class="size-5 text-muted rtl:-scale-x-100" />

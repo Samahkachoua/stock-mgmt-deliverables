@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Users: $admin (both warehouses), $beirutManager and $tripoliOperator (one
  * warehouse each), $auditorTripoli (audit.view, Tripoli only) and $acmePortal
- * (Acme's customer login, Beirut, with report.view).
+ * (Acme's customer login, Beirut, with the auditor's report permissions).
  */
 final class ReportData
 {

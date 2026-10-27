@@ -54,6 +54,12 @@ this status must call `fn_post_movement`.
   the new type's code exactly as you would for DAMAGE/ADJUSTMENT.
 - Define the new type's duplicate-line key (CLAUDE.md rule 12) in its UI config; the shared form and PostingService enforce it.
 
+- Permissions: its own section in Settings › Roles — a new `permission.module`
+  (add it to `Permission::MODULES` and `permissions.modules` in en/ar/fr) holding
+  `<prefix>.view`, its create/approve permissions, and `<prefix>.cancel` when
+  the type can be cancelled (`cancel` in config/transactions.php). Never reuse
+  another type's permission.
+
 ## 4. Wire the frontend
 - Add the screen following the "one task per screen" rule in `CLAUDE.md`.
 - Add a distinct color for the new type, consistent with the existing

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasNumericKey;
+use App\Reports\Reports;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Lang;
@@ -39,7 +40,47 @@ class Permission extends Model
     {
         $key = 'permissions.labels.'.str_replace('.', '_', $this->code);
 
-        return Lang::has($key) ? __($key) : $this->description;
+        if (Lang::has($key)) {
+            return __($key);
+        }
+
+        // A report's own permission (report.stock_card.view): "See the Stock card report".
+        if (preg_match('/^report\.(.+)\.view$/', $this->code, $match) === 1) {
+            $report = Reports::all()[str_replace('_', '-', $match[1])] ?? null;
+
+            if ($report !== null && $report->permission() === $this->code) {
+                return __('permissions.report', ['report' => $report->title()]);
+            }
+        }
+
+        return $this->description;
+    }
+
+    /**
+     * The sections of Settings › Roles in order: the Stock page, each draft kind
+     * next to the document it becomes, the other document types, then the rest.
+     * A module not listed comes last.
+     */
+    public const MODULES = [
+        'STOCK', 'DRAFT_IN', 'IN', 'DRAFT_OUT', 'OUT', 'TRANSFER', 'ADJUSTMENT', 'DAMAGE',
+        'OPENING_BALANCE', 'PRODUCT', 'MASTERDATA', 'REPORT', 'ADMIN',
+    ];
+
+    /** Within a section: seeing first, then doing, then cancelling (last part of the code). */
+    private const ACTIONS = ['view', 'create', 'dispatch', 'receive', 'confirm', 'approve', 'import', 'manage', 'cancel'];
+
+    public static function moduleRank(string $module): int
+    {
+        $rank = array_search($module, self::MODULES, true);
+
+        return $rank === false ? count(self::MODULES) : $rank;
+    }
+
+    public function actionRank(): int
+    {
+        $rank = array_search(str($this->code)->afterLast('.')->toString(), self::ACTIONS, true);
+
+        return $rank === false ? count(self::ACTIONS) : $rank;
     }
 
     public static function moduleLabel(string $module): string

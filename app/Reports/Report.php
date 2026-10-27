@@ -77,9 +77,13 @@ abstract class Report
      */
     abstract public function row(object $row, array $filters): array;
 
+    /**
+     * Each report has its own permission, report.<key>.view with "-" as "_"
+     * (report.stock_card.view), in the Reports section of Settings › Roles.
+     */
     public function permission(): string
     {
-        return 'report.view';
+        return 'report.'.str_replace('-', '_', $this->key()).'.view';
     }
 
     public function icon(): string

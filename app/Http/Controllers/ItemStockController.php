@@ -8,6 +8,7 @@ use App\Models\StockBalance;
 use App\Models\StockTransaction;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Reports\Reports;
 use App\Reports\StockOnHandReport;
 use App\Services\Stock\Reservations;
 use App\Support\CompanyTime;
@@ -88,7 +89,7 @@ class ItemStockController extends Controller
             'reserved' => $reserved,
             'holders' => $holders,
             'serials' => $serials,
-            'stockCard' => Gate::allows('report.view')
+            'stockCard' => Gate::allows(Reports::get('stock-card')->permission())
                 ? route('reports.stock-card.item', ['product' => $product->id, 'warehouse' => $warehouse->id])
                 : null,
             'larger' => collect($converter->factors())

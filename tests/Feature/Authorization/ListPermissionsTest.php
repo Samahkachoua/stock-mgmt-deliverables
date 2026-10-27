@@ -3,7 +3,6 @@
 use App\Livewire\Transactions\TransactionList;
 use App\Models\Role;
 use App\Models\User;
-use App\Models\Warehouse;
 use App\Support\Permissions;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -14,25 +13,6 @@ use Tests\Support\Stock;
  * creating or approving a type opens them too, so saving never ends on a
  * page the user may not open.
  */
-
-/**
- * An active user in $warehouse whose only role grants exactly $codes.
- *
- * @param  list<string>  $codes
- */
-function userWithPermissions(Warehouse $warehouse, array $codes): User
-{
-    $role = Role::create(['code' => 'TEST_'.strtoupper(uniqid()), 'name' => 'Test '.uniqid()]);
-    DB::table('role_permission')->insert(DB::table('permission')->whereIn('code', $codes)->pluck('id')
-        ->map(fn ($id) => ['role_id' => $role->id, 'permission_id' => $id])->all());
-    Permissions::flush();
-
-    $user = User::factory()->create();
-    $user->roles()->attach($role->id);
-    $user->warehouses()->attach($warehouse->id);
-
-    return $user;
-}
 
 beforeEach(function () {
     $this->stock = Stock::create();

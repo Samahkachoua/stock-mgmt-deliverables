@@ -95,6 +95,12 @@ needs less explanation, not the one that is more configurable.
    (`stock.in.view` … `stock.opening.view`, `draft.in.view`, `draft.out.view`;
    `view` in config/transactions.php). Creating or approving/confirming a type
    opens it too (gates `documents.<slug>`, `drafts.in.open` / `drafts.out.open`).
+   `stock.view` is only the Stock page. Each type cancels with its own
+   permission (`stock.in.cancel`, `stock.out.cancel`, `stock.opening.cancel`;
+   `cancel` in config/transactions.php; a transfer In transit: its dispatcher).
+   Each report has its own (`Report::permission()`, `report.<key>.view`).
+   Settings › Roles shows one section per type (`permission.module`,
+   `Permission::MODULES` order).
 7. Store `TIMESTAMPTZ` in UTC (the app and the DB session run in UTC). One
    company-wide time zone (Settings › General, `app_setting` `timezone`,
    `App\Support\CompanyTime`) decides "today" (form defaults, future-date

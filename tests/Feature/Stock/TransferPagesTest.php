@@ -228,7 +228,7 @@ it('returns the stock when the sender cancels from the details page', function (
 
 it('lets the operator who sent it cancel, without the general cancel permission', function () {
     $transfer = $this->stock->dispatch([$this->stock->line('BEANS', 2, 'BOX')], $this->tripoli);
-    expect($this->sender->can('transaction.cancel'))->toBeFalse();
+    expect($this->sender->can('stock.in.cancel'))->toBeFalse();
 
     $this->actingAs($this->sender)->get(route('transfer.show', $transfer->doc_no))
         ->assertSeeLivewire(CancelTransaction::class);
@@ -241,7 +241,7 @@ it('lets the operator who sent it cancel, without the general cancel permission'
     expect($transfer->fresh()->status)->toBe('CANCELLED')
         ->and($this->stock->balance('BEANS'))->toBe(60.0);
 
-    // Other documents still need transaction.cancel.
+    // Other documents still need their own cancel permission.
     $receipt = StockTransaction::query()->where('transaction_type', 'IN')->firstOrFail();
     $this->actingAs($this->sender)->get(route('receive.show', $receipt->doc_no))
         ->assertDontSeeLivewire(CancelTransaction::class);

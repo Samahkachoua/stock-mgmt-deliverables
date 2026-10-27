@@ -105,8 +105,8 @@ Every report is a page with its filters as query parameters, and an export of
 exactly the rows the page counts (`App\Reports\Report` + `App\Reports\Export\Exporter`).
 `warehouse` is one of the user's warehouses or `all` (default: the current one);
 `customer` is a customer id; dates are `YYYY-MM-DD` in the warehouse's time zone;
-`search` matches an item's name (any language) or code. Requires `report.view`
-unless noted; rows are always limited to the user's warehouses (and, for a
+`search` matches an item's name (any language) or code. Each report has its own permission,
+`report.<key>.view` with `-` as `_` (e.g. `report.stock_card.view`), unless noted; rows are always limited to the user's warehouses (and, for a
 customer login, to its own customer).
 
 | Method | Path | Description |

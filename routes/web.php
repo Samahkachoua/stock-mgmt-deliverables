@@ -11,6 +11,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TransactionController;
+use App\Livewire\Account\ChangePassword;
 use App\Livewire\Auth\Login;
 use App\Livewire\Dashboard;
 use App\Livewire\Drafts\DraftForm;
@@ -42,6 +43,9 @@ Route::middleware(['auth', 'warehouse'])->group(function () {
     Route::get('/', HomeController::class)->name('home');
 
     // Owner dashboard: figures, charts and short tables (dashboard.view, ADMIN for now).
+    // Account menu › Change password: every signed-in user, for their own account.
+    Route::get('/account/password', ChangePassword::class)->name('account.password');
+
     Route::get('/dashboard', Dashboard::class)->name('dashboard')->middleware('can:dashboard.view');
 
     // Each settings tab is its own page; permissions come from config('ui.settings_tabs').
@@ -75,7 +79,7 @@ Route::middleware(['auth', 'warehouse'])->group(function () {
         ->middleware('can:stock.view');
 
     // Reports (the add-report skill). Each report checks its own permission
-    // (report.view; the audit log audit.view). Filters live in the session,
+    // (Report::permission(): report.<key>.view; the audit log audit.view). Filters live in the session,
     // never in the URL; Excel/PDF come from the page's export() action.
     Route::get('/reports', [ReportController::class, 'index'])->name('reports')->middleware('can:reports.open');
     Route::get('/reports/{report}', ReportPage::class)->name('reports.show')->where('report', '[a-z-]+');

@@ -105,8 +105,8 @@ class Dashboard extends Component
             'warehouses' => $loaded ? $figures->byWarehouse($this->filters, $user) : [],
             'expiring' => $loaded ? $figures->table('expiry', $this->filters, $user) : null,
             'dormant' => $loaded ? $figures->table('dormant-stock', $this->filters, $user) : null,
-            // Figures that open a report only link for users who may open it.
-            'canReports' => Gate::allows('report.view'),
+            // Figures that open a report only link for users who may open that report (key => bool).
+            'canReport' => collect(Reports::all())->map(fn ($report) => Gate::allows($report->permission()))->all(),
         ])->title(__('dashboard.title'));
     }
 
