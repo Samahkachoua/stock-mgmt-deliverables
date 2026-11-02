@@ -82,6 +82,11 @@ final class Exports
         // /Length: compressed bytes may themselves end in \r or \n.
         preg_match_all('/\/Length (\d+)(?:\s[^>]*)?>>\s*stream\r?\n/', $pdf, $streams, PREG_OFFSET_CAPTURE | PREG_SET_ORDER);
         foreach ($streams as $stream) {
+            // Images (the logo and its transparency mask) hold no text, and their bytes would confuse the match below.
+            $object = (int) strrpos(substr($pdf, 0, $stream[0][1]), ' obj');
+            if (str_contains(substr($pdf, $object, $stream[0][1] - $object), '/Subtype /Image')) {
+                continue;
+            }
             $bytes = substr($pdf, $stream[0][1] + strlen($stream[0][0]), (int) $stream[1][0]);
             $inflated = @gzuncompress($bytes);
             $content .= ($inflated === false ? $bytes : $inflated)."\n";

@@ -22,10 +22,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
     <title>{{ __("app.errors.$key.title") }} · {{ config('app.name') }}</title>
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="icon" type="image/png" href="{{ asset('favicon-32.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
     <style>
-        :root { --bg: #f8fafc; --card: #ffffff; --fg: #0f172a; --muted: #475569; --line: #e2e8f0; --brand: #1e3a5f; --on-brand: #ffffff; }
+        :root { --bg: #f8fafc; --card: #ffffff; --fg: #0f172a; --muted: #475569; --line: #e2e8f0; --brand: #140f4f; --on-brand: #ffffff; }
         @media (prefers-color-scheme: dark) {
-            :root { --bg: #0b1220; --card: #111a2b; --fg: #f1f5f9; --muted: #cbd5e1; --line: #1f2a3d; --brand: #3d6aa3; --on-brand: #ffffff; }
+            :root { --bg: #0b1220; --card: #111a2b; --fg: #f1f5f9; --muted: #cbd5e1; --line: #1f2a3d; --brand: #6360c8; --on-brand: #ffffff; }
         }
         * { box-sizing: border-box; }
         body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px;

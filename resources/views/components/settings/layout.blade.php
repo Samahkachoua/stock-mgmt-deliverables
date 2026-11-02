@@ -26,7 +26,7 @@
                                 'border-transparent text-muted hover:text-fg' => ! $active,
                             ])
                         >
-                            <x-icon :name="$tab['icon']" @class(['text-brand' => $active]) />
+                            <x-icon :name="$tab['icon']" @class(['text-link' => $active]) />
                             {{ __($tab['label']) }}
                         </a>
                     </li>

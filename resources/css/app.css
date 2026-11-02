@@ -31,10 +31,12 @@
     --border: #e2e8f0; /* decorative dividers and card edges */
     --border-control: #8491a5; /* input / control boundaries */
 
-    --brand: #1e3a5f;
-    --brand-hover: #162c48;
+    /* FMC logo navy (#140f4f). The logo's red (#be0f22) is used only in the logo: red means danger here. */
+    --brand: #140f4f;
+    --brand-hover: #0c0933;
     --on-brand: #ffffff;
-    --print-head: #0070c0; /* printed lines table header (always light, white text 5.0:1) */
+    --link: #140f4f; /* link text and active tab icons */
+    --print-head: #140f4f; /* printed lines table header (always light, white text 17.3:1) */
     --danger: #b91c1c;
     --danger-soft: #fef2f2;
     --scrim: rgb(15 23 42 / 0.5); /* behind the confirmation modal */
@@ -98,10 +100,11 @@
     --border: #26324a;
     --border-control: #66758e;
 
-    --brand: #3d6aa3;
-    --brand-hover: #345d90;
+    --brand: #6360c8;
+    --brand-hover: #524eb4;
     --on-brand: #ffffff;
-    --print-head: #0070c0; /* printouts are always light: same as the light theme */
+    --link: #a5a2e6; /* the brand itself is below 4.5:1 as text on the dark card */
+    --print-head: #140f4f; /* printouts are always light: same as the light theme */
     --danger: #f87171;
     --danger-soft: #33090c;
     --scrim: rgb(2 6 23 / 0.7);
@@ -297,6 +300,7 @@ html.print-view tfoot > tr {
     --color-brand: var(--brand);
     --color-brand-hover: var(--brand-hover);
     --color-on-brand: var(--on-brand);
+    --color-link: var(--link);
     --color-danger: var(--danger);
     --color-danger-soft: var(--danger-soft);
     --color-scrim: var(--scrim);

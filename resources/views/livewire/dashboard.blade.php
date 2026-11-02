@@ -23,7 +23,7 @@
     $card = 'flex min-w-0 flex-col gap-3 rounded-xl border border-default bg-card p-card shadow-card';
     $heading = 'text-h3 font-semibold text-fg';
     $hint = 'text-small text-muted';
-    $tableToggle = 'cursor-pointer self-start rounded text-small font-semibold text-brand underline-offset-2 hover:underline';
+    $tableToggle = 'cursor-pointer self-start rounded text-small font-semibold text-link underline-offset-2 hover:underline';
 @endphp
 
 <div class="flex flex-col gap-section">
@@ -270,7 +270,7 @@
                                     @endforeach
                                 </ul>
                                 @if ($canReport[$table['key']])
-                                    <button type="button" wire:click="open('{{ $table['key'] }}')" class="flex h-control items-center gap-1 self-start rounded-lg px-1 text-body font-semibold text-brand hover:underline">
+                                    <button type="button" wire:click="open('{{ $table['key'] }}')" class="flex h-control items-center gap-1 self-start rounded-lg px-1 text-body font-semibold text-link hover:underline">
                                         {{ __('dashboard.see_all', ['count' => Format::qty($table['data']['total'])]) }}
                                         <x-icon name="chevron_right" class="rtl:-scale-x-100" />
                                     </button>

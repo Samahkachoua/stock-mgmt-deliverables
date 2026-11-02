@@ -43,6 +43,7 @@ function contrastPairs(): array
         ['danger', 'card', 4.5], ['danger', 'danger-soft', 4.5], ['danger', 'surface', 4.5],
         ['border-control', 'card', 3.0], ['border-control', 'surface', 3.0],
         ['brand', 'card', 3.0],
+        ['link', 'card', 4.5], ['link', 'surface', 4.5], ['link', 'card-hover', 4.5],
     ];
 
     foreach (['receive', 'delivery', 'transfer', 'adjustment', 'damage', 'opening'] as $type) {

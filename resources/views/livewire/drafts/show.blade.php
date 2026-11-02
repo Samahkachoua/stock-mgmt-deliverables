@@ -58,7 +58,7 @@
             <ul class="mt-3 flex flex-col divide-y divide-default">
                 @foreach ($draft['documents'] as $document)
                     <li class="flex flex-wrap items-center justify-between gap-3 py-2">
-                        <a href="{{ DraftPage::documentUrl($document['type'], $document['reference']) }}" wire:navigate class="inline-flex min-h-control items-center gap-2 font-semibold text-brand hover:underline">
+                        <a href="{{ DraftPage::documentUrl($document['type'], $document['reference']) }}" wire:navigate class="inline-flex min-h-control items-center gap-2 font-semibold text-link hover:underline">
                             <span dir="ltr" class="tabular">{{ $document['reference'] }}</span>
                         </a>
                         <span class="flex items-center gap-3 text-body text-fg">

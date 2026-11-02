@@ -35,7 +35,7 @@
                     @endforeach
                 </table>
 
-                <a href="{{ $draft['url'] }}" style="display:inline-block;padding:10px 20px;background:#1d4ed8;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">{{ $draft['open'] }}</a>
+                <a href="{{ $draft['url'] }}" style="display:inline-block;padding:10px 20px;background:#140f4f;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">{{ $draft['open'] }}</a>
 
                 <p style="margin:20px 0 0;color:#4b5563;font-size:13px;">{{ $draft['why'] }}</p>
             </td>

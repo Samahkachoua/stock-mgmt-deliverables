@@ -156,7 +156,7 @@
                 <ul class="mt-3 flex flex-col divide-y divide-default">
                     @foreach ($holders as $holder)
                         <li class="flex flex-wrap items-center justify-between gap-3 py-2 text-body">
-                            <a href="{{ $holder['url'] }}" wire:navigate class="inline-flex min-h-control items-center font-semibold text-brand hover:underline"><span dir="ltr" class="tabular">{{ $holder['reference'] }}</span></a>
+                            <a href="{{ $holder['url'] }}" wire:navigate class="inline-flex min-h-control items-center font-semibold text-link hover:underline"><span dir="ltr" class="tabular">{{ $holder['reference'] }}</span></a>
                             <span class="font-semibold text-fg tabular">{{ Format::qtyUnit($holder['qty'], $base) }}</span>
                         </li>
                     @endforeach

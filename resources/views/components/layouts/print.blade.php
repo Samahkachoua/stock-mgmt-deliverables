@@ -19,6 +19,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title }} · {{ config('app.name') }}</title>
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="icon" type="image/png" href="{{ asset('favicon-32.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
 
     {{-- Tokens and fonts only: no theme script, so the page stays light. --}}
     @vite(['resources/css/app.css'])
@@ -41,7 +44,10 @@
 <body class="font-sans text-sm antialiased">
     <div class="sheet flex flex-col gap-5">
         <header class="flex items-start justify-between gap-6 border-b border-black pb-4">
-            <span class="text-base font-semibold">{{ config('app.name') }}</span>
+            <div class="flex flex-col items-start gap-2">
+                <img src="{{ asset('images/brand/logo.png') }}" alt="" class="h-14 w-auto">
+                <span class="text-base font-semibold">{{ config('app.name') }}</span>
+            </div>
             <div class="flex flex-col items-end gap-1 text-end">
                 <h1 class="text-xl font-semibold">{{ $heading }}</h1>
                 @if ($reference)

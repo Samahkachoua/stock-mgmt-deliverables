@@ -35,7 +35,7 @@
                     <dt class="shrink-0 text-small font-semibold uppercase tracking-wide text-muted">{{ $row['label'] }}</dt>
                     <dd class="min-w-0 break-words text-end text-body font-semibold text-fg">
                         @if ($row['url'] ?? null)
-                            <a href="{{ $row['url'] }}" wire:navigate class="text-brand hover:underline print:text-black print:no-underline" @if ($row['ltr'] ?? false) dir="ltr" @endif>{{ $row['value'] }}</a>
+                            <a href="{{ $row['url'] }}" wire:navigate class="text-link hover:underline print:text-black print:no-underline" @if ($row['ltr'] ?? false) dir="ltr" @endif>{{ $row['value'] }}</a>
                         @elseif ($row['ltr'] ?? false)
                             <span dir="ltr" class="tabular">{{ $row['value'] }}</span>
                         @else
