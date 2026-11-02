@@ -750,6 +750,8 @@ CREATE TABLE audit_log (
 CREATE INDEX idx_audit_entity ON audit_log (entity, entity_id);
 -- The audit log report: newest first, by period.
 CREATE INDEX idx_audit_created ON audit_log (created_at DESC, id DESC);
+-- Home's recent activity: one user's newest rows.
+CREATE INDEX idx_audit_user ON audit_log (user_id, id DESC);
 
 -- ----------------------------------------------------------------------------
 -- IMPORT (Excel staging)

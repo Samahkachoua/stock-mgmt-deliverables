@@ -6,6 +6,7 @@ use App\Models\StockTransaction;
 use App\Models\User;
 use App\Support\Drafts\DraftTypes;
 use App\Support\Drafts\DraftUi;
+use App\Support\Home\RecentActivity;
 use App\Support\Transactions\PendingApprovals;
 use App\Support\Transactions\TransactionTypes;
 use App\Support\Transactions\TypeUi;
@@ -17,7 +18,8 @@ class HomeController extends Controller
 {
     /**
      * The page after signing in: no charts, just large links to what the user
-     * can start, what waits for their approval and what is arriving here.
+     * can start, what waits for their approval, what is arriving here and the
+     * documents they last worked on.
      */
     public function __invoke(Request $request): View
     {
@@ -47,6 +49,7 @@ class HomeController extends Controller
             'approvals' => $approvals,
             'arriving' => $arriving,
             'transfers' => $types->get('TRANSFER'),
+            'recent' => RecentActivity::forUser($user),
         ]);
     }
 

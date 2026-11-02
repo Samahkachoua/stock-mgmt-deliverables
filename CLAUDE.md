@@ -520,7 +520,12 @@ never ad-hoc spinners per page.
 ## UX rules for "no training needed"
 - Nothing that isn't in the approved designs: no barcode scanning UI, no
   photo/file attachments on transactions, no dashboard widgets on Home or
-  the operator pages. Figures and charts live only on the owner dashboard
+  the operator pages (Home's "Pick up where you left off" list of the user's
+  last 8 documents/drafts, `App\Support\Home\RecentActivity`, is links, not a
+  widget: number, status and date per row; an empty state when there is
+  nothing yet). From 1024px it sits beside "Start something new"; those tiles
+  and the rows size by container queries (`@container`). Max 1280px wide,
+  checked by `tests/Browser/HomeLayoutTest.php` from 320 to 1920px. Figures and charts live only on the owner dashboard
   (`/dashboard`, permission `dashboard.view`, ADMIN by default; built from
   `App\Reports\Dashboard`, each figure = the row count of the report it
   opens). If a new field seems useful, ask before adding it.
