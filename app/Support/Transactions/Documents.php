@@ -129,13 +129,16 @@ final class Documents
                 ['label' => __('deliveries.details.driver'), 'value' => $document['driver_name']],
                 ['label' => __('deliveries.details.driver_phone'), 'value' => $document['driver_phone'], 'ltr' => true],
                 ['label' => __('deliveries.details.truck'), 'value' => $document['truck_no'], 'ltr' => true],
+                // Notes dispatched before drivers existed have neither.
+                ...($document['driver_licence_no'] ? [['label' => __('deliveries.details.licence_no'), 'value' => $document['driver_licence_no'], 'ltr' => true]] : []),
+                ...($document['driver_national_id'] ? [['label' => __('deliveries.details.national_id'), 'value' => $document['driver_national_id'], 'ltr' => true]] : []),
             ] : []),
             ...($ui->hasHeaderField('reason') && $document['reason'] ? [['label' => __('transactions.details.reason'), 'value' => __('transactions.reasons.'.$document['reason'])]] : []),
             ...($decision ? [['label' => __($decision['approved'] ? 'stock.approval.approved_by' : 'stock.approval.rejected_by'), 'value' => $decision['by']]] : []),
             ...($decision['reason'] ?? null ? [['label' => __('stock.approval.rejection_reason'), 'value' => $decision['reason']]] : []),
             ['label' => __('transactions.details.reference_note'), 'value' => $document['note']],
             ...($print ? [] : [
-                ['label' => __('transactions.details.from_draft'), 'value' => $document['draft'] ?? null, 'ltr' => true, 'url' => $document['draft_url'] ?? null],
+                ['label' => __('transactions.details.from_order'), 'value' => $document['draft'] ?? null, 'ltr' => true, 'url' => $document['draft_url'] ?? null],
                 ['label' => __('transactions.details.created_by'), 'value' => $document['created_by']],
                 ['label' => __('transactions.details.created_on'), 'value' => Format::dateTime($document['created_at'])],
             ]),
@@ -193,6 +196,8 @@ final class Documents
             'delivered_at' => $header->delivered_at ? CarbonImmutable::parse($header->delivered_at)->setTimezone(CompanyTime::zone()) : null,
             'driver_name' => $header->driver_name,
             'driver_phone' => $header->driver_phone,
+            'driver_licence_no' => $header->driver_licence_no,
+            'driver_national_id' => $header->driver_national_id,
             'truck_no' => $header->truck_no,
             // Created by confirming a draft: its branch and the draft itself.
             'branch' => $header->branch_name,

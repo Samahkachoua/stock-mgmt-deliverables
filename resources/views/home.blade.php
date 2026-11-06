@@ -26,7 +26,7 @@
 @endphp
 
 <x-layouts.app :title="__('home.page_title')">
-    <div class="mx-auto flex w-full max-w-7xl flex-col gap-[calc(var(--section)*2)]">
+    <div class="mx-auto flex w-full flex-col gap-[calc(var(--section)*2)]">
         <x-page-header icon="home" :title="__('home.title', ['name' => auth()->user()->full_name])" :subtitle="__('home.subtitle')" />
 
         @if ($approvals->isNotEmpty() || $arriving !== null)

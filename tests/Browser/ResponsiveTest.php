@@ -311,6 +311,47 @@ class ResponsiveTest extends DuskTestCase
         });
     }
 
+    public function test_desktop_sidebar_closes_to_icons_and_stays_closed(): void
+    {
+        $this->browse(function (Browser $browser) {
+            $this->open($browser->loginAs(self::$userId), 'desktop', '/receive');
+            $browser->script("localStorage.removeItem('sidebar')");
+            $this->open($browser, 'desktop', '/receive');
+
+            $state = fn () => $browser->script(<<<'JS'
+                const aside = document.querySelector('[data-sidebar]');
+                return {
+                    width: Math.round(aside.getBoundingClientRect().width),
+                    labels: aside.querySelector('nav a span').getBoundingClientRect().width > 2,
+                    content: Math.round(document.querySelector('main').getBoundingClientRect().left),
+                };
+            JS)[0];
+
+            // Open by default.
+            $this->assertEquals(['width' => 224, 'labels' => true, 'content' => 224], $state());
+
+            $browser->click('[data-sidebar-toggle]')->pause(300);
+            $this->assertEquals(['width' => 64, 'labels' => false, 'content' => 64], $state());
+
+            // Still closed on the next page and after a reload.
+            $browser->click('[data-sidebar] a[href$="/delivery-note"]')->waitForLocation('/delivery-note')->pause(300);
+            $this->assertSame(64, $state()['width']);
+            $this->open($browser, 'desktop', '/receive');
+            $this->assertSame(64, $state()['width']);
+
+            // Its labels are tooltips now, as on a tablet.
+            $browser->mouseover('[data-sidebar] a[href$="/delivery-note"]')->pause(100);
+            $this->assertTrue($browser->script("return getComputedStyle(document.querySelector('[data-sidebar-tip]')).display !== 'none'")[0]);
+
+            // Opened again, it stays open.
+            $browser->mouseover('main')->click('[data-sidebar-toggle]')->pause(300);
+            $this->open($browser, 'desktop', '/receive');
+            $this->assertEquals(['width' => 224, 'labels' => true, 'content' => 224], $state());
+
+            $browser->script("localStorage.removeItem('sidebar')");
+        });
+    }
+
     #[DataProvider('sizes')]
     public function test_filters_bar(string $size): void
     {

@@ -1,11 +1,14 @@
-{{-- Instant: Alpine flips the <html> class first, then Livewire saves the choice. --}}
+{{--
+    Light or Dark. Instant: Alpine flips the <html> class first, then Livewire saves the choice.
+    Until the user picks one (saved "system", the default), the theme their device gives is shown as chosen.
+--}}
 <div
-    x-data="{ theme: @js($theme) }"
+    x-data="{ theme: @js($theme) === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : @js($theme) }"
     class="inline-flex h-control items-center gap-1 rounded-lg bg-card-hover p-1"
     role="radiogroup"
     aria-label="{{ __('app.theme') }}"
 >
-    @foreach (['light' => 'light_mode', 'dark' => 'dark_mode', 'system' => 'contrast'] as $value => $icon)
+    @foreach (['light' => 'light_mode', 'dark' => 'dark_mode'] as $value => $icon)
         <button
             type="button"
             role="radio"

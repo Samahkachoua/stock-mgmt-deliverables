@@ -15,30 +15,39 @@
 /* Dark mode follows the `dark` class on <html> (set by the server or the head script). */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Desktop sidebar closed to its icons (`sidebar-collapsed` on <html>, set by the head script). Used as xl:collapsed:... */
+@custom-variant collapsed (&:where(.sidebar-collapsed, .sidebar-collapsed *));
+
 /*
  * Colour tokens. This file is the ONLY place colour values live; views use the
  * utilities generated below (bg-surface, text-muted, bg-type-delivery, ...).
- * Light values come from docs/design/stitch-exports/logistics-inventory-operations/DESIGN.md.
+ * Brand: ETL logo blue #0074b5 (primary) and red #c12f30 (accent). The red is only used for
+ * destructive actions and errors, never as decoration, so "brand" and "danger" can't be confused.
+ * Full 50-900 scales are in @theme below (bg-primary-50, text-accent-700, ...); the semantic
+ * tokens here repeat the scale values they use, because the contrast test reads hex values.
  * Contrast (text >= 4.5:1, icons/control borders >= 3:1) is checked by tests/Unit/ThemeContrastTest.php.
  */
 :root {
-    --surface: #f8fafc;
+    --surface: #f7f9fb;
     --card: #ffffff;
-    --card-hover: #f1f5f9;
-    --fg: #0f172a;
-    --muted: #5f6f86; /* brief's Slate 500 (#64748b) nudged darker: 4.34:1 on card-hover was below 4.5 */
+    --card-hover: #f2f5f8;
+    --fg: #1f2933;
+    --muted: #5f6e84; /* Slate 500 (#64748b) nudged darker: it was 4.35:1 on card-hover, below 4.5 */
     --subtle: #94a3b8; /* placeholders and decorative only, never body text */
-    --border: #e2e8f0; /* decorative dividers and card edges */
+    --border: #e5e9ef; /* decorative dividers and card edges */
     --border-control: #8491a5; /* input / control boundaries */
 
-    /* FMC logo navy (#140f4f). The logo's red (#be0f22) is used only in the logo: red means danger here. */
-    --brand: #140f4f;
-    --brand-hover: #0c0933;
+    --brand: #0074b5; /* primary-500: white text 5.0:1 */
+    --brand-hover: #00669f; /* primary-600 */
+    --brand-active: #00578a; /* primary-700, pressed */
+    --brand-soft: #edf5fa; /* primary-50: active nav item, selected row, ghost hover */
     --on-brand: #ffffff;
-    --link: #140f4f; /* link text and active tab icons */
-    --print-head: #140f4f; /* printed lines table header (always light, white text 17.3:1) */
-    --danger: #b91c1c;
-    --danger-soft: #fef2f2;
+    --link: #0074b5; /* link text and active tab icons */
+    --print-head: #0074b5; /* printed lines table header (always light, white text 5.0:1) */
+    --danger: #c12f30; /* accent-500: error text and icons, outline destructive buttons */
+    --danger-strong: #c12f30; /* filled destructive buttons */
+    --danger-hover: #a92829; /* accent-600 */
+    --danger-soft: #fbf0f1; /* accent-50 */
     --scrim: rgb(15 23 42 / 0.5); /* behind the confirmation modal */
 
     /* Transaction types: base = icon/accent, strong = filled buttons with white text, soft = tinted background. */
@@ -81,8 +90,9 @@
     --status-draft-soft: #eef2ff;
     --status-draft-line: #c7d2fe;
 
-    --elev-1: 0 1px 3px 0 rgb(15 23 42 / 0.04), 0 1px 2px -1px rgb(15 23 42 / 0.04);
-    --elev-2: 0 4px 6px -1px rgb(15 23 42 / 0.07), 0 2px 4px -2px rgb(15 23 42 / 0.05);
+    /* Borders do the work; shadows stay barely there (cards) or soft (menus, dialogs). */
+    --elev-1: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+    --elev-2: 0 8px 24px -6px rgb(15 23 42 / 0.12), 0 2px 6px -2px rgb(15 23 42 / 0.06);
 
     /* wire:navigate's progress bar at the top of the page takes the brand colour of the current theme. */
     --livewire-progress-bar-color: var(--brand);
@@ -100,12 +110,16 @@
     --border: #26324a;
     --border-control: #66758e;
 
-    --brand: #6360c8;
-    --brand-hover: #524eb4;
+    --brand: #0679b9; /* a touch lighter than the logo blue: 3.6:1 against the card, white text 4.7:1 */
+    --brand-hover: #00669f;
+    --brand-active: #00578a;
+    --brand-soft: #13283d;
     --on-brand: #ffffff;
-    --link: #a5a2e6; /* the brand itself is below 4.5:1 as text on the dark card */
-    --print-head: #140f4f; /* printouts are always light: same as the light theme */
-    --danger: #f87171;
+    --link: #5eb0e0; /* the brand itself is below 4.5:1 as text on the dark card */
+    --print-head: #0074b5; /* printouts are always light: same as the light theme */
+    --danger: #f08080;
+    --danger-strong: #c12f30;
+    --danger-hover: #a92829;
     --danger-soft: #33090c;
     --scrim: rgb(2 6 23 / 0.7);
 
@@ -159,7 +173,7 @@
  *
  *   text-small   12px  secondary text, table headers, badges (nothing smaller)
  *   text-table   13px  table cells
- *   text-body    14px  everything else (labels, inputs, buttons)
+ *   text-body    13px  everything else (labels, inputs, buttons)
  *   text-lead    15px  an emphasised line: empty-state title, the form's summary
  *   text-h3      16px  card and section headings, dialog titles
  *   text-h2      18px  the brand name
@@ -170,9 +184,9 @@
  *   h-row        table rows, 40px (44px on touch)   h-thead  table header row
  *   px-cell / py-cell-y   table cell padding (12px / 8px), px-edge the first and
  *                last cell, lined up with the card's padding
- *   p-card       16px card padding (py-card-y 12px: header strips, summary)
- *   gap-section  16px between sections
- *   p-page       page padding (16px, 24px on desktop)
+ *   p-card       12px card padding (py-card-y 10px: header strips, summary)
+ *   gap-section  12px between sections
+ *   p-page       page padding (12px, 20px on desktop)
  *   h-topbar, w-sidebar, w-rail   the app frame
  *
  * Arabic is one step larger (it reads smaller at the same size); the print
@@ -182,7 +196,7 @@
 :root {
     --fs-small: 0.75rem;
     --fs-table: 0.8125rem;
-    --fs-body: 0.875rem;
+    --fs-body: 0.8125rem;
     --fs-lead: 0.9375rem;
     --fs-h3: 1rem;
     --fs-h2: 1.125rem;
@@ -200,12 +214,12 @@
     --thead: 2.25rem;
     --cell-x: 0.75rem;
     --cell-y: 0.5rem;
-    --edge: 1rem;
-    --pad-card: 1rem;
-    --pad-card-y: 0.75rem;
-    --section: 1rem;
-    --page: 1rem;
-    --topbar: 3.25rem;
+    --edge: 0.75rem;
+    --pad-card: 0.75rem;
+    --pad-card-y: 0.625rem;
+    --section: 0.75rem;
+    --page: 0.75rem;
+    --topbar: 2.75rem;
     --sidebar: 14rem;
     --rail: 4rem;
 }
@@ -213,7 +227,7 @@
 html[lang='ar'] {
     --fs-small: 0.8125rem;
     --fs-table: 0.875rem;
-    --fs-body: 0.9375rem;
+    --fs-body: 0.875rem;
     --fs-lead: 1rem;
     --fs-h3: 1.0625rem;
     --fs-h2: 1.1875rem;
@@ -225,13 +239,13 @@ html[lang='ar'] {
     :root {
         --control: 2.75rem;
         --row: 2.75rem;
-        --topbar: 3.75rem;
+        --topbar: 3.25rem;
     }
 }
 
 @media (width >= 80rem) {
     :root {
-        --page: 1.5rem;
+        --page: 1.25rem;
     }
 }
 
@@ -269,6 +283,28 @@ html.print-view tfoot > tr {
 /* Only token colours exist: Tailwind's default palette (bg-slate-900, ...) is switched off. */
 @theme {
     --color-*: initial;
+
+    /* Brand scales (the same in both themes): primary = logo blue, accent = logo red. */
+    --color-primary-50: #edf5fa;
+    --color-primary-100: #d9eaf4;
+    --color-primary-200: #add3e7;
+    --color-primary-300: #7ab7d9;
+    --color-primary-400: #4097c8;
+    --color-primary-500: #0074b5;
+    --color-primary-600: #00669f;
+    --color-primary-700: #00578a;
+    --color-primary-800: #004772;
+    --color-primary-900: #003759;
+    --color-accent-50: #fbf0f1;
+    --color-accent-100: #f6e0e0;
+    --color-accent-200: #ebbcbd;
+    --color-accent-300: #df9393;
+    --color-accent-400: #d16364;
+    --color-accent-500: #c12f30;
+    --color-accent-600: #a92829;
+    --color-accent-700: #912223;
+    --color-accent-800: #761a1c;
+    --color-accent-900: #5a1214;
     --font-sans: 'Inter Variable', 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;
 
     /*
@@ -299,9 +335,13 @@ html.print-view tfoot > tr {
     --color-control: var(--border-control);
     --color-brand: var(--brand);
     --color-brand-hover: var(--brand-hover);
+    --color-brand-active: var(--brand-active);
+    --color-brand-soft: var(--brand-soft);
     --color-on-brand: var(--on-brand);
     --color-link: var(--link);
     --color-danger: var(--danger);
+    --color-danger-strong: var(--danger-strong);
+    --color-danger-hover: var(--danger-hover);
     --color-danger-soft: var(--danger-soft);
     --color-scrim: var(--scrim);
 
@@ -408,10 +448,134 @@ html[lang='ar'] {
         display: none !important;
     }
 
+    /*
+     * Controls: colour changes ease in over 150ms, a pressed button dims a little, and keyboard
+     * focus always shows a 2px brand ring. Base layer, so a view's own focus/transition classes win.
+     * a[class~='h-control'] = links styled as buttons ("+ New receipt").
+     */
+    :where(a, button, [role='button'], summary, input, select, textarea) {
+        transition-property: color, background-color, border-color, outline-color, box-shadow, opacity;
+        transition-duration: 150ms;
+        transition-timing-function: ease-out;
+    }
+
+    :where(button, [role='button'], a[class~='h-control']):not(:disabled):active {
+        filter: brightness(0.94);
+    }
+
+    :where(a, button, [role='button'], summary, [tabindex]):focus-visible {
+        outline: 2px solid var(--brand);
+        outline-offset: 2px;
+    }
+
     /* wire:navigate's progress bar grows from the start edge: mirrored in Arabic. */
     [dir='rtl'] #nprogress .bar {
         scale: -1 1;
     }
+}
+
+/*
+ * Tooltips (resources/js/tooltips.js, Bootstrap's Tooltip and Popper). Bootstrap's CSS is not
+ * loaded, so its markup is styled here with the theme tokens: dark on light pages, light on dark.
+ */
+.tooltip {
+    position: absolute;
+    z-index: 1080;
+    display: block;
+    margin: 0;
+    font-size: var(--fs-small);
+    line-height: var(--lh-small);
+    font-weight: 600;
+    overflow-wrap: break-word;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease-out;
+}
+
+.tooltip.show {
+    opacity: 1;
+}
+
+.tooltip-inner {
+    max-width: 16rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    background-color: var(--fg);
+    color: var(--card);
+    text-align: center;
+}
+
+.tooltip .tooltip-arrow {
+    position: absolute;
+    display: block;
+    width: 0.75rem;
+    height: 0.375rem;
+}
+
+.tooltip .tooltip-arrow::before {
+    position: absolute;
+    content: '';
+    border-style: solid;
+    border-color: transparent;
+}
+
+.tooltip[data-popper-placement^='top'] {
+    padding: 0.375rem 0;
+}
+
+.tooltip[data-popper-placement^='top'] .tooltip-arrow {
+    bottom: 0;
+}
+
+.tooltip[data-popper-placement^='top'] .tooltip-arrow::before {
+    top: -1px;
+    border-width: 0.375rem 0.375rem 0;
+    border-top-color: var(--fg);
+}
+
+.tooltip[data-popper-placement^='bottom'] {
+    padding: 0.375rem 0;
+}
+
+.tooltip[data-popper-placement^='bottom'] .tooltip-arrow {
+    top: 0;
+}
+
+.tooltip[data-popper-placement^='bottom'] .tooltip-arrow::before {
+    bottom: -1px;
+    border-width: 0 0.375rem 0.375rem;
+    border-bottom-color: var(--fg);
+}
+
+.tooltip[data-popper-placement^='left'],
+.tooltip[data-popper-placement^='right'] {
+    padding: 0 0.375rem;
+}
+
+.tooltip[data-popper-placement^='left'] .tooltip-arrow,
+.tooltip[data-popper-placement^='right'] .tooltip-arrow {
+    width: 0.375rem;
+    height: 0.75rem;
+}
+
+.tooltip[data-popper-placement^='left'] .tooltip-arrow {
+    right: 0;
+}
+
+.tooltip[data-popper-placement^='left'] .tooltip-arrow::before {
+    left: -1px;
+    border-width: 0.375rem 0 0.375rem 0.375rem;
+    border-left-color: var(--fg);
+}
+
+.tooltip[data-popper-placement^='right'] .tooltip-arrow {
+    left: 0;
+}
+
+.tooltip[data-popper-placement^='right'] .tooltip-arrow::before {
+    right: -1px;
+    border-width: 0.375rem 0.375rem 0.375rem 0;
+    border-right-color: var(--fg);
 }
 
 /*

@@ -135,7 +135,7 @@ it('confirms a order from the expiry dates picked on it', function () {
         ->and($this->stock->balance('YOGURT', $later))->toBe(6.0)
         ->and($this->stock->reserved('YOGURT', $later))->toBe(4.0);
 
-    app(PostingService::class)->dispatchDelivery($documents[0], null, null, null, $this->stock->user);
+    app(PostingService::class)->dispatchDelivery($documents[0], driver()->id, $this->stock->user);
     app(PostingService::class)->deliver($documents[0], Stock::deliveredInFull($documents[0]), $this->stock->user);
 
     expect($documents[0]->fresh()->status)->toBe('POSTED')
@@ -385,7 +385,7 @@ it('keeps the batch picked on an order and delivers from it', function () {
 
     $draft = $this->drafts->save(draftOf($this, 'OUT', [draftLine($this->stock, 'YOGURT', 2, expiry: $soon, batch: 'B2')]), $this->stock->user);
     [$note] = $this->drafts->confirm($draft, $this->stock->user);
-    app(PostingService::class)->dispatchDelivery($note, null, null, null, $this->stock->user);
+    app(PostingService::class)->dispatchDelivery($note, driver()->id, $this->stock->user);
     app(PostingService::class)->deliver($note, Stock::deliveredInFull($note), $this->stock->user);
 
     expect($this->stock->balance('YOGURT', $soon, batch: 'A1'))->toBe(6.0)

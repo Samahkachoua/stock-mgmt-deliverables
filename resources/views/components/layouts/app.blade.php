@@ -2,7 +2,7 @@
 
 {{--
     The app frame (CLAUDE.md "Responsive layout"):
-      desktop (xl)  full sidebar
+      desktop (xl)  full sidebar; the top bar's burger closes it to icons (remembered per browser)
       tablet (md)   sidebar as icons, labels as tooltips
       phone         sidebar hidden; the top bar's menu button opens it as a drawer
                     (from the start side: the right in Arabic)
@@ -16,6 +16,13 @@
         x-data="{
             nav: false,
             tip: null,
+            collapsed: document.documentElement.classList.contains('sidebar-collapsed'),
+            toggleSidebar() {
+                this.collapsed = ! this.collapsed;
+                this.tip = null;
+                document.documentElement.classList.toggle('sidebar-collapsed', this.collapsed);
+                try { localStorage.setItem('sidebar', this.collapsed ? 'collapsed' : 'open'); } catch (e) {}
+            },
             showTip(link) {
                 const box = link.getBoundingClientRect();
                 this.tip = { label: link.dataset.label, pending: link.dataset.pending, top: box.top + box.height / 2 };
@@ -31,9 +38,9 @@
             id="sidebar"
             data-sidebar
             x-bind:class="{ 'max-md:invisible': ! nav, 'max-md:translate-x-0!': nav }"
-            class="fixed inset-y-0 start-0 z-50 flex w-64 flex-col border-e border-default bg-card transition-[translate,visibility] duration-200 max-md:invisible max-md:-translate-x-full max-md:shadow-pop max-md:rtl:translate-x-full md:z-40 md:w-rail xl:w-sidebar print:hidden"
+            class="fixed inset-y-0 start-0 z-50 flex w-64 flex-col border-e border-default bg-card transition-[translate,visibility,width] duration-200 max-md:invisible max-md:-translate-x-full max-md:shadow-pop max-md:rtl:translate-x-full md:z-40 md:w-rail xl:w-sidebar xl:collapsed:w-rail print:hidden"
         >
-            <div class="flex h-topbar shrink-0 items-center justify-between gap-2 border-b border-default px-4 md:justify-center md:px-3 xl:justify-start xl:px-4">
+            <div class="flex h-topbar shrink-0 items-center justify-between gap-2 border-b border-default px-4 md:justify-center md:px-3 xl:justify-start xl:px-4 xl:collapsed:justify-center xl:collapsed:px-3">
                 <x-brand compact />
                 <button type="button" x-on:click="nav = false" class="grid size-control shrink-0 place-items-center rounded-lg text-muted hover:bg-card-hover hover:text-fg md:hidden">
                     <x-icon name="close" />
@@ -41,7 +48,7 @@
                 </button>
             </div>
 
-            <nav x-on:scroll.passive="tip = null" class="flex-1 overflow-y-auto px-3 py-3 md:px-2 xl:px-3" aria-label="{{ __('nav.main') }}">
+            <nav x-on:scroll.passive="tip = null" class="flex-1 overflow-y-auto px-3 py-3 md:px-2 xl:px-3 xl:collapsed:px-2" aria-label="{{ __('nav.main') }}">
                 @php
                     // Sidebar badges: documents waiting for this user's approval.
                     $pendingApprovals = auth()->user() ? \App\Support\Transactions\PendingApprovals::bySlug(auth()->user()) : [];
@@ -65,6 +72,7 @@
                             $pendingText = $pending > 0 ? __('nav.pending_count', ['count' => \App\Support\Format::qty($pending)]) : '';
                         @endphp
                         <li>
+                            {{-- Active: the type's own tint (one colour per type), else a soft brand tint. --}}
                             <a
                                 href="{{ route($item['route']) }}"
                                 data-label="{{ $label }}"
@@ -77,17 +85,18 @@
                                 x-on:blur="tip = null"
                                 @if ($active) aria-current="page" @endif
                                 @class([
-                                    'relative flex h-control items-center justify-start gap-3 rounded-lg px-3 text-body font-semibold transition-colors md:justify-center xl:justify-start',
-                                    'text-fg' => $active,
-                                    $colours['soft'] ?? 'bg-card-hover' => $active,
+                                    'relative flex h-control items-center justify-start gap-3 rounded-lg px-3 text-body font-semibold transition-colors md:justify-center xl:justify-start xl:collapsed:justify-center',
+                                    'text-fg' => $active && $colours,
+                                    'text-link' => $active && ! $colours,
+                                    $colours['soft'] ?? 'bg-brand-soft' => $active,
                                     'text-muted hover:bg-card-hover hover:text-fg' => ! $active,
                                 ])
                             >
-                                <x-icon :name="$item['icon']" :class="$colours['icon'] ?? 'text-muted'" />
-                                <span class="md:sr-only xl:not-sr-only">{{ $label }}</span>
+                                <x-icon :name="$item['icon']" :class="$colours['icon'] ?? ($active ? 'text-link' : 'text-muted')" />
+                                <span class="md:sr-only xl:not-sr-only xl:collapsed:sr-only">{{ $label }}</span>
                                 @if ($pending > 0)
                                     {{-- Waiting for this user's approval (not their own documents). --}}
-                                    <span class="ms-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1.5 text-small font-semibold tabular md:absolute md:-top-0.5 md:end-0.5 md:ms-0 xl:static xl:ms-auto {{ config('ui.statuses.pending') }}">
+                                    <span class="ms-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1.5 text-small font-semibold tabular md:absolute md:-top-0.5 md:end-0.5 md:ms-0 xl:static xl:ms-auto xl:collapsed:absolute xl:collapsed:ms-0 {{ config('ui.statuses.pending') }}">
                                         <span aria-hidden="true">{{ \App\Support\Format::qty($pending) }}</span>
                                         <span class="sr-only">{{ $pendingText }}</span>
                                     </span>
@@ -110,13 +119,13 @@
             x-bind:style="tip && { top: tip.top + 'px' }"
             data-sidebar-tip
             aria-hidden="true"
-            class="pointer-events-none fixed start-rail z-50 ms-2 hidden -translate-y-1/2 rounded-lg border border-default bg-card px-2.5 py-1.5 shadow-pop md:block xl:hidden print:hidden"
+            class="pointer-events-none fixed start-rail z-50 ms-2 hidden -translate-y-1/2 rounded-lg border border-default bg-card px-2.5 py-1.5 shadow-pop md:block xl:hidden xl:collapsed:block print:hidden"
         >
             <p class="whitespace-nowrap text-small font-semibold text-fg" x-text="tip?.label"></p>
             <p x-show="tip?.pending" class="whitespace-nowrap text-small text-muted" x-text="tip?.pending"></p>
         </div>
 
-        <div class="flex min-h-screen min-w-0 flex-col md:ps-rail xl:ps-sidebar print:ps-0">
+        <div class="flex min-h-screen min-w-0 flex-col md:ps-rail xl:ps-sidebar xl:collapsed:ps-rail transition-[padding] duration-200 print:ps-0">
             {{-- Phone: menu button, page title, user menu (with theme and language). No warehouse here: pages that need one have their own field or filter. --}}
             <header class="sticky top-0 z-30 flex h-topbar items-center gap-2 border-b border-default bg-card px-3 md:justify-between md:gap-3 md:px-4 xl:px-page print:hidden">
                 <button
@@ -130,7 +139,20 @@
                     <x-icon name="menu" />
                     <span class="sr-only">{{ __('nav.open_menu') }}</span>
                 </button>
-                <p class="min-w-0 flex-1 truncate text-lead font-semibold text-fg md:hidden" aria-hidden="true">{{ $title }}</p>
+                {{-- Desktop: closes the sidebar to its icons, or opens it again (remembered per browser). Tablets always have the icons, phones the drawer. --}}
+                <button
+                    type="button"
+                    data-sidebar-toggle
+                    x-on:click="toggleSidebar()"
+                    x-bind:aria-expanded="(! collapsed).toString()"
+                    aria-controls="sidebar"
+                    class="hidden size-control shrink-0 place-items-center rounded-lg text-fg hover:bg-card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 xl:grid"
+                >
+                    <x-icon name="menu" />
+                    <span class="sr-only collapsed:hidden">{{ __('nav.collapse_sidebar') }}</span>
+                    <span class="hidden collapsed:inline collapsed:sr-only">{{ __('nav.expand_sidebar') }}</span>
+                </button>
+                <p class="min-w-0 flex-1 truncate text-body font-semibold text-fg md:hidden" aria-hidden="true">{{ $title }}</p>
 
                 {{-- Documents, items, customers, serials and batches (phone: a button opening a search panel). --}}
                 @auth

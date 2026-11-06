@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'FMC - Supply Chain'),
+    'name' => env('APP_NAME', 'ETL Supply Chain'),
 
     /*
     |--------------------------------------------------------------------------

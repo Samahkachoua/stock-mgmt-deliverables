@@ -118,7 +118,7 @@ return [
     'damage' => [
         'title' => 'Casse',
         'description' => 'Le stock sorti comme endommagé, par période, motif et entrepôt.',
-        'documents' => 'Documents',
+        'documents' => 'Opérations',
     ],
 
     'adjustments' => [
@@ -171,7 +171,7 @@ return [
             'reversed_movements' => 'Mouvements inversés',
             'file' => 'Fichier',
             'items' => 'Articles',
-            'documents' => 'Documents',
+            'documents' => 'Opérations',
             'rows' => 'Lignes',
             'skipped' => 'Lignes écartées',
             'customer' => 'Client',
@@ -197,7 +197,7 @@ return [
         ],
         'removed' => 'supprimé',
         'entities' => [
-            'stock_transaction' => 'Document de stock',
+            'stock_transaction' => 'Opération de stock',
             'product' => 'Article',
             'app_user' => 'Utilisateur',
             'role' => 'Rôle',

@@ -10,9 +10,9 @@
                 <button
                     type="button"
                     wire:click="add"
-                    class="flex h-control items-center gap-2 rounded-lg border border-control bg-card px-4 text-body font-semibold text-fg hover:bg-card-hover"
+                    class="flex h-control items-center gap-2 rounded-lg bg-brand px-4 text-body font-semibold text-on-brand shadow-card hover:bg-brand-hover focus:outline-none focus:ring-2 focus:ring-brand/40 focus:ring-offset-2 focus:ring-offset-card"
                 >
-                    <x-busy-icon name="add" target="add" class="text-muted" />
+                    <x-busy-icon name="add" target="add" />
                     {{ __('settings.roles.add') }}
                 </button>
             @endunless
@@ -22,13 +22,11 @@
         @if ($adding)
             <form wire:submit="create" class="mx-card mb-card rounded-xl border border-default bg-surface p-card" novalidate>
                 <h3 class="text-lead font-semibold text-fg">{{ __('settings.roles.new_heading') }}</h3>
-
+                <p class="mt-3 text-body text-muted">{{ __('settings.roles.new_hint') }}</p>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <x-form.input model="newName" :label="__('settings.roles.name')" required autofocus />
                     <x-form.input model="newCode" :label="__('settings.roles.code')" :hint="__('settings.roles.code_hint')" ltr required class="uppercase tabular" />
                 </div>
-                <p class="mt-3 text-body text-muted">{{ __('settings.roles.new_hint') }}</p>
-
                 <div class="mt-4 flex flex-wrap justify-end gap-3">
                     <button type="button" wire:click="cancelAdd" class="h-control rounded-lg border border-control bg-card px-4 text-body font-semibold text-fg hover:bg-card-hover">
                         {{ __('settings.cancel') }}
@@ -77,7 +75,8 @@
                                         <button
                                             type="button"
                                             wire:click="askDelete('{{ $role->id }}')"
-                                            title="{{ __('settings.roles.delete') }}"
+                                            data-bs-toggle="tooltip"
+                                            data-bs-title="{{ __('settings.roles.delete') }}"
                                             class="mt-1 inline-grid size-control place-items-center rounded-lg text-danger hover:bg-danger-soft"
                                         >
                                             <x-busy-icon name="delete" target="askDelete('{{ $role->id }}')" class="size-4" />

@@ -23,6 +23,7 @@ use App\Support\CompanyTime;
 use App\Support\Deliveries\DeliveryNotifier;
 use App\Support\Drafts\DraftTypes;
 use App\Support\Format;
+use App\Support\Ids;
 use App\Support\Transactions\TransactionTypes;
 use App\Support\Transactions\TypeUi;
 use Carbon\CarbonImmutable;
@@ -827,9 +828,6 @@ final class PostingService
     /** Why a Delivery note line was delivered short (stock_transaction_line.shortage_reason). */
     public const DELIVERY_REASONS = ['NOT_AVAILABLE', 'REFUSED', 'DAMAGED', 'REPLACED'];
 
-    /** Longest driver name, phone number and truck number on a Delivery note. */
-    public const MAX_DRIVER = ['driver_name' => 100, 'driver_phone' => 30, 'truck_no' => 30];
-
     /**
      * The Delivery note of a confirmed Order: CONFIRMED, today, with the Order's
      * lines (and serials), taking over the Order's reservations. Lines the Order
@@ -942,27 +940,36 @@ final class PostingService
     }
 
     /**
-     * A Delivery note leaves the warehouse: CONFIRMED -> DISPATCHED, with the
-     * driver's name, phone and the truck number (each optional). Stock doesn't
-     * change: it stays reserved until delivered.
+     * A Delivery note leaves the warehouse: CONFIRMED -> DISPATCHED, with one
+     * of the drivers (Settings › Drivers; required). The note keeps a copy of
+     * the driver's details as they are now, so editing the driver later never
+     * changes it. Stock doesn't change: it stays reserved until delivered.
      *
-     * @throws StockException with field driver_name / driver_phone / truck_no when one is too long
+     * @throws StockException with field driver_id when no (existing) driver is given
      */
-    public function dispatchDelivery(StockTransaction $transaction, ?string $driver, ?string $phone, ?string $truck, User $by): void
+    public function dispatchDelivery(StockTransaction $transaction, ?string $driverId, User $by): void
     {
-        $values = [];
-
-        foreach (['driver_name' => $driver, 'driver_phone' => $phone, 'truck_no' => $truck] as $field => $value) {
-            $value = trim((string) $value);
-
-            if (mb_strlen($value) > self::MAX_DRIVER[$field]) {
-                throw new PostingRejected('settings.errors.too_long', ['max' => self::MAX_DRIVER[$field]], null, $field);
-            }
-
-            $values[$field] = $value === '' ? null : $value;
+        if (! Ids::valid($driverId)) {
+            throw new PostingRejected('deliveries.errors.driver_required', [], null, 'driver_id');
         }
 
-        DB::transaction(function () use ($transaction, $values, $by) {
+        DB::transaction(function () use ($transaction, $driverId, $by) {
+            // The foreign key keeps it from being deleted once this note refers to it.
+            $driver = DB::table('driver')->where('id', $driverId)->first();
+
+            if ($driver === null) {
+                throw new PostingRejected('deliveries.errors.driver_not_found', [], null, 'driver_id');
+            }
+
+            $values = [
+                'driver_id' => $driver->id,
+                'driver_name' => $driver->name,
+                'driver_licence_no' => $driver->licence_no,
+                'driver_national_id' => $driver->national_id,
+                'driver_phone' => $driver->phone,
+                'truck_no' => $driver->truck_no,
+            ];
+
             $header = $this->lockUndelivered($transaction, $by);
 
             if ($header->status !== 'CONFIRMED') {

@@ -12,7 +12,7 @@
 <head>
     <meta charset="utf-8">
     <style>
-        body { font-family: {{ \App\Reports\Export\Exporter::PDF_FONT }}; font-size: 9pt; color: #0f172a; background: #ffffff; }
+        body { font-family: {{ \App\Reports\Export\Exporter::PDF_FONT }}; font-size: 9pt; color: #1f2933; background: #ffffff; }
         h1 { font-size: 15pt; margin: 0 0 2mm 0; }
         .meta { color: #475569; font-size: 8pt; margin: 0 0 1mm 0; }
         .summary { margin: 3mm 0; border-collapse: collapse; }
@@ -20,7 +20,7 @@
         .summary .label { color: #475569; }
         table.rows { width: 100%; border-collapse: collapse; margin-top: 3mm; }
         .logo { height: 12mm; margin: 0 0 3mm 0; }
-        table.rows th { background: #f1f5f9; color: #140f4f; font-size: 7.5pt; text-transform: uppercase; text-align: {{ $start }}; padding: 2mm; border-bottom: 0.3mm solid #cbd5e1; }
+        table.rows th { background: #f1f5f9; color: #00578a; font-size: 7.5pt; text-transform: uppercase; text-align: {{ $start }}; padding: 2mm; border-bottom: 0.3mm solid #cbd5e1; }
         table.rows td { padding: 2mm; border-bottom: 0.2mm solid #e2e8f0; vertical-align: top; text-align: {{ $start }}; }
         table.rows .end { text-align: {{ $end }}; }
         .strong { font-weight: bold; }
@@ -28,7 +28,7 @@
     </style>
 </head>
 <body>
-    <img class="logo" src="{{ public_path('images/brand/logo.png') }}" alt="">
+    <img class="logo" src="{{ public_path('images/brand/etl-logo-print.png') }}" alt="{{ __('app.logo_alt') }}">
     <h1>{{ $report->title() }}</h1>
     <p class="meta">{{ __('reports.export.generated', ['date' => \App\Support\Format::dateTime($generatedAt), 'name' => $by]) }}</p>
     @foreach ($filters as $line)

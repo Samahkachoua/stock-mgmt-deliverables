@@ -6,11 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $draft['subject'] }}</title>
 </head>
-<body style="margin:0;padding:24px 16px;background:#f4f5f7;color:#111827;font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:15px;line-height:1.5;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #d1d5db;border-radius:8px;">
+<body style="margin:0;padding:24px 16px;background:#f7f9fb;color:#1f2933;font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:15px;line-height:1.5;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5e9ef;border-radius:12px;">
         <tr>
             <td style="padding:24px;text-align:start;">
-                <p style="margin:0 0 4px;color:#4b5563;font-size:13px;">{{ config('app.name') }}</p>
+                {{-- Embedded when sent (shows without loading remote images); a plain URL when only rendered. --}}
+                @php($logoPath = public_path('images/brand/etl-logo-email.png'))
+                <img src="{{ isset($message) ? $message->embed($logoPath) : asset('images/brand/etl-logo-email.png') }}" width="160" alt="{{ __('app.logo_alt') }}" style="display:block;width:160px;height:auto;border:0;margin:0 0 16px;">
                 <h1 style="margin:0 0 16px;font-size:20px;">{{ $draft['subject'] }}</h1>
                 <p style="margin:0 0 16px;">{{ $draft['intro'] }}</p>
 
@@ -35,7 +37,7 @@
                     @endforeach
                 </table>
 
-                <a href="{{ $draft['url'] }}" style="display:inline-block;padding:10px 20px;background:#140f4f;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">{{ $draft['open'] }}</a>
+                <a href="{{ $draft['url'] }}" style="display:inline-block;padding:10px 20px;background:#0074b5;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;">{{ $draft['open'] }}</a>
 
                 <p style="margin:20px 0 0;color:#4b5563;font-size:13px;">{{ $draft['why'] }}</p>
             </td>

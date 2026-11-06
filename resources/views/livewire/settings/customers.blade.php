@@ -1,5 +1,5 @@
 <x-settings.layout>
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-section">
         <x-master-data.header
             :heading="__('settings.customers.heading')"
             :description="__('settings.customers.description')"

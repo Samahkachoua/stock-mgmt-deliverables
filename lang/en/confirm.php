@@ -25,6 +25,11 @@ return [
             'body' => ':name is removed for good. This can’t be undone.',
             'button' => 'Delete unit',
         ],
+        'driver' => [
+            'title' => 'Delete driver :name?',
+            'body' => ':name is removed from the list for good. This can’t be undone.',
+            'button' => 'Delete driver',
+        ],
         'role' => [
             'title' => 'Delete role :name?',
             'body' => 'The role and its permissions are removed for good. This can’t be undone.',
@@ -40,12 +45,12 @@ return [
     'deactivate' => [
         'warehouse' => [
             'title' => 'Deactivate warehouse :name?',
-            'body' => ':name can no longer be chosen for new transactions. You can turn it back on later.',
+            'body' => ':name can no longer be chosen for new operations. You can turn it back on later.',
             'button' => 'Deactivate warehouse',
         ],
         'customer' => [
             'title' => 'Deactivate customer :name?',
-            'body' => ':name can no longer be chosen for new transactions. You can turn it back on later.',
+            'body' => ':name can no longer be chosen for new operations. You can turn it back on later.',
             'button' => 'Deactivate customer',
         ],
         'customer_branch' => [
@@ -55,7 +60,7 @@ return [
         ],
         'item' => [
             'title' => 'Deactivate item :name?',
-            'body' => ':name can no longer be chosen on new transactions. You can turn it back on later.',
+            'body' => ':name can no longer be chosen on new operations. You can turn it back on later.',
             'button' => 'Deactivate item',
         ],
         'user' => [
@@ -82,10 +87,11 @@ return [
         'reason' => 'Why is it rejected?',
     ],
     'blocked' => [
-        'item_on_documents' => '{1} :name is used on 1 document (:types) and can’t be deleted. Turn off “In use” to hide it instead.|[2,*] :name is used on :count documents (:types) and can’t be deleted. Turn off “In use” to hide it instead.',
+        'item_on_documents' => '{1} :name is used on 1 operation (:types) and can’t be deleted. Turn off “In use” to hide it instead.|[2,*] :name is used on :count operations (:types) and can’t be deleted. Turn off “In use” to hide it instead.',
         'item_has_records' => ':name has stock records and can’t be deleted. Turn off “In use” to hide it instead.',
         'unit_in_use' => '{1} :name is used by 1 item and can’t be deleted.|[2,*] :name is used by :count items and can’t be deleted.',
-        'unit_on_documents' => ':name is used on saved documents and can’t be deleted.',
+        'unit_on_documents' => ':name is used on saved operations and can’t be deleted.',
+        'driver_in_use' => '{1} :name is on 1 delivery note and can’t be deleted.|[2,*] :name is on :count delivery notes and can’t be deleted.',
         'role_system' => ':name is a built-in role and can’t be deleted.',
         'role_in_use' => '{1} :name is given to 1 user and can’t be deleted.|[2,*] :name is given to :count users and can’t be deleted.',
     ],

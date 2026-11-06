@@ -44,13 +44,13 @@ return [
         'title' => 'Charge par entrepôt',
         'hint' => 'Articles traités dans chaque entrepôt. Un transfert compte là d’où il est parti.',
         'items' => '{0,1} :count article|[2,*] :count articles',
-        'documents' => '{0,1} :count document|[2,*] :count documents',
+        'documents' => '{0,1} :count opération|[2,*] :count opérations',
     ],
 
     'table' => [
         'show' => 'Afficher en tableau',
         'period' => 'Période',
-        'documents' => 'Documents',
+        'documents' => 'Opérations',
         'lines' => 'Articles',
         'warehouse' => 'Entrepôt',
     ],

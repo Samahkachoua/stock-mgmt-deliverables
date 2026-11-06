@@ -76,7 +76,8 @@
                                         <button
                                             type="button"
                                             wire:click="removeCustomer('{{ $customerId }}')"
-                                            title="{{ __('settings.limits.remove', ['customer' => $name]) }}"
+                                            data-bs-toggle="tooltip"
+                                            data-bs-title="{{ __('settings.limits.remove', ['customer' => $name]) }}"
                                             class="grid size-control place-items-center rounded-lg text-muted hover:bg-danger-soft hover:text-danger"
                                         >
                                             <x-busy-icon name="delete" target="removeCustomer('{{ $customerId }}')" />

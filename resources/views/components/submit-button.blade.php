@@ -25,8 +25,8 @@
 
 @php
     $looks = [
-        'brand' => 'bg-brand text-on-brand shadow-card hover:bg-brand-hover',
-        'danger' => 'bg-type-damage-strong text-on-brand hover:opacity-90',
+        'brand' => 'bg-brand text-on-brand shadow-card hover:bg-brand-hover active:bg-brand-active',
+        'danger' => 'bg-danger-strong text-on-brand shadow-card hover:bg-danger-hover',
         'outline' => 'border border-control bg-card text-fg shadow-card hover:bg-card-hover',
     ];
     $look = $looks[$variant] ?? $variant.' text-on-brand shadow-card hover:opacity-90';
@@ -41,12 +41,13 @@
     wire:loading.attr="disabled"
     wire:target="{{ $target }}"
     {{ $attributes->class([
-        'flex h-control items-center justify-center rounded-lg px-4 font-semibold focus:outline-none focus:ring-2 focus:ring-brand/40 focus:ring-offset-2 focus:ring-offset-card disabled:cursor-not-allowed disabled:opacity-50',
+        'flex h-control items-center justify-center rounded-lg px-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none',
         $size,
         $look,
     ]) }}
 >
-    <span wire:loading.remove wire:target="{{ $target }}" class="inline-flex items-center gap-2">
+    {{-- .inline-flex: when loading ends Livewire shows it again as inline-block unless told otherwise, which splits icon and label onto two lines. --}}
+    <span wire:loading.remove.inline-flex wire:target="{{ $target }}" class="inline-flex items-center gap-2">
         @if ($icon)
             <x-icon :name="$icon" :class="$variant === 'outline' ? 'text-muted' : ''" />
         @endif

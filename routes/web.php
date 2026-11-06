@@ -56,6 +56,7 @@ Route::middleware(['auth', 'warehouse'])->group(function () {
         'settings.customers' => Settings\Customers::class,
         'settings.branches' => Settings\Branches::class,
         'settings.units' => Settings\Units::class,
+        'settings.drivers' => Settings\Drivers::class,
         'settings.approval-limits' => Settings\ApprovalLimits::class,
         'settings.users' => Settings\Users::class,
         'settings.roles' => Settings\Roles::class,

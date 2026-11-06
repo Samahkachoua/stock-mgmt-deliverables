@@ -112,7 +112,7 @@ return [
 
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'FMC - Supply Chain')),
+        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'ETL Supply Chain')),
     ],
 
 ];

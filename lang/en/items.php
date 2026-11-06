@@ -17,8 +17,8 @@ return [
     'save' => 'Save item',
     'locked_notice' => 'Stock of this item has already moved, so its customer, base unit and tracking can’t change: that would change the meaning of quantities already recorded.',
     'locked_field' => 'Fixed: this item already has stock movements.',
-    'service_locked_notice' => 'This service is already on documents, so its customer, base unit and whether it is a service can’t change.',
-    'service_locked_field' => 'Fixed: this item is already on documents.',
+    'service_locked_notice' => 'This service is already on operations, so its customer, base unit and whether it is a service can’t change.',
+    'service_locked_field' => 'Fixed: this item is already on operations.',
 
     'list' => [
         'service' => 'Service',
@@ -49,7 +49,7 @@ return [
         'name_ar' => 'Name (Arabic)',
         'name_fr' => 'Name (French)',
         'active' => 'In use',
-        'active_hint' => 'Turn this off to hide the item from new documents.',
+        'active_hint' => 'Turn this off to hide the item from new operations.',
         'base_unit' => 'Base unit',
         'base_unit_hint' => 'The smallest unit. Stock is always counted in this unit.',
         'other_units' => 'Other units',

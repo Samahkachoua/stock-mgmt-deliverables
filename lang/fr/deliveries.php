@@ -12,10 +12,11 @@ return [
     'dispatch' => [
         'button' => 'Expédier',
         'title' => 'Expédier le bon de livraison :reference ?',
-        'hint' => 'Qui le transporte ? Tous les champs sont facultatifs.',
-        'driver_name' => 'Nom du chauffeur',
-        'driver_phone' => 'Téléphone du chauffeur',
-        'truck_no' => 'Numéro du camion',
+        'hint' => 'Choisissez le chauffeur qui le transporte. Ses coordonnées sont conservées sur le bon de livraison.',
+        'driver' => 'Chauffeur',
+        'choose_driver' => 'Choisir un chauffeur',
+        'no_drivers' => 'Aucun chauffeur pour l’instant.',
+        'add_driver' => 'Ajoutez-en un dans Paramètres › Chauffeurs',
         'confirm' => 'Expédier',
         'keep' => 'Pas maintenant',
     ],
@@ -50,6 +51,8 @@ return [
         'driver' => 'Chauffeur',
         'driver_phone' => 'Téléphone du chauffeur',
         'truck' => 'Camion',
+        'licence_no' => 'Numéro de permis',
+        'national_id' => 'Identité du chauffeur',
         'short' => 'En moins : :qty, :reason',
         'instead_of' => 'Livré à la place de :item',
     ],
@@ -90,6 +93,8 @@ return [
 
     'errors' => [
         'already_dispatched' => 'Ce bon de livraison a déjà été expédié par :name à :time.',
+        'driver_required' => 'Choisissez le chauffeur.',
+        'driver_not_found' => 'Ce chauffeur a été supprimé. Choisissez-en un autre.',
         'not_dispatched' => 'Expédiez ce bon de livraison avant de confirmer la livraison.',
         'already_delivered' => 'Ce bon de livraison a déjà été livré : confirmé par :name à :time.',
         'cancelled' => 'Ce bon de livraison a été annulé.',

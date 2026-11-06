@@ -44,7 +44,7 @@
                     type="button"
                     wire:click="gotoPage({{ $page }})"
                     @if ($page === $current) aria-current="page" @endif
-                    @class([$button, 'max-md:hidden', 'bg-brand text-on-brand' => $page === $current, 'text-fg hover:bg-card-hover' => $page !== $current])
+                    @class([$button, 'max-md:hidden', 'bg-brand-soft text-link' => $page === $current, 'text-fg hover:bg-card-hover' => $page !== $current])
                 >{{ \App\Support\Format::qty($page) }}</button>
             @endforeach
 

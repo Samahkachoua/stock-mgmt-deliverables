@@ -550,7 +550,7 @@ it('draws one shared modal: safe button focused, Esc and outside click close, lo
         ->toContain('wire:click="runConfirmed"')
         ->toContain('wire:target="runConfirmed"')
         ->toContain(__('app.loading.saving'))
-        ->toContain('bg-type-damage-strong');
+        ->toContain('bg-danger-strong');
 
     // "Keep it" comes first and has the focus.
     preg_match('/<button\s[^>]*autofocus[^>]*>\s*([^<]+)/s', $modal, $focused);

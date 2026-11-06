@@ -63,11 +63,11 @@ class Permission extends Model
      */
     public const MODULES = [
         'STOCK', 'DRAFT_IN', 'IN', 'DRAFT_OUT', 'OUT', 'TRANSFER', 'ADJUSTMENT', 'DAMAGE',
-        'OPENING_BALANCE', 'PRODUCT', 'MASTERDATA', 'REPORT', 'ADMIN',
+        'OPENING_BALANCE', 'PRODUCT', 'MASTERDATA', 'DRIVER', 'REPORT', 'ADMIN',
     ];
 
     /** Within a section: seeing first, then doing, then cancelling (last part of the code). */
-    private const ACTIONS = ['view', 'create', 'dispatch', 'receive', 'confirm', 'approve', 'import', 'manage', 'cancel'];
+    private const ACTIONS = ['view', 'create', 'edit', 'dispatch', 'receive', 'confirm', 'approve', 'import', 'manage', 'cancel', 'delete'];
 
     public static function moduleRank(string $module): int
     {

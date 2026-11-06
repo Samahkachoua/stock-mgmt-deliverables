@@ -163,7 +163,7 @@ final class Stock
     public function deliver(array $lines, ?User $by = null, ?Warehouse $warehouse = null): StockTransaction
     {
         $note = $this->confirmOrder($lines, $by, $warehouse);
-        app(PostingService::class)->dispatchDelivery($note, null, null, null, $by ?? $this->user);
+        app(PostingService::class)->dispatchDelivery($note, driver()->id, $by ?? $this->user);
         app(PostingService::class)->deliver($note, self::deliveredInFull($note), $by ?? $this->user);
 
         return $note->fresh();

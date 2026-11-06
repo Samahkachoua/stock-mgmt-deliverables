@@ -13,10 +13,11 @@ return [
     'dispatch' => [
         'button' => 'Dispatch',
         'title' => 'Dispatch delivery note :reference?',
-        'hint' => 'Who is taking it out? Every field is optional.',
-        'driver_name' => 'Driver name',
-        'driver_phone' => 'Driver phone',
-        'truck_no' => 'Truck number',
+        'hint' => 'Choose the driver taking it out. Their details are kept on the delivery note.',
+        'driver' => 'Driver',
+        'choose_driver' => 'Choose a driver',
+        'no_drivers' => 'There are no drivers yet.',
+        'add_driver' => 'Add one in Settings › Drivers',
         'confirm' => 'Dispatch',
         'keep' => 'Not now',
     ],
@@ -51,6 +52,8 @@ return [
         'driver' => 'Driver',
         'driver_phone' => 'Driver phone',
         'truck' => 'Truck',
+        'licence_no' => 'Licence number',
+        'national_id' => 'Driver national ID',
         'short' => 'Short: :qty, :reason',
         'instead_of' => 'Delivered instead of :item',
     ],
@@ -92,6 +95,8 @@ return [
 
     'errors' => [
         'already_dispatched' => 'This delivery note was already dispatched by :name at :time.',
+        'driver_required' => 'Choose the driver.',
+        'driver_not_found' => 'This driver was deleted. Choose another one.',
         'not_dispatched' => 'Dispatch this delivery note before confirming the delivery.',
         'already_delivered' => 'This delivery note was already delivered: confirmed by :name at :time.',
         'cancelled' => 'This delivery note was cancelled.',

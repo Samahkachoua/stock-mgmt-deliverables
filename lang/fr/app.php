@@ -2,6 +2,7 @@
 
 return [
     'tagline' => 'WMS Core',
+    'logo_alt' => 'Elite Trust for Logistics Services',
     'skip_to_content' => 'Aller au contenu',
     'select_warehouse' => 'Choisir l’entrepôt',
     'language' => 'Langue',

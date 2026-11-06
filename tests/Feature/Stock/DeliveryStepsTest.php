@@ -57,7 +57,7 @@ function availableBeans(Stock $stock, ?string $ownDraftId = null): float
 function deliver(StockTransaction $note, array $lines): void
 {
     if ($note->fresh()->status === 'CONFIRMED') {
-        app(PostingService::class)->dispatchDelivery($note, null, null, null, test()->stock->user);
+        app(PostingService::class)->dispatchDelivery($note, driver()->id, test()->stock->user);
     }
 
     app(PostingService::class)->deliver($note, $lines, test()->stock->user);
@@ -195,22 +195,47 @@ it('confirms an order into a delivery note that holds the stock without moving i
         ->and(DB::table('stock_reservation')->whereIn('line_id', array_keys(noteLines($note)))->sum('qty_base'))->toEqual(240);
 });
 
-it('dispatches with the driver, phone and truck, all optional, changing no stock', function () {
+it('dispatches with a driver, keeping a copy of their details, changing no stock', function () {
     $note = $this->stock->confirmOrder([$this->stock->line('BEANS', 2, 'BOX')]);
+    $driver = driver(['name' => 'Nour', 'phone' => '+961 70 123 456', 'truck_no' => 'B 123456']);
 
-    app(PostingService::class)->dispatchDelivery($note, ' Nour ', '+961 70 123 456', '', $this->stock->user);
+    app(PostingService::class)->dispatchDelivery($note, $driver->id, $this->stock->user);
+
+    // Editing the driver later doesn't change the note.
+    $driver->update(['phone' => '+961 71 000 000', 'truck_no' => 'NEW-1']);
 
     $header = DB::table('stock_transaction')->where('id', $note->id)->first();
     expect($header->status)->toBe('DISPATCHED')
+        ->and($header->driver_id)->toBe($driver->id)
         ->and($header->driver_name)->toBe('Nour')
         ->and($header->driver_phone)->toBe('+961 70 123 456')
-        ->and($header->truck_no)->toBeNull()
+        ->and($header->truck_no)->toBe('B 123456')
+        ->and($header->driver_licence_no)->toBe($driver->licence_no)
+        ->and($header->driver_national_id)->toBe($driver->national_id)
         ->and($header->dispatched_by)->toBe($this->stock->user->id)
         ->and($this->stock->reserved('BEANS'))->toBe(24.0)
         ->and($this->stock->balance('BEANS'))->toBe(480.0);
 
-    expect(fn () => app(PostingService::class)->dispatchDelivery($note, null, null, null, $this->stock->user))
+    expect(fn () => app(PostingService::class)->dispatchDelivery($note, driver()->id, $this->stock->user))
         ->toThrow(AlreadyProcessed::class);
+});
+
+it('needs a driver to dispatch', function (?string $driverId) {
+    $note = $this->stock->confirmOrder([$this->stock->line('BEANS', 2, 'BOX')]);
+
+    expect(fn () => app(PostingService::class)->dispatchDelivery($note, $driverId, $this->stock->user))
+        ->toThrow(PostingRejected::class, __('deliveries.errors.driver_required'));
+
+    expect(DB::table('stock_transaction')->where('id', $note->id)->value('status'))->toBe('CONFIRMED');
+})->with(['none' => [null], 'empty' => [''], 'not an id' => ['abc']]);
+
+it('refuses a driver that no longer exists', function () {
+    $note = $this->stock->confirmOrder([$this->stock->line('BEANS', 2, 'BOX')]);
+    $driver = driver();
+    $driver->delete();
+
+    expect(fn () => app(PostingService::class)->dispatchDelivery($note, $driver->id, $this->stock->user))
+        ->toThrow(PostingRejected::class, __('deliveries.errors.driver_not_found'));
 });
 
 it('delivers in full: the stock leaves and nothing stays reserved', function () {
@@ -339,10 +364,16 @@ it('takes a delivery note through its steps on the details page', function () {
         ->assertDontSee('transactions.deliver-note', false)
         ->assertSee(__('deliveries.deliver.reserved_notice'));
 
+    $driver = driver(['name' => 'Nour', 'truck_no' => 'B 123456']);
+
     Livewire::actingAs($this->stock->user)->test(DispatchDelivery::class, ['transactionId' => $note->id])
         ->call('show')
-        ->set('driverName', 'Nour')
-        ->set('truckNo', 'B 123456')
+        ->assertSee('Nour · B 123456')
+        ->call('dispatchNote')
+        ->assertHasErrors('driverId')
+        ->set('driverId', $driver->id)
+        ->assertSee($driver->licence_no)
+        ->assertSee($driver->national_id)
         ->call('dispatchNote')
         ->assertRedirect(route('delivery-note.show', $note->doc_no));
 
@@ -436,7 +467,7 @@ it('refuses to confirm the delivery of a note that has not been dispatched', fun
         ->and($this->stock->balance('BEANS'))->toBe(480.0);
 
     // Dispatched: now it can be delivered.
-    app(PostingService::class)->dispatchDelivery($note, null, null, null, $this->stock->user);
+    app(PostingService::class)->dispatchDelivery($note, driver()->id, $this->stock->user);
     app(PostingService::class)->deliver($note, Stock::deliveredInFull($note), $this->stock->user);
 
     expect($note->fresh()->status)->toBe('POSTED')

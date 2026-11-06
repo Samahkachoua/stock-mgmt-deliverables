@@ -230,6 +230,24 @@ CREATE TABLE unit (
 );
 
 -- ----------------------------------------------------------------------------
+-- DRIVERS (Settings › Drivers; shared by all warehouses)
+-- A Delivery note is dispatched with one of them and keeps a copy of their
+-- details (stock_transaction.driver_*), so editing a driver never changes old
+-- notes. A driver on any delivery note can't be deleted.
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE driver (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL,
+    licence_no  VARCHAR(30) NOT NULL UNIQUE,
+    national_id VARCHAR(30) NOT NULL UNIQUE,
+    phone       VARCHAR(30) NOT NULL,
+    truck_no    VARCHAR(30) NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ----------------------------------------------------------------------------
 -- PRODUCTS (owned by a customer)
 -- ----------------------------------------------------------------------------
 
@@ -462,9 +480,13 @@ CREATE TABLE stock_transaction (
     dispatched_by    BIGINT REFERENCES app_user(id),
     received_at      TIMESTAMPTZ,
     received_by      BIGINT REFERENCES app_user(id),
-    -- Delivery notes: who takes it out (all optional, given when dispatched)
-    -- and when it was delivered (its stock leaves on that day).
+    -- Delivery notes: who takes it out (the driver chosen when dispatched, and
+    -- a copy of their details at that moment; empty on notes dispatched before
+    -- drivers existed) and when it was delivered (its stock leaves on that day).
+    driver_id        BIGINT REFERENCES driver(id),
     driver_name      VARCHAR(100),
+    driver_licence_no  VARCHAR(30),
+    driver_national_id VARCHAR(30),
     driver_phone     VARCHAR(30),
     truck_no         VARCHAR(30),
     delivered_at     TIMESTAMPTZ,
@@ -481,6 +503,7 @@ CREATE TABLE stock_transaction (
 CREATE INDEX idx_stock_transaction_wh_status ON stock_transaction (warehouse_id, status);
 CREATE INDEX idx_stock_transaction_type_status ON stock_transaction (transaction_type, status);
 CREATE INDEX idx_stock_transaction_list ON stock_transaction (warehouse_id, transaction_type, document_date DESC);
+CREATE INDEX idx_stock_transaction_driver ON stock_transaction (driver_id) WHERE driver_id IS NOT NULL;
 
 -- Reference numbers (doc_no): one sequence per transaction type, read with
 -- nextval() inside the posting transaction (App\Services\Stock\DocumentNumbers),
@@ -1182,6 +1205,10 @@ INSERT INTO permission (code, description, module) VALUES
     ('product.manage', 'Create/edit products', 'PRODUCT'),
     ('product.import', 'Import products from Excel', 'PRODUCT'),
     ('masterdata.manage', 'Manage warehouses, customers and units', 'MASTERDATA'),
+    ('driver.view', 'View drivers', 'DRIVER'),
+    ('driver.create', 'Add drivers', 'DRIVER'),
+    ('driver.edit', 'Edit drivers', 'DRIVER'),
+    ('driver.delete', 'Delete drivers', 'DRIVER'),
     -- One per report (Report::permission(): report.<key>.view; Stock on hand is
     -- the Stock page, stock.view). The owner dashboard: only ADMIN at first.
     ('report.stock_card.view', 'View the stock card report', 'REPORT'),
@@ -1228,6 +1255,9 @@ SELECT r.id, p.id
     ('OPERATOR', 'stock.view'),
     ('DATA_ENTRY', 'product.manage'), ('DATA_ENTRY', 'product.import'),
     ('DATA_ENTRY', 'masterdata.manage'), ('DATA_ENTRY', 'stock.view'),
+    -- Drivers: whoever manages master data.
+    ('MANAGER', 'driver.view'), ('MANAGER', 'driver.create'), ('MANAGER', 'driver.edit'), ('MANAGER', 'driver.delete'),
+    ('DATA_ENTRY', 'driver.view'), ('DATA_ENTRY', 'driver.create'), ('DATA_ENTRY', 'driver.edit'), ('DATA_ENTRY', 'driver.delete'),
     ('AUDITOR', 'stock.view'), ('AUDITOR', 'audit.view'),
     ('AUDITOR', 'stock.in.cancel'), ('AUDITOR', 'stock.out.cancel'), ('AUDITOR', 'stock.opening.cancel'),
     ('CUSTOMER', 'stock.view')

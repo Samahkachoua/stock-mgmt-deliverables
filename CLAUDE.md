@@ -7,6 +7,9 @@ always owned by a customer, never by the company running the warehouses.
 Naming: the OUT type is shown as **Delivery note** (`DN-`) and a draft of it as
 **Order** (`ORD-`); older documents keep their `ISS-` / `DRI-` numbers. Codes
 stay direction-based (`OUT`, `stock.out.*`, `draft.out.*`).
+The general word on screen for these is **Operation** (ar عملية, fr opération),
+never "document" or "transaction" ("transaction" is kept free for billing);
+code and tables keep `transaction` / `document` names.
 A draft (Order / Draft receipt) has one warehouse, in its header
 (`stock_draft.warehouse_id`); confirming it creates one Delivery note / Receipt.
 A Delivery note is only ever created by confirming an Order (no "New" page):
@@ -221,8 +224,11 @@ them so users get a clear, translated message instead of a raw DB error.
     reserves its lines (`stock_reservation`, cached in
     `stock_balance.qty_reserved`); editing releases and reserves again,
     cancelling releases. Confirming creates a Delivery note in `CONFIRMED` that
-    takes over the reservation (no movement). Dispatch (`DISPATCHED`) records
-    the optional driver name, phone and truck number. Deliver (`POSTED`, shown
+    takes over the reservation (no movement). Dispatch (`DISPATCHED`) needs a
+    driver chosen from Settings › Drivers (`driver`, company-wide; permissions
+    `driver.view/create/edit/delete`; a driver on a note can't be deleted); the
+    note keeps a copy of their name, licence, national ID, phone and truck
+    (`stock_transaction.driver_*`). Deliver (`POSTED`, shown
     "Delivered") releases the reservation and posts OUT only for the quantities
     delivered: less needs a reason (`PostingService::DELIVERY_REASONS`), a line
     may be replaced by another item (`replaces_line_id`); differences are in
@@ -317,7 +323,9 @@ No horizontal page scrolling at any width. Built once in the shared
 components — never per page.
 
 **App frame**
-- Desktop: full sidebar. Tablet: sidebar collapsed to icons (labels as
+- Desktop: full sidebar, open by default; the burger at the start of the top bar closes it to icons
+  (remembered per browser: localStorage `sidebar`, `sidebar-collapsed` on
+  `<html>`, `xl:collapsed:` classes). Tablet: sidebar collapsed to icons (labels as
   tooltips). Phone: sidebar hidden, opened as a drawer from a menu button
   in the top bar (closes on navigation / outside tap; slides from the
   correct side in Arabic).

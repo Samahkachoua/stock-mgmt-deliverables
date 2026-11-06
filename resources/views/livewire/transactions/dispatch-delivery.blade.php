@@ -1,14 +1,3 @@
-@php
-    $control = 'h-control w-full rounded-lg border bg-card px-3 text-body text-fg focus:outline-none focus:ring-2';
-    $ok = 'border-control focus:border-brand focus:ring-brand/20';
-    $bad = 'border-danger focus:ring-danger/20';
-    $fields = [
-        'driverName' => ['label' => __('deliveries.dispatch.driver_name'), 'max' => $max['driver_name'], 'type' => 'text', 'ltr' => false],
-        'driverPhone' => ['label' => __('deliveries.dispatch.driver_phone'), 'max' => $max['driver_phone'], 'type' => 'tel', 'ltr' => true],
-        'truckNo' => ['label' => __('deliveries.dispatch.truck_no'), 'max' => $max['truck_no'], 'type' => 'text', 'ltr' => true],
-    ];
-@endphp
-
 <div>
     <button
         type="button"
@@ -42,25 +31,39 @@
 
                 <fieldset wire:loading.attr="disabled" wire:target="dispatchNote" class="mt-4 flex flex-col gap-3">
                     <legend class="sr-only">{{ __('deliveries.dispatch.hint') }}</legend>
-                    @foreach ($fields as $name => $field)
-                        <div>
-                            <label for="dispatch-{{ $name }}" class="mb-1 block text-body font-semibold text-fg">{{ $field['label'] }}</label>
-                            <input
-                                id="dispatch-{{ $name }}"
-                                type="{{ $field['type'] }}"
-                                maxlength="{{ $field['max'] }}"
-                                autocomplete="off"
-                                @if ($field['ltr']) dir="ltr" @endif
-                                wire:model="{{ $name }}"
-                                @if ($loop->first) autofocus @endif
-                                @error($name) aria-invalid="true" aria-describedby="dispatch-{{ $name }}-error" @enderror
-                                class="{{ $control }} {{ $errors->has($name) ? $bad : $ok }} @if ($field['ltr']) text-start @endif"
-                            >
-                            @error($name)
-                                <p id="dispatch-{{ $name }}-error" class="mt-1 text-small text-danger" role="alert">{{ $message }}</p>
-                            @enderror
-                        </div>
-                    @endforeach
+                    @if ($drivers->isEmpty())
+                        <p class="rounded-lg border border-default bg-surface p-3 text-body text-muted" role="status">
+                            {{ __('deliveries.dispatch.no_drivers') }}
+                            @if ($canAddDriver)
+                                <a href="{{ route('settings.drivers') }}" wire:navigate class="font-semibold text-link hover:underline">{{ __('deliveries.dispatch.add_driver') }}</a>
+                            @endif
+                        </p>
+                    @else
+                        <x-form.select
+                            model="driverId"
+                            :label="__('deliveries.dispatch.driver')"
+                            :options="['' => __('deliveries.dispatch.choose_driver')] + $drivers->mapWithKeys(fn ($driver) => [$driver->id => $driver->label()])->all()"
+                            required
+                            autofocus
+                        />
+
+                        @if ($driver)
+                            {{-- What the note keeps: read-only, change it in Settings › Drivers. --}}
+                            <dl class="grid grid-cols-2 gap-3 rounded-lg border border-default bg-surface p-3" aria-live="polite">
+                                @foreach ([
+                                    'phone' => $driver->phone,
+                                    'truck_no' => $driver->truck_no,
+                                    'licence_no' => $driver->licence_no,
+                                    'national_id' => $driver->national_id,
+                                ] as $field => $value)
+                                    <div>
+                                        <dt class="text-small text-muted">{{ __('settings.drivers.'.$field) }}</dt>
+                                        <dd dir="ltr" class="tabular text-start text-body font-semibold text-fg">{{ $value }}</dd>
+                                    </div>
+                                @endforeach
+                            </dl>
+                        @endif
+                    @endif
                 </fieldset>
 
                 @error('dispatch')
@@ -77,7 +80,7 @@
                     >
                         {{ __('deliveries.dispatch.keep') }}
                     </button>
-                    <x-submit-button target="dispatchNote" icon="local_shipping">
+                    <x-submit-button target="dispatchNote" icon="local_shipping" :disabled="$driver === null">
                         {{ __('deliveries.dispatch.confirm') }}
                     </x-submit-button>
                 </div>

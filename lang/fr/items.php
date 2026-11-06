@@ -17,8 +17,8 @@ return [
     'save' => 'Enregistrer l’article',
     'locked_notice' => 'Le stock de cet article a déjà bougé : son client, son unité de base et son suivi ne peuvent plus changer, sinon les quantités déjà enregistrées changeraient de sens.',
     'locked_field' => 'Figé : cet article a déjà des mouvements de stock.',
-    'service_locked_notice' => 'Ce service figure déjà sur des documents : son client, son unité de base et le fait qu’il soit un service ne peuvent plus changer.',
-    'service_locked_field' => 'Figé : cet article figure déjà sur des documents.',
+    'service_locked_notice' => 'Ce service figure déjà sur des opérations : son client, son unité de base et le fait qu’il soit un service ne peuvent plus changer.',
+    'service_locked_field' => 'Figé : cet article figure déjà sur des opérations.',
 
     'list' => [
         'service' => 'Service',
@@ -49,7 +49,7 @@ return [
         'name_ar' => 'Nom (arabe)',
         'name_fr' => 'Nom (français)',
         'active' => 'En service',
-        'active_hint' => 'Désactivez pour masquer l’article dans les nouveaux documents.',
+        'active_hint' => 'Désactivez pour masquer l’article dans les nouvelles opérations.',
         'base_unit' => 'Unité de base',
         'base_unit_hint' => 'La plus petite unité. Le stock est toujours compté dans cette unité.',
         'other_units' => 'Autres unités',

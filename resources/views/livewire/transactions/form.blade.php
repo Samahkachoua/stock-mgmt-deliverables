@@ -486,7 +486,8 @@
                                                 type="button"
                                                 tabindex="-1"
                                                 wire:click="deleteLine('{{ $key }}')"
-                                                title="{{ __('transactions.form.delete_row') }}"
+                                                data-bs-toggle="tooltip"
+                                                data-bs-title="{{ __('transactions.form.delete_row') }}"
                                                 class="grid size-control place-items-center rounded-lg text-muted hover:bg-danger-soft hover:text-danger"
                                             >
                                                 <x-busy-icon name="delete" target="deleteLine('{{ $key }}')" />

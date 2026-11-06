@@ -15,6 +15,8 @@
     $control = 'h-control w-full rounded-lg border border-control bg-card text-body text-fg focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20';
     $invalid = 'h-control w-full rounded-lg border border-danger bg-card text-body text-fg focus:outline-none focus:ring-2 focus:ring-danger/20';
     $button = 'flex h-control shrink-0 items-center justify-center gap-2 rounded-lg border border-control bg-card px-3 text-body font-semibold text-fg hover:bg-card-hover';
+    // "Clear filters": a light button in the brand blue (solid blue is kept for the main action).
+    $clear = 'flex h-control shrink-0 items-center justify-center gap-2 rounded-lg border border-control bg-card px-3 text-body font-semibold text-link hover:bg-brand-soft';
     $searches = array_filter($definitions, fn ($filter) => $filter->type === 'search');
     $others = array_filter($definitions, fn ($filter) => $filter->type !== 'search');
     $active = count(array_filter($others, fn ($filter) => ($values[$filter->name] ?? '') !== ($defaults[$filter->name] ?? '')));
@@ -48,8 +50,8 @@
         @endif
 
         {{-- Clears the filters this list remembers for the user (session), back to the first page. --}}
-        <button type="button" wire:click="resetFilters" @class([$button, 'ms-auto', 'max-md:hidden' => $others !== []])>
-            <x-icon name="filter_alt_off" class="text-muted" />
+        <button type="button" wire:click="resetFilters" @class([$clear, 'ms-auto', 'max-md:hidden' => $others !== []])>
+            <x-icon name="filter_alt_off" />
             {{ __('transactions.filters.reset') }}
         </button>
     </div>

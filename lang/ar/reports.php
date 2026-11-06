@@ -118,7 +118,7 @@ return [
     'damage' => [
         'title' => 'التالف',
         'description' => 'المخزون المشطوب كتالف، حسب الفترة والسبب والمستودع.',
-        'documents' => 'المستندات',
+        'documents' => 'العمليات',
     ],
 
     'adjustments' => [
@@ -171,7 +171,7 @@ return [
             'reversed_movements' => 'حركات معكوسة',
             'file' => 'الملف',
             'items' => 'الأصناف',
-            'documents' => 'المستندات',
+            'documents' => 'العمليات',
             'rows' => 'الأسطر',
             'skipped' => 'أسطر مستبعدة',
             'customer' => 'العميل',
@@ -197,7 +197,7 @@ return [
         ],
         'removed' => 'حُذف',
         'entities' => [
-            'stock_transaction' => 'مستند مخزون',
+            'stock_transaction' => 'عملية مخزون',
             'product' => 'صنف',
             'app_user' => 'مستخدم',
             'role' => 'دور',

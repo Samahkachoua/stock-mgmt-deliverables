@@ -65,6 +65,4 @@
             </x-submit-button>
         </form>
     </div>
-
-    <p class="mt-4 text-center text-body text-muted">{{ __('auth.no_account') }}</p>
 </div>

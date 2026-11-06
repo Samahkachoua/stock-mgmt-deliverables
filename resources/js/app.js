@@ -1,4 +1,5 @@
 import './bootstrap';
+import './tooltips';
 
 /*
  * A Livewire request that fails becomes a toast (x-toasts) instead of

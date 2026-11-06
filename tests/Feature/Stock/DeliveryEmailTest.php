@@ -29,15 +29,15 @@ beforeEach(function () {
 });
 
 /**
- * An order of 20 Box + 5 Piece of beans, confirmed and dispatched (driver,
- * phone, truck): its Delivery note and line ids.
+ * An order of 20 Box + 5 Piece of beans, confirmed and dispatched (driver
+ * Karim, +961 3 123 456, truck TR-77): its Delivery note and line ids.
  *
  * @return array{0: StockTransaction, 1: string, 2: string}
  */
 function dispatchedOrder(Stock $stock): array
 {
     $note = $stock->confirmOrder([$stock->line('BEANS', 20, 'BOX'), $stock->line('BEANS', 5)]);
-    app(PostingService::class)->dispatchDelivery($note, 'Karim', '+961 3 123 456', 'TR-77', $stock->user);
+    app(PostingService::class)->dispatchDelivery($note, driver()->id, $stock->user);
     [$boxes, $pieces] = DB::table('stock_transaction_line')->where('transaction_id', $note->id)->orderBy('line_no')->pluck('id')->all();
 
     return [$note, (string) $boxes, (string) $pieces];

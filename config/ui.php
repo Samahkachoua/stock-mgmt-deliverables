@@ -86,6 +86,7 @@ return [
         ['route' => 'settings.customers', 'permission' => 'masterdata.manage', 'label' => 'settings.tabs.customers', 'icon' => 'groups'],
         ['route' => 'settings.branches', 'permission' => 'masterdata.manage', 'label' => 'settings.tabs.branches', 'icon' => 'apartment'],
         ['route' => 'settings.units', 'permission' => 'masterdata.manage', 'label' => 'settings.tabs.units', 'icon' => 'straighten'],
+        ['route' => 'settings.drivers', 'permission' => 'driver.view', 'label' => 'settings.tabs.drivers', 'icon' => 'local_shipping'],
         ['route' => 'settings.approval-limits', 'permission' => 'admin.settings.manage', 'label' => 'settings.tabs.approval_limits', 'icon' => 'verified_user'],
         ['route' => 'settings.users', 'permission' => 'admin.users.manage', 'label' => 'settings.tabs.users', 'icon' => 'badge'],
         ['route' => 'settings.roles', 'permission' => 'admin.users.manage', 'label' => 'settings.tabs.roles', 'icon' => 'admin_panel_settings'],

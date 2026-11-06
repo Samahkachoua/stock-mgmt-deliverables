@@ -117,7 +117,7 @@ it('saves and confirms an order with a service line', function () {
         ->and($this->stock->reserved('BEANS'))->toBe(2.0)
         ->and(DB::table('stock_reservation')->where('product_id', $this->stock->id('PACK'))->exists())->toBeFalse();
 
-    app(PostingService::class)->dispatchDelivery($deliveryNote, null, null, null, $this->stock->user);
+    app(PostingService::class)->dispatchDelivery($deliveryNote, driver()->id, $this->stock->user);
     app(PostingService::class)->deliver($deliveryNote, Stock::deliveredInFull($deliveryNote), $this->stock->user);
 
     expect($this->stock->balance('BEANS'))->toBe(8.0)

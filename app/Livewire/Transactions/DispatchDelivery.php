@@ -2,10 +2,12 @@
 
 namespace App\Livewire\Transactions;
 
+use App\Models\Driver;
 use App\Models\StockTransaction;
 use App\Models\User;
 use App\Services\Stock\Exceptions\StockException;
 use App\Services\Stock\PostingService;
+use App\Support\Ids;
 use App\Support\Notify;
 use App\Support\Transactions\TransactionTypes;
 use Illuminate\Contracts\View\View;
@@ -16,9 +18,10 @@ use Livewire\Component;
 
 /**
  * "Dispatch" on a Confirmed Delivery note (stock.out.create, in its
- * warehouse): a small dialog with the driver's name, phone and the truck
- * number, all optional, then PostingService::dispatchDelivery(). Not a
- * destructive action: nothing changes in stock, so no confirmation question.
+ * warehouse): a small dialog where the user chooses one of the drivers
+ * (Settings › Drivers; required) and sees their details, then
+ * PostingService::dispatchDelivery(). Not a destructive action: nothing
+ * changes in stock, so no confirmation question.
  */
 class DispatchDelivery extends Component
 {
@@ -27,17 +30,18 @@ class DispatchDelivery extends Component
 
     public bool $open = false;
 
-    public string $driverName = '';
-
-    public string $driverPhone = '';
-
-    public string $truckNo = '';
+    public string $driverId = '';
 
     public function show(): void
     {
         $this->transaction();
         $this->resetErrorBag();
         $this->open = true;
+    }
+
+    public function updatedDriverId(): void
+    {
+        $this->resetErrorBag('driverId');
     }
 
     public function close(): void
@@ -52,10 +56,9 @@ class DispatchDelivery extends Component
         abort_unless($user instanceof User, 403);
 
         try {
-            app(PostingService::class)->dispatchDelivery($transaction, $this->driverName, $this->driverPhone, $this->truckNo, $user);
+            app(PostingService::class)->dispatchDelivery($transaction, $this->driverId, $user);
         } catch (StockException $e) {
-            $fields = ['driver_name' => 'driverName', 'driver_phone' => 'driverPhone', 'truck_no' => 'truckNo'];
-            $this->addError($fields[$e->field] ?? 'dispatch', $e->getMessage());
+            $this->addError($e->field === 'driver_id' ? 'driverId' : 'dispatch', $e->getMessage());
             Notify::error($e->getMessage(), on: $this);
 
             return;
@@ -68,9 +71,13 @@ class DispatchDelivery extends Component
 
     public function render(): View
     {
+        $drivers = $this->open ? Driver::query()->orderBy('name')->orderBy('id')->get() : collect();
+
         return view('livewire.transactions.dispatch-delivery', [
             'reference' => $this->transaction()->doc_no,
-            'max' => PostingService::MAX_DRIVER,
+            'drivers' => $drivers,
+            'driver' => Ids::valid($this->driverId) ? $drivers->firstWhere('id', $this->driverId) : null,
+            'canAddDriver' => Gate::allows('create', Driver::class),
         ]);
     }
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Driver;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -108,4 +109,22 @@ function userWithPermissions(Warehouse $warehouse, array $codes): User
     $user->warehouses()->attach($warehouse->id);
 
     return $user;
+}
+
+/**
+ * A driver (Settings › Drivers) with unique licence and national ID numbers.
+ *
+ * @param  array<string, string>  $attributes
+ */
+function driver(array $attributes = []): Driver
+{
+    $unique = strtoupper(uniqid());
+
+    return Driver::create($attributes + [
+        'name' => 'Karim',
+        'licence_no' => 'L-'.$unique,
+        'national_id' => 'N-'.$unique,
+        'phone' => '+961 3 123 456',
+        'truck_no' => 'TR-77',
+    ]);
 }

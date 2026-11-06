@@ -214,11 +214,12 @@
                                 <button
                                     type="button"
                                     wire:click="edit('{{ $user->id }}')"
-                                    class="inline-flex h-control items-center gap-1.5 rounded-lg px-3 text-body font-semibold text-fg hover:bg-card-hover"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-title="{{ __('settings.edit') }}"
+                                    class="inline-grid size-control place-items-center rounded-lg text-link hover:bg-brand-soft"
                                 >
-                                    <x-busy-icon name="edit" target="edit('{{ $user->id }}')" class="size-4 text-muted" />
-                                    {{ __('settings.edit') }}
-                                    <span class="sr-only">{{ $user->full_name }}</span>
+                                    <x-busy-icon name="edit" target="edit('{{ $user->id }}')" class="size-4" />
+                                    <span class="sr-only">{{ __('settings.edit') }} {{ $user->full_name }}</span>
                                 </button>
                             </td>
                         </tr>

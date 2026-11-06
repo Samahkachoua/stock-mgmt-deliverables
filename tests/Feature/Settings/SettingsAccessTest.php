@@ -38,6 +38,7 @@ it('protects each tab with its own permission', function (string $tab, string $a
     $this->actingAs(userWithOnlyPermission($refused))->get(route($tab))->assertForbidden();
 })->with([
     ['settings.warehouses', 'masterdata.manage', 'admin.users.manage'],
+    ['settings.drivers', 'driver.view', 'masterdata.manage'],
     ['settings.approval-limits', 'admin.settings.manage', 'masterdata.manage'],
     ['settings.users', 'admin.users.manage', 'admin.settings.manage'],
 ]);
@@ -65,4 +66,4 @@ it('renders every tab in Arabic, right to left', function (string $tab) {
         ->assertOk()
         ->assertSee('dir="rtl"', false)
         ->assertSee(__('settings.title', [], 'ar'));
-})->with(['settings.warehouses', 'settings.approval-limits', 'settings.users']);
+})->with(['settings.warehouses', 'settings.drivers', 'settings.approval-limits', 'settings.users']);

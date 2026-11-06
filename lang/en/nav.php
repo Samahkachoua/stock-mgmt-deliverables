@@ -4,6 +4,8 @@ return [
     'main' => 'Main navigation',
     'open_menu' => 'Open menu',
     'close_menu' => 'Close menu',
+    'collapse_sidebar' => 'Collapse sidebar',
+    'expand_sidebar' => 'Expand sidebar',
     'home' => 'Home',
     'dashboard' => 'Dashboard',
     'stock' => 'Stock',

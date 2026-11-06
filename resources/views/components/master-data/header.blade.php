@@ -5,7 +5,7 @@
 --}}
 @props(['heading', 'description' => null, 'addLabel' => null, 'editing' => null])
 
-<div class="flex flex-col gap-4">
+<div class="flex flex-col gap-section">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <div class="flex flex-wrap items-center gap-3">

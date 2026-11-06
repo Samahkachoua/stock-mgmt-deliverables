@@ -10,23 +10,24 @@
         </div>
     </div>
 
-    <nav class="relative mt-4 overflow-x-auto border-b border-default" aria-label="{{ __('settings.tabs.label') }}">
-        <ul class="flex gap-4">
+    <nav class="relative mt-section overflow-x-auto border-b border-default" aria-label="{{ __('settings.tabs.label') }}">
+        <ul class="flex gap-1">
             @foreach (config('ui.settings_tabs') as $tab)
                 @can($tab['permission'])
                     @php($active = request()->routeIs($tab['route']))
                     <li>
+                        {{-- Active tab in the brand blue (text-link stays readable on the dark card). --}}
                         <a
                             href="{{ route($tab['route']) }}"
                             wire:navigate
                             @if ($active) aria-current="page" @endif
                             @class([
-                                '-mb-px flex h-control items-center gap-2 whitespace-nowrap border-b-2 text-body font-semibold transition-colors',
-                                'border-brand text-fg' => $active,
-                                'border-transparent text-muted hover:text-fg' => ! $active,
+                                '-mb-px flex h-control items-center gap-2 whitespace-nowrap rounded-t-lg border-b-2 px-3 text-body font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40',
+                                'border-brand bg-brand-soft text-link' => $active,
+                                'border-transparent text-muted hover:bg-card-hover hover:text-fg' => ! $active,
                             ])
                         >
-                            <x-icon :name="$tab['icon']" @class(['text-link' => $active]) />
+                            <x-icon :name="$tab['icon']" />
                             {{ __($tab['label']) }}
                         </a>
                     </li>
@@ -35,7 +36,7 @@
         </ul>
     </nav>
 
-    <div class="mt-4">
+    <div class="mt-section">
         {{ $slot }}
     </div>
 </div>

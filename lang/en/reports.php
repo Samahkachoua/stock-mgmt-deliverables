@@ -118,7 +118,7 @@ return [
     'damage' => [
         'title' => 'Damage',
         'description' => 'Stock written off as damaged, by period, reason and warehouse.',
-        'documents' => 'Documents',
+        'documents' => 'Operations',
     ],
 
     'adjustments' => [
@@ -171,7 +171,7 @@ return [
             'reversed_movements' => 'Movements reversed',
             'file' => 'File',
             'items' => 'Items',
-            'documents' => 'Documents',
+            'documents' => 'Operations',
             'rows' => 'Rows',
             'skipped' => 'Rows left out',
             'customer' => 'Customer',
@@ -197,7 +197,7 @@ return [
         ],
         'removed' => 'removed',
         'entities' => [
-            'stock_transaction' => 'Stock document',
+            'stock_transaction' => 'Stock operation',
             'product' => 'Item',
             'app_user' => 'User',
             'role' => 'Role',

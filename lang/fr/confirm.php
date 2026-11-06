@@ -25,6 +25,11 @@ return [
             'body' => ':name est supprimée définitivement. Cette action est irréversible.',
             'button' => 'Supprimer l’unité',
         ],
+        'driver' => [
+            'title' => 'Supprimer le chauffeur :name ?',
+            'body' => ':name est retiré de la liste définitivement. Cette action est irréversible.',
+            'button' => 'Supprimer le chauffeur',
+        ],
         'role' => [
             'title' => 'Supprimer le rôle :name ?',
             'body' => 'Le rôle et ses autorisations sont supprimés définitivement. Cette action est irréversible.',
@@ -82,10 +87,11 @@ return [
         'reason' => 'Pourquoi le refuser ?',
     ],
     'blocked' => [
-        'item_on_documents' => '{1} :name figure sur 1 document (:types) et ne peut pas être supprimé. Désactivez « En service » pour le masquer.|[2,*] :name figure sur :count documents (:types) et ne peut pas être supprimé. Désactivez « En service » pour le masquer.',
+        'item_on_documents' => '{1} :name figure sur 1 opération (:types) et ne peut pas être supprimé. Désactivez « En service » pour le masquer.|[2,*] :name figure sur :count opérations (:types) et ne peut pas être supprimé. Désactivez « En service » pour le masquer.',
         'item_has_records' => ':name a des enregistrements de stock et ne peut pas être supprimé. Désactivez « En service » pour le masquer.',
         'unit_in_use' => '{1} :name est utilisée par 1 article et ne peut pas être supprimée.|[2,*] :name est utilisée par :count articles et ne peut pas être supprimée.',
-        'unit_on_documents' => ':name est utilisée dans des documents enregistrés et ne peut pas être supprimée.',
+        'unit_on_documents' => ':name est utilisée dans des opérations enregistrées et ne peut pas être supprimée.',
+        'driver_in_use' => '{1} :name figure sur 1 bon de livraison et ne peut pas être supprimé.|[2,*] :name figure sur :count bons de livraison et ne peut pas être supprimé.',
         'role_system' => ':name est un rôle intégré et ne peut pas être supprimé.',
         'role_in_use' => '{1} :name est attribué à 1 utilisateur et ne peut pas être supprimé.|[2,*] :name est attribué à :count utilisateurs et ne peut pas être supprimé.',
     ],

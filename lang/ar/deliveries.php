@@ -12,10 +12,11 @@ return [
     'dispatch' => [
         'button' => 'شحن',
         'title' => 'شحن إذن التسليم :reference؟',
-        'hint' => 'من سيأخذه؟ كل الحقول اختيارية.',
-        'driver_name' => 'اسم السائق',
-        'driver_phone' => 'هاتف السائق',
-        'truck_no' => 'رقم الشاحنة',
+        'hint' => 'اختر السائق الذي سينقله. تُحفظ بياناته في إذن التسليم.',
+        'driver' => 'السائق',
+        'choose_driver' => 'اختر سائقًا',
+        'no_drivers' => 'لا يوجد سائقون بعد.',
+        'add_driver' => 'أضف سائقًا من الإعدادات › السائقون',
         'confirm' => 'شحن',
         'keep' => 'ليس الآن',
     ],
@@ -50,6 +51,8 @@ return [
         'driver' => 'السائق',
         'driver_phone' => 'هاتف السائق',
         'truck' => 'الشاحنة',
+        'licence_no' => 'رقم رخصة القيادة',
+        'national_id' => 'رقم هوية السائق',
         'short' => 'نقص: :qty، :reason',
         'instead_of' => 'سُلِّم بدلًا من :item',
     ],
@@ -90,6 +93,8 @@ return [
 
     'errors' => [
         'already_dispatched' => 'تم شحن إذن التسليم هذا من قبل :name في :time.',
+        'driver_required' => 'اختر السائق.',
+        'driver_not_found' => 'تم حذف هذا السائق. اختر سائقًا آخر.',
         'not_dispatched' => 'اشحن إذن التسليم هذا قبل تأكيد التسليم.',
         'already_delivered' => 'تم تسليم إذن التسليم هذا من قبل: أكّده :name في :time.',
         'cancelled' => 'تم إلغاء إذن التسليم هذا.',

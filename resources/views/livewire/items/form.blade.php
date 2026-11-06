@@ -112,7 +112,8 @@
                                     type="button"
                                     tabindex="-1"
                                     wire:click="removeUnit('{{ $key }}')"
-                                    title="{{ __('items.units.remove') }}"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-title="{{ __('items.units.remove') }}"
                                     class="ms-auto grid size-control place-items-center rounded-lg text-muted hover:bg-danger-soft hover:text-danger"
                                 >
                                     <x-busy-icon name="delete" target="removeUnit('{{ $key }}')" />
@@ -166,7 +167,8 @@
                         wire:click="askDelete"
                         wire:loading.attr="disabled"
                         wire:target="askDelete, save, runConfirmed"
-                        title="{{ __('items.delete') }}"
+                        data-bs-toggle="tooltip"
+                        data-bs-title="{{ __('items.delete') }}"
                         class="grid size-control place-items-center rounded-lg border border-control bg-card text-danger hover:bg-card-hover disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <x-busy-icon name="delete" target="askDelete" class="size-5" />

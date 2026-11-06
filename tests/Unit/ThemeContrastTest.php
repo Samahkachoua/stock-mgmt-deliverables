@@ -39,8 +39,10 @@ function contrastPairs(): array
     $pairs = [
         ['fg', 'surface', 4.5], ['fg', 'card', 4.5], ['fg', 'card-hover', 4.5],
         ['muted', 'surface', 4.5], ['muted', 'card', 4.5], ['muted', 'card-hover', 4.5],
-        ['on-brand', 'brand', 4.5], ['on-brand', 'brand-hover', 4.5],
+        ['on-brand', 'brand', 4.5], ['on-brand', 'brand-hover', 4.5], ['on-brand', 'brand-active', 4.5],
+        ['link', 'brand-soft', 4.5], ['fg', 'brand-soft', 4.5],      // active nav item, current page
         ['danger', 'card', 4.5], ['danger', 'danger-soft', 4.5], ['danger', 'surface', 4.5],
+        ['on-brand', 'danger-strong', 4.5], ['on-brand', 'danger-hover', 4.5], // filled destructive buttons
         ['border-control', 'card', 3.0], ['border-control', 'surface', 3.0],
         ['brand', 'card', 3.0],
         ['link', 'card', 4.5], ['link', 'surface', 4.5], ['link', 'card-hover', 4.5],

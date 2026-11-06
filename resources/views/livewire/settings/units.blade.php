@@ -1,7 +1,7 @@
 @use('App\Support\Format')
 
 <x-settings.layout>
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-section">
         <x-master-data.header
             :heading="__('settings.units.heading')"
             :description="__('settings.units.description')"
@@ -53,7 +53,8 @@
                         <button
                             type="button"
                             wire:click="askDelete('{{ $unit->id }}')"
-                            title="{{ __('settings.units.delete') }}"
+                            data-bs-toggle="tooltip"
+                            data-bs-title="{{ __('settings.units.delete') }}"
                             class="inline-grid size-control place-items-center rounded-lg text-danger hover:bg-danger-soft"
                         >
                             <x-busy-icon name="delete" target="askDelete('{{ $unit->id }}')" class="size-4" />

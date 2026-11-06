@@ -44,13 +44,13 @@ return [
         'title' => 'Workload by warehouse',
         'hint' => 'Items handled in each warehouse. A transfer counts where it was sent from.',
         'items' => '{1} :count item|[0,*] :count items',
-        'documents' => '{1} :count document|[0,*] :count documents',
+        'documents' => '{1} :count operation|[0,*] :count operations',
     ],
 
     'table' => [
         'show' => 'Show as a table',
         'period' => 'Period',
-        'documents' => 'Documents',
+        'documents' => 'Operations',
         'lines' => 'Items',
         'warehouse' => 'Warehouse',
     ],

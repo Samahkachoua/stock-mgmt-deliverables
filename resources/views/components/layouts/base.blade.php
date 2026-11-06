@@ -14,9 +14,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>{{ $title ? $title.' · '.config('app.name') : config('app.name') }}</title>
-    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
-    <link rel="icon" type="image/png" href="{{ asset('favicon-32.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
+    <x-favicons />
 
     {{-- Runs before the stylesheet so "system" never flashes the wrong theme. --}}
     <script>
@@ -30,6 +28,17 @@
             window.applyTheme(root.dataset.theme);
             query.addEventListener('change', function () {
                 if (root.dataset.theme === 'system') window.applyTheme('system');
+            });
+            // Desktop sidebar: open unless this browser closed it (the app layout's toggle).
+            // wire:navigate copies the new page's <html> attributes, so it is set again on every swap.
+            var applySidebar = function () {
+                try {
+                    root.classList.toggle('sidebar-collapsed', localStorage.getItem('sidebar') === 'collapsed');
+                } catch (e) {}
+            };
+            applySidebar();
+            document.addEventListener('livewire:navigating', function (event) {
+                event.detail.onSwap(applySidebar);
             });
         })();
     </script>
