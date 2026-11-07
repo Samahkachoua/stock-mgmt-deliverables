@@ -80,7 +80,21 @@ final class Format
 
         return trans_choice('transactions.summary.items', $items, ['count' => self::qty($items)])
             .' · '
-            .(count($units) === 1 ? self::qtyUnit($total, $units[0]) : trans_choice('transactions.summary.units', (int) ceil($total), ['count' => self::qty($total)]));
+            .self::quantityTotal($total, $units);
+    }
+
+    /**
+     * "212 Piece" when every line shares one base unit, otherwise "212 units".
+     *
+     * @param  list<string>  $baseUnits  base unit code of each line
+     */
+    public static function quantityTotal(float $total, array $baseUnits): string
+    {
+        $units = array_values(array_unique($baseUnits));
+
+        return count($units) === 1
+            ? self::qtyUnit($total, $units[0])
+            : trans_choice('transactions.summary.units', (int) ceil($total), ['count' => self::qty($total)]);
     }
 
     /**

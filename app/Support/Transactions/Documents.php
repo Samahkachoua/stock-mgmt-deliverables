@@ -11,8 +11,10 @@ use App\Support\CompanyTime;
 use App\Support\DateRange;
 use App\Support\Drafts\DraftTypes;
 use App\Support\Format;
+use App\Support\QuantityTotals;
 use App\Support\StorageStatuses;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -22,7 +24,7 @@ use Illuminate\Support\Facades\DB;
  * Reads go through StockTransaction, so the warehouse scope (user_warehouse)
  * and the customer scope (customer portal users) always apply.
  *
- * @phpstan-type ListRow array{id: string, reference: string, date: CarbonImmutable, customer_id: string|null, customer: string, status: string, created_by: string, items: int, short: bool, reason: string|null, draft: string|null, from: string, to_warehouse: string|null, incoming: bool}
+ * @phpstan-type ListRow array{id: string, reference: string, date: CarbonImmutable, customer_id: string|null, customer: string, status: string, created_by: string, items: int, short: bool, reason: string|null, draft: string|null, total: string|null, from: string, to_warehouse: string|null, incoming: bool}
  */
 final class Documents
 {
@@ -39,29 +41,7 @@ final class Documents
      */
     public static function page(TypeUi $type, array $warehouseIds, array $filters, int $perPage, int $page): LengthAwarePaginator
     {
-        $search = mb_strtolower(trim($filters['search'] ?? ''));
-        $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search).'%';
-
-        $query = StockTransaction::query()
-            ->join('customer', 'customer.id', '=', 'stock_transaction.customer_id')
-            ->join('app_user', 'app_user.id', '=', 'stock_transaction.created_by')
-            ->join('warehouse as from_warehouse', 'from_warehouse.id', '=', 'stock_transaction.warehouse_id')
-            ->leftJoin('warehouse as to_warehouse', 'to_warehouse.id', '=', 'stock_transaction.to_warehouse_id')
-            ->when($type->hasListColumn('draft'), fn ($query) => $query->leftJoin('stock_draft as draft', 'draft.id', '=', 'stock_transaction.draft_id'))
-            ->where('stock_transaction.transaction_type', $type->code)
-            ->where(fn ($query) => match ($type->dispatchReceive() ? ($filters['direction'] ?? '') : 'outgoing') {
-                'incoming' => $query->whereIn('stock_transaction.to_warehouse_id', $warehouseIds),
-                'outgoing' => $query->whereIn('stock_transaction.warehouse_id', $warehouseIds),
-                default => $query->whereIn('stock_transaction.warehouse_id', $warehouseIds)->orWhereIn('stock_transaction.to_warehouse_id', $warehouseIds),
-            })
-            ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query
-                ->whereRaw('lower(stock_transaction.doc_no) like ?', [$like])
-                ->orWhereRaw('lower(customer.name) like ?', [$like])
-                ->when($type->hasListColumn('draft'), fn ($query) => $query->orWhereRaw('lower(draft.doc_no) like ?', [$like]))))
-            ->when($filters['customer'] ?? '', fn ($query, string $customer) => $query->where('stock_transaction.customer_id', $customer))
-            ->when($filters['status'] ?? '', fn ($query, string $status) => $query->where('stock_transaction.status', $status))
-            // The document's own date (the Date column), both days included.
-            ->when($filters['dates'] ?? null, fn ($query, DateRange $dates) => $dates->whereDay($query, 'stock_transaction.document_date'))
+        $query = self::filtered($type, $warehouseIds, $filters)
             ->select([
                 'stock_transaction.*',
                 'customer.name as customer_name',
@@ -71,6 +51,9 @@ final class Documents
             ])
             ->when($type->hasListColumn('draft'), fn ($query) => $query->addSelect('draft.doc_no as draft_reference'))
             ->selectSub(DB::table('stock_transaction_line')->selectRaw('count(*)')->whereColumn('transaction_id', 'stock_transaction.id'), 'line_count')
+            ->when($type->hasListColumn('total'), fn ($query) => $query->selectSub(
+                QuantityTotals::perDocument('stock_transaction_line', 'transaction_id', 'stock_transaction.id', QuantityTotals::DELIVERED_OR_ORDERED),
+                'qty_total'))
             // Delivery notes: delivered with a difference (some line short or replaced).
             ->when($type->deliverySteps(), fn ($query) => $query->selectSub(DB::table('stock_transaction_line')->selectRaw('count(*) > 0')->whereColumn('transaction_id', 'stock_transaction.id')->whereNotNull('shortage_reason'), 'short'))
             ->when($filters['pending_first'] ?? false, fn ($query) => $query->orderByRaw("(stock_transaction.status = 'PENDING_APPROVAL') DESC"))
@@ -90,12 +73,67 @@ final class Documents
             // Only for types whose list shows the column.
             'reason' => $type->hasListColumn('reason') ? $row->reason_code : null,
             'draft' => $type->hasListColumn('draft') && $row->getAttribute('draft_reference') !== null ? (string) $row->getAttribute('draft_reference') : null,
+            'total' => QuantityTotals::format($row->getAttribute('qty_total')),
             'from' => (string) $row->getAttribute('from_name'),
             // Only transfers have a destination.
             'to_warehouse' => $row->getAttribute('to_name') === null ? null : (string) $row->getAttribute('to_name'),
             // Arriving in the filtered warehouse(s) from elsewhere.
             'incoming' => in_array($row->to_warehouse_id, $warehouseIds, true) && ! in_array($row->warehouse_id, $warehouseIds, true),
         ]);
+    }
+
+    /**
+     * The list footer: the total quantity of every document matching the
+     * filters (all pages), "1,240 Piece"; null when the type has no total
+     * column or nothing matches.
+     *
+     * @param  list<string>  $warehouseIds
+     * @param  array{search?: string, customer?: string, status?: string, dates?: DateRange, direction?: string}  $filters
+     */
+    public static function total(TypeUi $type, array $warehouseIds, array $filters): ?string
+    {
+        if (! $type->hasListColumn('total')) {
+            return null;
+        }
+
+        return QuantityTotals::ofDocuments('stock_transaction_line', 'transaction_id',
+            self::filtered($type, $warehouseIds, $filters)->select('stock_transaction.id')->toBase(),
+            QuantityTotals::DELIVERED_OR_ORDERED);
+    }
+
+    /**
+     * The documents the list shows, before columns and order: type, warehouses,
+     * search, customer, status and dates. Shared by the page and its total.
+     *
+     * @param  list<string>  $warehouseIds
+     * @param  array{search?: string, customer?: string, status?: string, dates?: DateRange, direction?: string}  $filters
+     * @return Builder<StockTransaction>
+     */
+    private static function filtered(TypeUi $type, array $warehouseIds, array $filters): Builder
+    {
+        $search = mb_strtolower(trim($filters['search'] ?? ''));
+        $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search).'%';
+
+        return StockTransaction::query()
+            ->join('customer', 'customer.id', '=', 'stock_transaction.customer_id')
+            ->join('app_user', 'app_user.id', '=', 'stock_transaction.created_by')
+            ->join('warehouse as from_warehouse', 'from_warehouse.id', '=', 'stock_transaction.warehouse_id')
+            ->leftJoin('warehouse as to_warehouse', 'to_warehouse.id', '=', 'stock_transaction.to_warehouse_id')
+            ->when($type->hasListColumn('draft'), fn ($query) => $query->leftJoin('stock_draft as draft', 'draft.id', '=', 'stock_transaction.draft_id'))
+            ->where('stock_transaction.transaction_type', $type->code)
+            ->where(fn ($query) => match ($type->dispatchReceive() ? ($filters['direction'] ?? '') : 'outgoing') {
+                'incoming' => $query->whereIn('stock_transaction.to_warehouse_id', $warehouseIds),
+                'outgoing' => $query->whereIn('stock_transaction.warehouse_id', $warehouseIds),
+                default => $query->whereIn('stock_transaction.warehouse_id', $warehouseIds)->orWhereIn('stock_transaction.to_warehouse_id', $warehouseIds),
+            })
+            ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query
+                ->whereRaw('lower(stock_transaction.doc_no) like ?', [$like])
+                ->orWhereRaw('lower(customer.name) like ?', [$like])
+                ->when($type->hasListColumn('draft'), fn ($query) => $query->orWhereRaw('lower(draft.doc_no) like ?', [$like]))))
+            ->when($filters['customer'] ?? '', fn ($query, string $customer) => $query->where('stock_transaction.customer_id', $customer))
+            ->when($filters['status'] ?? '', fn ($query, string $status) => $query->where('stock_transaction.status', $status))
+            // The document's own date (the Date column), both days included.
+            ->when($filters['dates'] ?? null, fn ($query, DateRange $dates) => $dates->whereDay($query, 'stock_transaction.document_date'));
     }
 
     /**

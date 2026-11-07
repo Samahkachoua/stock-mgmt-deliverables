@@ -10,6 +10,7 @@
         // Users of several warehouses: where each document is (transfers show From → To instead).
         ...($warehouses !== null && ! $ui->requiresDestination() ? ['warehouse' => ['label' => __('transactions.list.warehouse'), 'priority' => 2]] : []),
         'items' => ['label' => __('transactions.list.items'), 'align' => 'end', 'priority' => 2, 'card' => 'hide'],
+        ...($ui->hasListColumn('total') ? ['total' => ['label' => __('transactions.list.total'), 'align' => 'end', 'card' => 'hide']] : []),
         ...($ui->hasListColumn('reason') ? ['reason' => ['label' => __('transactions.list.reason')]] : []),
         // The draft it was confirmed from (the Order of a Delivery note).
         ...($ui->hasListColumn('draft') ? ['draft' => ['label' => \App\Support\Drafts\DraftTypes::get($ui->code)->label('singular')]] : []),
@@ -64,6 +65,7 @@
         :columns="$columns"
         :paginator="$rows"
         :loading="! $rowsLoaded"
+        :footer="$total === null ? null : ['label' => trans_choice('transactions.list.footer_total', $rows->total(), ['count' => Format::qty($rows->total())]), 'cells' => ['total' => $total]]"
         :empty-title="$dateError ? __('feedback.date_order') : ($filtered ? __('transactions.list.no_matches_title') : $ui->label('empty_title'))"
         :empty-body="$dateError ? __('feedback.date_order_hint') : ($filtered ? __('transactions.list.no_matches_body') : $ui->label('empty_body'))"
     >
@@ -92,6 +94,15 @@
                     </x-data-table.cell>
                 @endif
                 <x-data-table.cell col="items" align="end" class="whitespace-nowrap text-fg tabular">{{ trans_choice('transactions.summary.items', $row['items'], ['count' => Format::qty($row['items'])]) }}</x-data-table.cell>
+                @if ($ui->hasListColumn('total'))
+                    <x-data-table.cell col="total" align="end" class="whitespace-nowrap text-fg tabular">
+                        @if ($row['total'])
+                            {{ $row['total'] }}
+                        @else
+                            <span aria-hidden="true">&mdash;</span>
+                        @endif
+                    </x-data-table.cell>
+                @endif
                 @if ($ui->hasListColumn('reason'))
                     <x-data-table.cell col="reason" class="text-fg">
                         @if ($row['reason'])

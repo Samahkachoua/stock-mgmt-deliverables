@@ -699,6 +699,11 @@ html[lang='ar'] {
         padding: 0;
     }
 
+    /* Spacer cells that keep a totals value under its column on wider screens. */
+    table.cards > tfoot > tr > td:empty {
+        display: none;
+    }
+
     /* Cards with inputs. */
     table.cards[data-form] > tbody > tr {
         align-items: flex-start;

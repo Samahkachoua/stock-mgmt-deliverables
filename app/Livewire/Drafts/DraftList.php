@@ -116,7 +116,8 @@ class DraftList extends Component
 
         return view('livewire.drafts.list', [
             'kind' => $kind,
-            'rows' => $this->rowsOnceLoaded(fn () => $this->drafts($kind, $draftsFirst && $this->status === '')),
+            'rows' => $rows = $this->rowsOnceLoaded(fn () => $this->drafts($kind, $draftsFirst && $this->status === '')),
+            'total' => $rows->isEmpty() ? null : $this->total($kind),
             'customers' => Customer::where('active', true)->orderBy('name')->pluck('name', 'id')->all(),
             'branches' => $this->branchOptions(),
             'statuses' => DraftTypes::statusOptions(),
@@ -149,20 +150,39 @@ class DraftList extends Component
      */
     private function drafts(DraftUi $kind, bool $draftsFirst): LengthAwarePaginator
     {
-        $dates = $this->dates();
-
-        if ($dates->invalid()) {
+        if ($this->dates()->invalid()) {
             return new LengthAwarePaginator([], 0, self::PER_PAGE, 1);
         }
 
-        return $this->pageInRange(fn (int $page) => DraftDocuments::page($kind, [
+        return $this->pageInRange(fn (int $page) => DraftDocuments::page($kind, $this->filters() + [
+            'drafts_first' => $draftsFirst,
+        ], self::PER_PAGE, $page));
+    }
+
+    /**
+     * The footer: total quantity of every draft the filters match (all pages).
+     */
+    private function total(DraftUi $kind): ?string
+    {
+        if (! $kind->hasListTotal() || $this->dates()->invalid()) {
+            return null;
+        }
+
+        return DraftDocuments::total($kind, $this->filters());
+    }
+
+    /**
+     * @return array{search: string, customer: string, branch: string, status: string, dates: DateRange}
+     */
+    private function filters(): array
+    {
+        return [
             'search' => $this->search,
             'customer' => Ids::valid($this->customer) ? $this->customer : '',
             'branch' => Ids::valid($this->branch) ? $this->branch : '',
             'status' => array_key_exists($this->status, DraftTypes::statusOptions()) ? $this->status : '',
-            'dates' => $dates,
-            'drafts_first' => $draftsFirst,
-        ], self::PER_PAGE, $page));
+            'dates' => $this->dates(),
+        ];
     }
 
     private function dates(): DateRange

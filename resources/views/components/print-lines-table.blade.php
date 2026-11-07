@@ -1,8 +1,9 @@
 {{--
     Lines of a document on the A4 print: a fully ruled table with a blue
-    header (SKU | Description | Unit of measure | Batch | Expiry date | Qty).
+    header (SKU | Description | Unit of measure | Expiry date | Qty).
     Transfers show Sent | Received, adjustments In system | Counted | Difference
-    in place of Qty. Batch and Expiry date appear when the type records them and a line has one.
+    in place of Qty. Expiry date appears when the type records it and a line has one;
+    batches are never printed.
     A draft passes no type: plain Qty.
     <x-print-lines-table :type="$type" :lines="$document['lines']" />
     <x-print-lines-table :lines="$draft['lines']" />
@@ -17,7 +18,6 @@
     $receivedLabel = __($type?->deliverySteps() ? 'deliveries.deliver.delivered' : 'transactions.lines.received');
     $expiries = collect($lines)->contains(fn ($line) => filled($line['expiry'] ?? null))
         && ($type === null || $type->hasLineColumn('expiry') || $type->hasLineColumn('expiry_pick') || $mode === 'count');
-    $batches = $expiries && collect($lines)->contains(fn ($line) => filled($line['batch'] ?? null));
     $total = collect($lines)->sum(fn ($line) => match ($mode) {
         'transfer' => $line['received'] === null ? $line['base_qty'] : $line['received'] * ($line['base_qty'] / max($line['qty'], 1)),
         default => $line['base_qty'],
@@ -33,9 +33,6 @@
             <th scope="col" class="{{ $th }}">{{ __('print.lines.sku') }}</th>
             <th scope="col" class="{{ $th }}">{{ __('print.lines.description') }}</th>
             <th scope="col" class="{{ $th }}">{{ __('print.lines.unit') }}</th>
-            @if ($batches)
-                <th scope="col" class="{{ $th }}">{{ __('transactions.lines.batch') }}</th>
-            @endif
             @if ($expiries)
                 <th scope="col" class="{{ $th }}">{{ __('transactions.lines.expiry') }}</th>
             @endif
@@ -65,9 +62,6 @@
                     @endforeach
                 </td>
                 <td class="{{ $td }} text-center">{{ Format::unit($line['unit']) }}</td>
-                @if ($batches)
-                    <td class="{{ $td }} text-center"><span dir="ltr" class="tabular">{{ $line['batch'] ?? '' }}</span></td>
-                @endif
                 @if ($expiries)
                     <td class="{{ $td }} text-center tabular">{{ $line['expiry'] ? Format::date(\Illuminate\Support\Carbon::parse($line['expiry'])) : '' }}</td>
                 @endif

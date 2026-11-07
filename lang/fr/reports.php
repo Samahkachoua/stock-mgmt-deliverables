@@ -81,12 +81,13 @@ return [
 
     'stock_on_hand' => [
         'title' => 'Stock',
-        'description' => 'Ce que chaque client a dans vos entrepôts maintenant, et ce qui est en route.',
+        'description' => 'Ce que chaque client a dans vos entrepôts maintenant.',
         'expiring' => 'Périme dans < 30 jours',
         'item_and_code' => 'Article et code',
         'empty_title' => 'Pas encore de stock ici',
         'empty_body' => 'Le stock apparaît après une réception ou la saisie d’un stock d’ouverture.',
         'open' => 'Ouvrir le stock de :item',
+        'footer_total' => '{1} Total · :count ligne|[2,*] Total · :count lignes',
     ],
 
     'stock_card' => [

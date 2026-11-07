@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Drafts\DraftForm;
+use App\Livewire\Drafts\DraftList;
 use App\Livewire\Reports\ReportPage;
 use App\Livewire\Stock\StockPage;
 use App\Livewire\Transactions\CancelTransaction;
@@ -23,6 +24,7 @@ use App\Services\Stock\ItemCatalog;
 use App\Services\Stock\PostingService;
 use App\Services\Stock\Reconciliation;
 use App\Services\Stock\Reservations;
+use App\Support\Format;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -472,4 +474,44 @@ it('refuses to confirm the delivery of a note that has not been dispatched', fun
 
     expect($note->fresh()->status)->toBe('POSTED')
         ->and($this->stock->balance('BEANS'))->toBe(456.0);
+});
+
+it('shows the total quantity of each delivery note on the list: ordered, then what was delivered', function () {
+    $open = $this->stock->confirmOrder([$this->stock->line('BEANS', 2, 'BOX'), $this->stock->line('BEANS', 5)]);
+    $short = $this->stock->confirmOrder([$this->stock->line('BEANS', 2, 'BOX')]);
+    [$line] = array_keys(noteLines($short));
+    deliver($short, [$line => new DeliveredLine('1', 'DAMAGED')]);
+    $piece = (string) DB::table('unit')->where('id', DB::table('product')->where('id', $this->stock->id('BEANS'))->value('base_unit_id'))->value('code');
+
+    $list = Livewire::actingAs($this->stock->user)->test(TransactionList::class, ['type' => 'OUT'])
+        ->call('loadRows')
+        ->assertSee(__('transactions.list.total'));
+
+    expect(collect($list->viewData('rows')->items())->pluck('total', 'reference')->all())
+        ->toMatchArray([$open->doc_no => Format::qtyUnit(29, $piece), $short->doc_no => Format::qtyUnit(12, $piece)]);
+
+    // The footer adds up every note the filters match.
+    $list->assertSee(trans_choice('transactions.list.footer_total', 2, ['count' => 2]))
+        ->assertViewHas('total', Format::qtyUnit(41, $piece));
+    $list->set('search', $short->doc_no)->assertViewHas('total', Format::qtyUnit(12, $piece));
+});
+
+it('shows the total quantity ordered on the order list, with a footer', function () {
+    $this->stock->order([$this->stock->line('BEANS', 2, 'BOX'), $this->stock->line('BEANS', 5)]);
+    $this->stock->order([$this->stock->line('BEANS', 1, 'BOX')]);
+    $piece = (string) DB::table('unit')->where('id', DB::table('product')->where('id', $this->stock->id('BEANS'))->value('base_unit_id'))->value('code');
+
+    $list = Livewire::actingAs($this->stock->user)->test(DraftList::class, ['type' => 'OUT'])
+        ->call('loadRows')
+        ->assertSee(__('transactions.list.total'))
+        ->assertViewHas('total', Format::qtyUnit(41, $piece));
+
+    expect(collect($list->viewData('rows')->items())->pluck('total')->sort()->values()->all())
+        ->toBe([Format::qtyUnit(12, $piece), Format::qtyUnit(29, $piece)]);
+
+    // Draft receipts have neither.
+    Livewire::actingAs($this->stock->user)->test(DraftList::class, ['type' => 'IN'])
+        ->call('loadRows')
+        ->assertViewHas('total', null)
+        ->assertDontSee(__('transactions.list.total'));
 });

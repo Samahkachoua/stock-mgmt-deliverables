@@ -38,7 +38,9 @@
 |                  counted (In system | Counted | Difference instead of Quantity)
 |   list_columns   optional list page columns: reason (the document's reason),
 |                  draft (the draft it was confirmed from, e.g. the Order of a
-|                  Delivery note); default none
+|                  Delivery note), total (the quantity of all stock lines in
+|                  base units, "212 Piece"; what was delivered once delivered);
+|                  default none
 |   hint           available = "Available: N" and quantity may not exceed it;
 |                  in_stock  = "In stock now: N" and no maximum
 |   reasons        reason codes (database enum values) for the `reason` field
@@ -86,8 +88,8 @@ return [
             'new' => false,
             'status_labels' => ['DISPATCHED' => 'dispatched', 'POSTED' => 'delivered'],
             'header_fields' => [],
-            // The Order it was confirmed from, if any.
-            'list_columns' => ['draft'],
+            // The Order it was confirmed from, if any; the total quantity.
+            'list_columns' => ['draft', 'total'],
             'line_columns' => ['expiry_pick'],
             'hint' => 'available',
             'line_key' => ['unit', 'expiry'],
@@ -181,6 +183,8 @@ return [
     |   notify    app_user column: whether a confirmer gets an email when one is
     |             added, changed or cancelled (Settings › Users)
     |   delivery  true: the draft has a delivery date and a priority (orders)
+    |   list_total true: the list shows a "Total quantity" column and footer
+    |             (the ordered quantity in base units, "212 Piece")
     |
     */
     'drafts' => [
@@ -209,6 +213,7 @@ return [
             'notify' => 'notify_new_orders',
             // Asks for a delivery date and a priority.
             'delivery' => true,
+            'list_total' => true,
         ],
     ],
 

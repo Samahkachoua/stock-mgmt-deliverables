@@ -98,7 +98,7 @@ function column(array $rows, string $key): array
 
 // Stock on hand (the Stock page)
 
-it('shows stock on hand in the base unit (no larger-unit column), in transit and nearest expiry', function () {
+it('shows stock on hand in the base unit (no larger-unit column) and nearest expiry, not what is in transit', function () {
     $d = $this->data;
     $here = onScreen($d->admin, $d->beirut, 'stock-on-hand');
 
@@ -108,13 +108,27 @@ it('shows stock on hand in the base unit (no larger-unit column), in transit and
         ->and($here['rows'][0])->not->toHaveKey('breakdown')
         ->and($here['rows'][3]['expiry']['tone'])->toBe('rejected'); // part of it has expired
 
-    // All my warehouses: Tripoli adds its rice, and the beans on their way there.
+    // All my warehouses: Tripoli adds its rice; the beans on their way there are not a row.
     $all = onScreen($d->admin, $d->beirut, 'stock-on-hand', ['warehouse' => 'all']);
     $arriving = collect($all['rows'])->first(fn ($row) => $row['item']['text'] === 'Canned Beans' && $row['warehouse'] === 'Tripoli');
 
-    expect($all['total'])->toBe(6)
-        ->and($arriving['qty']['value'])->toBe(0.0)
-        ->and($arriving['in_transit']['value'])->toBe(12.0);
+    expect($all['total'])->toBe(5)
+        ->and($arriving)->toBeNull()
+        ->and($all['rows'][0])->not->toHaveKey('in_transit');
+});
+
+it('adds up quantity, reserved and available of every matching row in the stock footer', function () {
+    $d = $this->data;
+    $page = reportPage($d->admin, $d->beirut, 'stock-on-hand')->call('loadRows');
+    $totals = $page->viewData('totals');
+    $rows = collect($page->viewData('rows')->items())->pluck('cells');
+
+    expect($totals['rows'])->toBe(4)
+        ->and($totals['qty'])->toBe((float) $rows->sum(fn ($row) => $row['qty']['value']))
+        ->and($totals['reserved'])->toBe((float) $rows->sum(fn ($row) => $row['reserved']['value']))
+        ->and($totals['available'])->toBe((float) $rows->sum(fn ($row) => $row['available']['value']));
+
+    $page->assertSee(trans_choice('reports.stock_on_hand.footer_total', 4, ['count' => Format::qty(4)]));
 });
 
 it('filters the stock by item, customer and expiring within 30 days', function () {

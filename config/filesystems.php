@@ -56,7 +56,9 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => false,
+            // Fail loudly: a silent failure (wrong key, missing bucket) only
+            // showed up later as "this file could not be read", with no log.
+            'throw' => true,
             'report' => false,
         ],
 

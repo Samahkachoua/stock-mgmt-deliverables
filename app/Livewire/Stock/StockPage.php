@@ -4,6 +4,7 @@ namespace App\Livewire\Stock;
 
 use App\Livewire\Reports\ReportPage;
 use App\Reports\StockOnHandReport;
+use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 
 /**
@@ -17,6 +18,17 @@ class StockPage extends ReportPage
     public function mount(string $report = ''): void
     {
         parent::mount((new StockOnHandReport)->key());
+    }
+
+    public function render(): View
+    {
+        $view = parent::render();
+        $rows = $view->getData()['rows'];
+
+        // The footer adds up every row the filters match, not only this page.
+        return $view->with('totals', $this->rowsLoaded && ! $rows->isEmpty()
+            ? (new StockOnHandReport)->totals($this->definition()->normalize($this->filters, $this->user()), $this->user())
+            : null);
     }
 
     protected function listStateKey(): string

@@ -94,6 +94,14 @@ final class DraftUi
     }
 
     /** The draft has a delivery date and a priority (orders). */
+    /**
+     * The list shows a "Total quantity" column and footer (orders).
+     */
+    public function hasListTotal(): bool
+    {
+        return (bool) ($this->config['list_total'] ?? false);
+    }
+
     public function hasDelivery(): bool
     {
         return (bool) ($this->config['delivery'] ?? false);

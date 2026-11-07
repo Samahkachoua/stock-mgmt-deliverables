@@ -126,6 +126,8 @@ return [
         'route' => 'De → Vers',
         'warehouse' => 'Entrepôt',
         'items' => 'Articles',
+        'total' => 'Quantité totale',
+        'footer_total' => '{1} Total · :count opération|[2,*] Total · :count opérations',
         'reason' => 'Motif',
         'status' => 'Statut',
         'created_by' => 'Créé par',

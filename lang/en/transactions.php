@@ -127,6 +127,8 @@ return [
         'route' => 'From → To',
         'warehouse' => 'Warehouse',
         'items' => 'Items',
+        'total' => 'Total quantity',
+        'footer_total' => '{1} Total · :count operation|[2,*] Total · :count operations',
         'reason' => 'Reason',
         'status' => 'Status',
         'created_by' => 'Created by',

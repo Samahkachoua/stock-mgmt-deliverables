@@ -47,9 +47,9 @@ final class ImportEngine
         $disk = (string) config('imports.disk');
         $path = $file->store(config('imports.folder').'/'.now()->format('Y/m'), $disk);
 
-        // The disk doesn't throw (e.g. S3 with no bucket set): without this the
-        // upload "works" and the check later fails as "file could not be read".
-        if ($path === false) {
+        // Livewire's upload returns the path even when the disk refused the
+        // file; without this the check later fails as "file could not be read".
+        if ($path === false || ! Storage::disk($disk)->exists($path)) {
             throw new \RuntimeException("The import file could not be stored on the [{$disk}] disk.");
         }
 

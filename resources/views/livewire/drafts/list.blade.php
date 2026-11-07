@@ -11,6 +11,7 @@
         'branch' => ['label' => $kind->label('branch')],
         'warehouse' => ['label' => __('drafts.list.warehouse'), 'priority' => 2, 'card' => 'hide'],
         'items' => ['label' => __('transactions.list.items'), 'align' => 'end', 'priority' => 2, 'card' => 'hide'],
+        ...($kind->hasListTotal() ? ['total' => ['label' => __('transactions.list.total'), 'align' => 'end', 'card' => 'hide']] : []),
         ...($kind->hasDelivery() ? ['priority' => ['label' => __('drafts.priority.label')]] : []),
         'status' => ['label' => __('transactions.list.status'), 'card' => 'badge'],
         'created_by' => ['label' => __('transactions.list.created_by'), 'priority' => 2, 'card' => 'hide'],
@@ -50,6 +51,7 @@
         :columns="$columns"
         :paginator="$rows"
         :loading="! $rowsLoaded"
+        :footer="$total === null ? null : ['label' => trans_choice('transactions.list.footer_total', $rows->total(), ['count' => Format::qty($rows->total())]), 'cells' => ['total' => $total]]"
         :empty-title="$dateError ? __('feedback.date_order') : ($filtered ? __('transactions.list.no_matches_title') : $kind->label('empty_title'))"
         :empty-body="$dateError ? __('feedback.date_order_hint') : ($filtered ? __('transactions.list.no_matches_body') : $kind->label('empty_body'))"
     >
@@ -78,6 +80,15 @@
                 <x-data-table.cell col="branch" class="text-fg"><bdi>{{ $row['branch'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="warehouse" class="text-fg"><bdi>{{ $row['warehouse'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="items" align="end" class="whitespace-nowrap text-fg tabular">{{ trans_choice('transactions.summary.items', $row['items'], ['count' => Format::qty($row['items'])]) }}</x-data-table.cell>
+                @if ($kind->hasListTotal())
+                    <x-data-table.cell col="total" align="end" class="whitespace-nowrap text-fg tabular">
+                        @if ($row['total'])
+                            {{ $row['total'] }}
+                        @else
+                            <span aria-hidden="true">&mdash;</span>
+                        @endif
+                    </x-data-table.cell>
+                @endif
                 @if ($kind->hasDelivery())
                     <x-data-table.cell col="priority">
                         @if ($row['priority'])

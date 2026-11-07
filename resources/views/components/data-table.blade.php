@@ -21,6 +21,10 @@
     (x-table-loading; `loading-target` narrows what counts as a reload).
     `loading`: the rows are not fetched yet (App\Livewire\Concerns\DefersRows):
     skeleton rows are shown and the browser asks for the rows.
+
+    `footer`: a totals row under the rows, ['label' => 'Total · 37 operations',
+    'cells' => ['total' => '1,240 Piece']]: the label in the first column, each
+    value under its column. On a phone it is one "label  value" line.
 --}}
 @props([
     'columns',
@@ -29,6 +33,7 @@
     'emptyBody' => '',
     'loading' => false,
     'loadingTarget' => null,
+    'footer' => null,
 ])
 
 <x-table-loading :target="$loadingTarget" :busy="$loading" {{ $attributes->class('overflow-hidden rounded-xl border border-default bg-card shadow-card') }}>
@@ -63,6 +68,26 @@
                         {{ $slot }}
                     @endif
                 </tbody>
+                @if (! $loading && $footer !== null)
+                    <tfoot class="border-t border-default">
+                        <tr class="h-row bg-surface font-semibold text-fg">
+                            @foreach (array_keys($columns) as $index => $key)
+                                @if ($index === 0)
+                                    <th scope="row" class="whitespace-nowrap px-cell ps-edge text-start">{{ $footer['label'] }}</th>
+                                @elseif (array_key_exists($key, $footer['cells']))
+                                    <td @if (($columns[$key]['priority'] ?? 1) > 1) data-priority="{{ $columns[$key]['priority'] }}" @endif @class([
+                                        'whitespace-nowrap px-cell tabular',
+                                        'text-end' => ($columns[$key]['align'] ?? null) === 'end',
+                                    ])>{{ $footer['cells'][$key] }}</td>
+                                @else
+                                    {{-- Keeps the values under their columns; not on a phone card. --}}
+                                    <td aria-hidden="true" @if (($columns[$key]['priority'] ?? 1) > 1) data-priority="{{ $columns[$key]['priority'] }}" @endif></td>
+                                @endif
+                            @endforeach
+                            <td aria-hidden="true"></td>
+                        </tr>
+                    </tfoot>
+                @endif
             </table>
         </div>
 

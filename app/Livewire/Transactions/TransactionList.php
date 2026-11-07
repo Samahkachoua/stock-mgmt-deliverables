@@ -130,7 +130,8 @@ class TransactionList extends Component
 
         return view('livewire.transactions.list', [
             'ui' => $type,
-            'rows' => $this->rowsOnceLoaded(fn () => $this->documents($type, $pendingFirst && $this->status === '')),
+            'rows' => $rows = $this->rowsOnceLoaded(fn () => $this->documents($type, $pendingFirst && $this->status === '')),
+            'total' => $rows->isEmpty() ? null : $this->total($type),
             'customers' => Customer::orderBy('name')->pluck('name', 'id')->all(),
             'statuses' => Statuses::options($type),
             'pendingFirst' => $pendingFirst,
@@ -154,22 +155,48 @@ class TransactionList extends Component
      */
     private function documents(TypeUi $type, bool $pendingFirst): LengthAwarePaginator
     {
-        $warehouseIds = $this->warehouse === 'all' ? array_keys($this->warehouseOptions()) : [$this->warehouse];
-        $dates = $this->dates();
-
         // "Date from" after "Date to": no query; the page shows the error.
-        if ($dates->invalid()) {
+        if ($this->dates()->invalid()) {
             return new LengthAwarePaginator([], 0, self::PER_PAGE, 1);
         }
 
-        return $this->pageInRange(fn (int $page) => Documents::page($type, array_map('strval', $warehouseIds), [
+        return $this->pageInRange(fn (int $page) => Documents::page($type, $this->warehouseIds(), $this->filters() + [
+            'pending_first' => $pendingFirst,
+        ], self::PER_PAGE, $page));
+    }
+
+    /**
+     * The footer: total quantity of every document the filters match (all pages).
+     */
+    private function total(TypeUi $type): ?string
+    {
+        if (! $type->hasListColumn('total') || $this->dates()->invalid()) {
+            return null;
+        }
+
+        return Documents::total($type, $this->warehouseIds(), $this->filters());
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function warehouseIds(): array
+    {
+        return array_map('strval', $this->warehouse === 'all' ? array_keys($this->warehouseOptions()) : [$this->warehouse]);
+    }
+
+    /**
+     * @return array{search: string, customer: string, status: string, dates: DateRange, direction: string}
+     */
+    private function filters(): array
+    {
+        return [
             'search' => $this->search,
             'customer' => Ids::valid($this->customer) ? $this->customer : '',
             'status' => $this->status,
-            'dates' => $dates,
+            'dates' => $this->dates(),
             'direction' => in_array($this->direction, ['incoming', 'outgoing'], true) ? $this->direction : '',
-            'pending_first' => $pendingFirst,
-        ], self::PER_PAGE, $page));
+        ];
     }
 
     private function dates(): DateRange

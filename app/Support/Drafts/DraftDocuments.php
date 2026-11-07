@@ -8,8 +8,10 @@ use App\Services\Stock\UnitConverter;
 use App\Support\CompanyTime;
 use App\Support\DateRange;
 use App\Support\Format;
+use App\Support\QuantityTotals;
 use App\Support\StorageStatuses;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -17,7 +19,7 @@ use Illuminate\Support\Facades\DB;
  * Drafts for the list and details pages. Reads go through StockDraft, so the
  * customer scope and DraftScope (warehouse / branches) always apply.
  *
- * @phpstan-type DraftRow array{id: string, reference: string, date: CarbonImmutable, customer: string, branch: string, warehouse: string, status: string, created_by: string, items: int, delivery_date: CarbonImmutable|null, priority: string|null}
+ * @phpstan-type DraftRow array{id: string, reference: string, date: CarbonImmutable, customer: string, branch: string, warehouse: string, status: string, created_by: string, items: int, total: string|null, delivery_date: CarbonImmutable|null, priority: string|null}
  */
 final class DraftDocuments
 {
@@ -29,6 +31,64 @@ final class DraftDocuments
      * @return LengthAwarePaginator<int, DraftRow>
      */
     public static function page(DraftUi $kind, array $filters, int $perPage, int $page): LengthAwarePaginator
+    {
+        return self::filtered($kind, $filters)
+            ->select([
+                'stock_draft.*',
+                'customer.name as customer_name',
+                'branch.name as branch_name',
+                'warehouse.name as warehouse_name',
+                'app_user.full_name as creator_name',
+            ])
+            ->selectSub(DB::table('stock_draft_line')->selectRaw('count(*)')->whereColumn('draft_id', 'stock_draft.id'), 'line_count')
+            ->when($kind->hasListTotal(), fn ($query) => $query->selectSub(
+                QuantityTotals::perDocument('stock_draft_line', 'draft_id', 'stock_draft.id', QuantityTotals::ORDERED),
+                'qty_total'))
+            ->when($filters['drafts_first'] ?? false, fn ($query) => $query->orderByRaw("(stock_draft.status = 'DRAFT') DESC"))
+            ->orderByDesc('stock_draft.document_date')
+            ->orderByDesc('stock_draft.created_at')
+            ->paginate($perPage, page: $page)
+            ->through(fn (StockDraft $row) => [
+                'id' => $row->id,
+                'reference' => $row->doc_no,
+                'date' => CarbonImmutable::parse($row->getAttribute('document_date')),
+                'customer' => (string) $row->getAttribute('customer_name'),
+                'branch' => (string) $row->getAttribute('branch_name'),
+                'warehouse' => (string) $row->getAttribute('warehouse_name'),
+                'status' => $row->status,
+                'created_by' => (string) $row->getAttribute('creator_name'),
+                'items' => (int) $row->getAttribute('line_count'),
+                'total' => QuantityTotals::format($row->getAttribute('qty_total')),
+                // Orders only.
+                'delivery_date' => $row->delivery_date === null ? null : CarbonImmutable::parse($row->delivery_date),
+                'priority' => $row->priority,
+            ]);
+    }
+
+    /**
+     * The list footer: the total quantity ordered on every draft matching the
+     * filters (all pages); null when the kind has no total or nothing matches.
+     *
+     * @param  array{search?: string, customer?: string, branch?: string, status?: string, dates?: DateRange}  $filters
+     */
+    public static function total(DraftUi $kind, array $filters): ?string
+    {
+        if (! $kind->hasListTotal()) {
+            return null;
+        }
+
+        return QuantityTotals::ofDocuments('stock_draft_line', 'draft_id',
+            self::filtered($kind, $filters)->select('stock_draft.id')->toBase(),
+            QuantityTotals::ORDERED);
+    }
+
+    /**
+     * The drafts the list shows, before columns and order. Shared by the page and its total.
+     *
+     * @param  array{search?: string, customer?: string, branch?: string, status?: string, dates?: DateRange}  $filters
+     * @return Builder<StockDraft>
+     */
+    private static function filtered(DraftUi $kind, array $filters): Builder
     {
         $search = mb_strtolower(trim($filters['search'] ?? ''));
         $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search).'%';
@@ -46,33 +106,7 @@ final class DraftDocuments
             ->when($filters['customer'] ?? '', fn ($query, string $customer) => $query->where('stock_draft.customer_id', $customer))
             ->when($filters['branch'] ?? '', fn ($query, string $branch) => $query->where('stock_draft.customer_branch_id', $branch))
             ->when($filters['status'] ?? '', fn ($query, string $status) => $query->where('stock_draft.status', $status))
-            ->when($filters['dates'] ?? null, fn ($query, DateRange $dates) => $dates->whereDay($query, 'stock_draft.document_date'))
-            ->select([
-                'stock_draft.*',
-                'customer.name as customer_name',
-                'branch.name as branch_name',
-                'warehouse.name as warehouse_name',
-                'app_user.full_name as creator_name',
-            ])
-            ->selectSub(DB::table('stock_draft_line')->selectRaw('count(*)')->whereColumn('draft_id', 'stock_draft.id'), 'line_count')
-            ->when($filters['drafts_first'] ?? false, fn ($query) => $query->orderByRaw("(stock_draft.status = 'DRAFT') DESC"))
-            ->orderByDesc('stock_draft.document_date')
-            ->orderByDesc('stock_draft.created_at')
-            ->paginate($perPage, page: $page)
-            ->through(fn (StockDraft $row) => [
-                'id' => $row->id,
-                'reference' => $row->doc_no,
-                'date' => CarbonImmutable::parse($row->getAttribute('document_date')),
-                'customer' => (string) $row->getAttribute('customer_name'),
-                'branch' => (string) $row->getAttribute('branch_name'),
-                'warehouse' => (string) $row->getAttribute('warehouse_name'),
-                'status' => $row->status,
-                'created_by' => (string) $row->getAttribute('creator_name'),
-                'items' => (int) $row->getAttribute('line_count'),
-                // Orders only.
-                'delivery_date' => $row->delivery_date === null ? null : CarbonImmutable::parse($row->delivery_date),
-                'priority' => $row->priority,
-            ]);
+            ->when($filters['dates'] ?? null, fn ($query, DateRange $dates) => $dates->whereDay($query, 'stock_draft.document_date'));
     }
 
     /**

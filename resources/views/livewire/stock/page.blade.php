@@ -1,4 +1,5 @@
 {{-- Stock (docs/design/stitch-exports/stock-inventory-balance-list). --}}
+@use('App\Support\Format')
 <div class="flex flex-col gap-section">
     <x-page-header icon="inventory_2" :title="__('reports.stock_on_hand.title')" :subtitle="__('reports.stock_on_hand.description')">
         <x-slot:actions>
@@ -16,10 +17,17 @@
             'qty' => ['label' => __('reports.columns.qty_base'), 'align' => 'end'],
             'reserved' => ['label' => __('reports.columns.reserved'), 'align' => 'end'],
             'available' => ['label' => __('reports.columns.available'), 'align' => 'end'],
-            'in_transit' => ['label' => __('reports.columns.in_transit'), 'align' => 'end'],
             'expiry' => ['label' => __('reports.columns.nearest_expiry')],
         ]"
         :paginator="$rows"
+        :footer="$totals === null ? null : [
+            'label' => trans_choice('reports.stock_on_hand.footer_total', $totals['rows'], ['count' => Format::qty($totals['rows'])]),
+            'cells' => [
+                'qty' => Format::quantityTotal($totals['qty'], $totals['units']),
+                'reserved' => Format::quantityTotal($totals['reserved'], $totals['units']),
+                'available' => Format::quantityTotal($totals['available'], $totals['units']),
+            ],
+        ]"
         :loading="! $rowsLoaded"
         :empty-title="__('reports.stock_on_hand.empty_title')"
         :empty-body="__('reports.stock_on_hand.empty_body')"
@@ -59,16 +67,6 @@
                     @endif
                 </x-data-table.cell>
                 <x-data-table.cell col="available" align="end" class="whitespace-nowrap"><x-report.cell :cell="$cells['available']" /></x-data-table.cell>
-                <x-data-table.cell col="in_transit" align="end" class="whitespace-nowrap">
-                    @if ($cells['in_transit']['text'] !== '')
-                        <span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-small font-semibold {{ config('ui.statuses.transit') }}">
-                            <x-icon name="local_shipping" class="size-4" />
-                            {{ $cells['in_transit']['text'] }}
-                        </span>
-                    @else
-                        <span class="text-muted" aria-hidden="true">&mdash;</span>
-                    @endif
-                </x-data-table.cell>
                 <x-data-table.cell col="expiry"><x-report.cell :cell="$cells['expiry']" /></x-data-table.cell>
             </x-data-table.row>
         @endforeach
