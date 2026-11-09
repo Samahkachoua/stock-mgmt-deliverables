@@ -125,6 +125,6 @@ it('shows each item\'s storage status and filters by it', function () {
     $chilled = stockByExpiryRows(stockByExpiry($d->admin, $d->beirut, ['storage' => 'CHILLED']));
 
     expect(stockByExpiryColumn($chilled, 'item'))->toBe(['Yogurt', 'Yogurt', 'Yogurt'])
-        ->and(stockByExpiryColumn($chilled, 'storage'))->each->toBe(StorageStatuses::label('CHILLED'))
+        ->and(stockByExpiryColumn($chilled, 'storage'))->each->toBe(StorageStatuses::name('CHILLED'))
         ->and(stockByExpiryColumn(stockByExpiryRows(stockByExpiry($d->admin, $d->beirut, ['storage' => 'none'])), 'item'))->toBe(['Canned Beans', 'Phone', 'Rice 5kg']);
 });

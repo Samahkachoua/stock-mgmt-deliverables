@@ -54,7 +54,7 @@
                 <x-data-table.cell col="customer" class="text-fg xl:min-w-32"><bdi>{{ $cells['customer'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="warehouse" class="text-fg"><bdi>{{ $cells['warehouse'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="expiry" class="whitespace-nowrap"><x-report.cell :cell="$cells['expiry']" /></x-data-table.cell>
-                <x-data-table.cell col="storage" class="text-fg"><x-report.cell :cell="$cells['storage']" /></x-data-table.cell>
+                <x-data-table.cell col="storage" class="whitespace-nowrap text-fg"><x-report.cell :cell="$cells['storage']" /></x-data-table.cell>
                 <x-data-table.cell col="qty" align="end" class="whitespace-nowrap"><x-report.cell :cell="$cells['qty']" /></x-data-table.cell>
                 <x-data-table.cell col="reserved" align="end" class="whitespace-nowrap">
                     @if ($cells['reserved']['text'] !== '')

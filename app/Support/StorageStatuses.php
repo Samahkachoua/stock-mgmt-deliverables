@@ -49,6 +49,14 @@ final class StorageStatuses
         ]);
     }
 
+    /**
+     * Just the name, "Chilled" (no temperatures), or null when not set.
+     */
+    public static function name(?string $code): ?string
+    {
+        return $code !== null && isset(self::all()[$code]) ? __('items.storage.codes.'.$code) : null;
+    }
+
     public static function flush(): void
     {
         self::$rows = null;

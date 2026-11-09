@@ -360,13 +360,13 @@ abstract class Report
     }
 
     /**
-     * The item's storage status, "Chilled (2 to 8 °C)"; empty when not set.
+     * The item's storage status name, "Chilled" (no temperatures); empty when not set.
      *
      * @return Cell
      */
     protected function storageCell(?string $code): array|string
     {
-        return StorageStatuses::label($code) ?? '';
+        return StorageStatuses::name($code) ?? '';
     }
 
     /**

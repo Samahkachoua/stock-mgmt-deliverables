@@ -505,7 +505,7 @@ it('shows each item\'s storage status on the Stock page and filters by it', func
     $all = onScreen($d->admin, $d->beirut, 'stock-on-hand');
     $chilled = onScreen($d->admin, $d->beirut, 'stock-on-hand', ['storage' => 'CHILLED']);
 
-    expect($all['rows'][3]['storage'])->toBe(StorageStatuses::label('CHILLED'))
+    expect($all['rows'][3]['storage'])->toBe(StorageStatuses::name('CHILLED'))
         ->and($all['rows'][0]['storage'])->toBe('') // not set
         ->and(column($chilled['rows'], 'item'))->toBe(['Yogurt'])
         ->and(column(onScreen($d->admin, $d->beirut, 'stock-on-hand', ['storage' => 'none'])['rows'], 'item'))->toBe(['Canned Beans', 'Phone', 'Rice 5kg'])

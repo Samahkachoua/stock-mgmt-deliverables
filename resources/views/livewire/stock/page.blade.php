@@ -66,7 +66,7 @@
                 </x-data-table.cell>
                 <x-data-table.cell col="available" align="end" class="whitespace-nowrap"><x-report.cell :cell="$cells['available']" /></x-data-table.cell>
                 <x-data-table.cell col="expiry" class="whitespace-nowrap"><x-report.cell :cell="$cells['expiry']" /></x-data-table.cell>
-                <x-data-table.cell col="storage" class="text-fg"><x-report.cell :cell="$cells['storage']" /></x-data-table.cell>
+                <x-data-table.cell col="storage" class="whitespace-nowrap text-fg"><x-report.cell :cell="$cells['storage']" /></x-data-table.cell>
             </x-data-table.row>
         @endforeach
     </x-data-table>
