@@ -9,6 +9,7 @@ return [
     'home' => 'Home',
     'dashboard' => 'Dashboard',
     'stock' => 'Stock',
+    'stock_by_expiry' => 'Stock by expiry',
     'reports' => 'Reports',
     'imports' => 'Import',
     'items' => 'Items',

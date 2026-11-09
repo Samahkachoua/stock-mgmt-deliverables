@@ -69,6 +69,7 @@ return [
         ['route' => 'opening-balance', 'permission' => 'documents.opening-balance', 'label' => 'transactions.types.opening.title', 'icon' => 'account_balance_wallet', 'type' => 'opening'],
         ['divider' => true],
         ['route' => 'stock', 'permission' => 'stock.view', 'label' => 'nav.stock', 'icon' => 'inventory_2', 'type' => null],
+        ['route' => 'stock-by-expiry', 'permission' => 'report.stock_by_expiry.view', 'label' => 'nav.stock_by_expiry', 'icon' => 'calendar_today', 'type' => null],
         ['route' => 'reports', 'permission' => 'reports.open', 'label' => 'nav.reports', 'icon' => 'description', 'type' => null],
         ['route' => 'items', 'permission' => 'product.manage', 'label' => 'nav.items', 'icon' => 'category', 'type' => null],
         ['route' => 'imports', 'permission' => 'product.import', 'label' => 'nav.imports', 'icon' => 'upload', 'type' => null],

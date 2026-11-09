@@ -36,6 +36,7 @@ return [
         'qty_larger' => 'Quantité (unités supérieures)',
         'in_transit' => 'En transit (à l’arrivée)',
         'nearest_expiry' => 'Péremption la plus proche',
+        'expiry_status' => 'État de péremption',
         'date' => 'Date',
         'type' => 'Type',
         'reference' => 'Référence',
@@ -62,9 +63,9 @@ return [
     ],
 
     'expiry_badge' => [
-        'expired' => 'Périmé (:date)',
-        'soon' => '< :days jours (:date · :left j restants)',
-        'ok' => 'OK (:date)',
+        'expired' => 'Périmé',
+        'soon' => '< :days jours (:left j restants)',
+        'ok' => 'OK',
     ],
 
     'export' => [
@@ -88,6 +89,11 @@ return [
         'empty_body' => 'Le stock apparaît après une réception ou la saisie d’un stock d’ouverture.',
         'open' => 'Ouvrir le stock de :item',
         'footer_total' => '{1} Total · :count ligne|[2,*] Total · :count lignes',
+    ],
+
+    'stock_by_expiry' => [
+        'title' => 'Stock par date d’expiration',
+        'description' => 'Votre stock détaillé par lot et date d’expiration, périmé ou non.',
     ],
 
     'stock_card' => [

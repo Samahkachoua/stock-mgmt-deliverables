@@ -1,0 +1,78 @@
+{{-- Stock by expiry: the Stock page (livewire/stock/page) with one row per lot (batch + expiry date). --}}
+@use('App\Support\Format')
+<div class="flex flex-col gap-section">
+    <x-page-header icon="calendar_today" :title="__('reports.stock_by_expiry.title')" :subtitle="__('reports.stock_by_expiry.description')">
+        <x-slot:actions>
+            <x-report.export-buttons :exportable="$exportable" />
+        </x-slot:actions>
+    </x-page-header>
+
+    <x-report.filters :definitions="$definition->filters()" :choices="$choices" :values="$filters" :defaults="$defaults" />
+
+    <x-data-table
+        :columns="[
+            'item' => ['label' => __('reports.stock_on_hand.item_and_code'), 'card' => 'title'],
+            'customer' => ['label' => __('reports.columns.customer'), 'priority' => 2],
+            'warehouse' => ['label' => __('reports.columns.warehouse'), 'priority' => 2],
+            'batch' => ['label' => __('reports.columns.batch')],
+            'expiry' => ['label' => __('reports.columns.expiry_date')],
+            'expiry_status' => ['label' => __('reports.columns.expiry_status')],
+            'qty' => ['label' => __('reports.columns.qty_base'), 'align' => 'end'],
+            'reserved' => ['label' => __('reports.columns.reserved'), 'align' => 'end'],
+            'available' => ['label' => __('reports.columns.available'), 'align' => 'end'],
+        ]"
+        :paginator="$rows"
+        :footer="$totals === null ? null : [
+            'label' => trans_choice('reports.stock_on_hand.footer_total', $totals['rows'], ['count' => Format::qty($totals['rows'])]),
+            'cells' => [
+                'qty' => Format::quantityTotal($totals['qty'], $totals['units']),
+                'reserved' => Format::quantityTotal($totals['reserved'], $totals['units']),
+                'available' => Format::quantityTotal($totals['available'], $totals['units']),
+            ],
+        ]"
+        :loading="! $rowsLoaded"
+        :empty-title="__('reports.stock_on_hand.empty_title')"
+        :empty-body="__('reports.stock_on_hand.empty_body')"
+    >
+        <x-slot:empty-action>
+            <div class="flex flex-wrap justify-center gap-3">
+                @if ($filters['search'] !== '' || $filters['customer'] !== '' || $filters['expiring'] !== '')
+                    <x-empty-action action="resetFilters" icon="filter_alt_off" :label="__('transactions.filters.reset')" />
+                @endif
+                @can('stock.in.create')
+                    <x-empty-action :href="route('receive.create')" icon="add" :label="__('transactions.types.receive.new')" primary />
+                @endcan
+            </div>
+        </x-slot:empty-action>
+        @foreach ($rows as $row)
+            @php
+                $cells = $row['cells'];
+            @endphp
+            <x-data-table.row wire:key="stock-by-expiry-{{ $rows->firstItem() + $loop->index }}" :href="$row['link']" :label="__('reports.stock_on_hand.open', ['item' => $cells['item']['text']])">
+                <x-data-table.cell col="item" class="xl:min-w-56">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <bdi class="font-semibold text-fg">{{ $cells['item']['text'] }}</bdi>
+                        <span dir="ltr" class="tabular rounded bg-card-hover px-1.5 py-0.5 text-small font-semibold tracking-wide text-muted">{{ $cells['code']['text'] }}</span>
+                    </div>
+                </x-data-table.cell>
+                <x-data-table.cell col="customer" class="text-fg xl:min-w-32"><bdi>{{ $cells['customer'] }}</bdi></x-data-table.cell>
+                <x-data-table.cell col="warehouse" class="text-fg"><bdi>{{ $cells['warehouse'] }}</bdi></x-data-table.cell>
+                <x-data-table.cell col="batch" class="whitespace-nowrap"><x-report.cell :cell="$cells['batch']" /></x-data-table.cell>
+                <x-data-table.cell col="expiry" class="whitespace-nowrap"><x-report.cell :cell="$cells['expiry']" /></x-data-table.cell>
+                <x-data-table.cell col="expiry_status"><x-report.cell :cell="$cells['expiry_status']" /></x-data-table.cell>
+                <x-data-table.cell col="qty" align="end" class="whitespace-nowrap"><x-report.cell :cell="$cells['qty']" /></x-data-table.cell>
+                <x-data-table.cell col="reserved" align="end" class="whitespace-nowrap">
+                    @if ($cells['reserved']['text'] !== '')
+                        <span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-small font-semibold {{ config('ui.statuses.pending') }}">
+                            <x-icon name="lock" class="size-4" />
+                            {{ $cells['reserved']['text'] }}
+                        </span>
+                    @else
+                        <span class="text-muted" aria-hidden="true">&mdash;</span>
+                    @endif
+                </x-data-table.cell>
+                <x-data-table.cell col="available" align="end" class="whitespace-nowrap"><x-report.cell :cell="$cells['available']" /></x-data-table.cell>
+            </x-data-table.row>
+        @endforeach
+    </x-data-table>
+</div>

@@ -18,6 +18,7 @@
             'reserved' => ['label' => __('reports.columns.reserved'), 'align' => 'end'],
             'available' => ['label' => __('reports.columns.available'), 'align' => 'end'],
             'expiry' => ['label' => __('reports.columns.nearest_expiry')],
+            'expiry_status' => ['label' => __('reports.columns.expiry_status')],
         ]"
         :paginator="$rows"
         :footer="$totals === null ? null : [
@@ -67,7 +68,8 @@
                     @endif
                 </x-data-table.cell>
                 <x-data-table.cell col="available" align="end" class="whitespace-nowrap"><x-report.cell :cell="$cells['available']" /></x-data-table.cell>
-                <x-data-table.cell col="expiry"><x-report.cell :cell="$cells['expiry']" /></x-data-table.cell>
+                <x-data-table.cell col="expiry" class="whitespace-nowrap"><x-report.cell :cell="$cells['expiry']" /></x-data-table.cell>
+                <x-data-table.cell col="expiry_status"><x-report.cell :cell="$cells['expiry_status']" /></x-data-table.cell>
             </x-data-table.row>
         @endforeach
     </x-data-table>

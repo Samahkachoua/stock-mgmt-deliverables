@@ -1211,6 +1211,7 @@ INSERT INTO permission (code, description, module) VALUES
     ('driver.delete', 'Delete drivers', 'DRIVER'),
     -- One per report (Report::permission(): report.<key>.view; Stock on hand is
     -- the Stock page, stock.view). The owner dashboard: only ADMIN at first.
+    ('report.stock_by_expiry.view', 'View stock by expiry', 'REPORT'),
     ('report.stock_card.view', 'View the stock card report', 'REPORT'),
     ('report.expiry.view', 'View the expiry report', 'REPORT'),
     ('report.dormant_stock.view', 'View the dormant stock report', 'REPORT'),
@@ -1271,6 +1272,14 @@ SELECT r.id, p.id
   FROM role r
   JOIN permission p ON p.code LIKE 'report.%.view'
  WHERE r.code IN ('MANAGER', 'AUDITOR');
+
+-- Stock by expiry (the Stock page per lot): every other role that sees the Stock page.
+INSERT INTO role_permission (role_id, permission_id)
+SELECT rp.role_id, p.id
+  FROM role_permission rp
+  JOIN permission sv ON sv.id = rp.permission_id AND sv.code = 'stock.view'
+  JOIN role r ON r.id = rp.role_id AND r.code NOT IN ('ADMIN', 'MANAGER', 'AUDITOR')
+  JOIN permission p ON p.code = 'report.stock_by_expiry.view';
 
 -- Each type's list: every role that sees stock (stock.view) at first.
 INSERT INTO role_permission (role_id, permission_id)

@@ -24,6 +24,7 @@ use App\Livewire\Items\ItemForm;
 use App\Livewire\Items\ItemList;
 use App\Livewire\Reports\ReportPage;
 use App\Livewire\Settings;
+use App\Livewire\Stock\StockByExpiryPage;
 use App\Livewire\Stock\StockPage;
 use App\Livewire\Transactions\TransactionForm;
 use App\Livewire\Transactions\TransactionList;
@@ -78,6 +79,8 @@ Route::middleware(['auth', 'warehouse'])->group(function () {
         ->name('stock.item')
         ->whereNumber(['product', 'warehouse'])
         ->middleware('can:stock.view');
+    // The Stock page per lot (batch + expiry date); its own report permission.
+    Route::get('/stock-by-expiry', StockByExpiryPage::class)->name('stock-by-expiry')->middleware('can:report.stock_by_expiry.view');
     // From the top bar search: the Stock page filtered to an item or a customer.
     Route::get('/stock/for-item/{product}', [ListPresetController::class, 'stockItem'])
         ->name('stock.for-item')
@@ -168,7 +171,7 @@ Route::middleware(['auth', 'warehouse'])->group(function () {
     });
 
     // Placeholders until each screen is built.
-    $built = ['home', 'dashboard', 'settings', 'items', 'imports', 'stock', 'reports', ...array_column(config('transactions.types'), 'slug'), ...array_column(config('transactions.drafts'), 'slug')];
+    $built = ['home', 'dashboard', 'settings', 'items', 'imports', 'stock', 'stock-by-expiry', 'reports', ...array_column(config('transactions.types'), 'slug'), ...array_column(config('transactions.drafts'), 'slug')];
 
     foreach (config('ui.nav') as $item) {
         if (isset($item['route']) && ! in_array($item['route'], $built, true)) {

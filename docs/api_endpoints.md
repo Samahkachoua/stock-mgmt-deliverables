@@ -113,6 +113,7 @@ customer login, to its own customer).
 |---|---|---|
 | GET | `/reports` | The reports the user may open |
 | GET | `/reports/stock-on-hand?search=&customer=&warehouse=&expiring=1` | Stock on hand per item, customer and warehouse, with larger-unit breakdown, stock arriving in transit and nearest expiry (`stock.view`; shown as the Stock page, `/stock`) |
+| GET | `/reports/stock-by-expiry?search=&customer=&warehouse=&expiring=1` | The Stock page per lot: one row per item, customer, warehouse, expiry date and batch (expired or not; items without expiry one row); in stock, reserved, available. `search` also matches a batch number (shown as Stock by expiry in the sidebar, `/stock-by-expiry`) |
 | GET | `/reports/stock-card?customer=&item=&warehouse=&from=&to=` | Every movement of one item in one warehouse, with opening balance, balance after each movement and closing balance |
 | GET | `/reports/expiry?search=&warehouse=&customer=&status=all\|expired\|expiring&days=30` | Stock expired or expiring within `days`, per expiry date |
 | GET | `/reports/dormant-stock?search=&warehouse=&customer=&days=90` | Items in stock whose last movement in that warehouse is more than `days` old, longest idle first |

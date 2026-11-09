@@ -57,6 +57,7 @@ final class StockOnHandReport extends Report
             'reserved' => ['label' => 'reports.columns.reserved', 'align' => 'end'],
             'available' => ['label' => 'reports.columns.available', 'align' => 'end'],
             'expiry' => ['label' => 'reports.columns.nearest_expiry'],
+            'expiry_status' => ['label' => 'reports.columns.expiry_status'],
         ];
     }
 
@@ -138,7 +139,8 @@ final class StockOnHandReport extends Report
             'qty' => $this->qtyCell($row->qty, $row->product_id) + ['strong' => true],
             'reserved' => (float) $row->reserved > 0 ? $this->qtyCell($row->reserved, $row->product_id) : ['text' => '', 'value' => 0],
             'available' => $this->qtyCell((float) $row->qty - (float) $row->reserved, $row->product_id) + ['strong' => true],
-            'expiry' => $this->expiryCell($row->nearest_expiry, self::EXPIRING_DAYS),
+            'expiry' => $this->expiryDateCell($row->nearest_expiry),
+            'expiry_status' => $this->expiryCell($row->nearest_expiry, self::EXPIRING_DAYS),
         ];
     }
 

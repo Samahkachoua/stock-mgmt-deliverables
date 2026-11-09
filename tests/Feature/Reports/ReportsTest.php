@@ -106,7 +106,9 @@ it('shows stock on hand in the base unit (no larger-unit column) and nearest exp
         ->and(column($here['rows'], 'item'))->toBe(['Canned Beans', 'Phone', 'Rice 5kg', 'Yogurt'])
         ->and(array_column(array_column($here['rows'], 'qty'), 'value'))->toBe([28.0, 2.0, 9.0, 20.0])
         ->and($here['rows'][0])->not->toHaveKey('breakdown')
-        ->and($here['rows'][3]['expiry']['tone'])->toBe('rejected'); // part of it has expired
+        ->and($here['rows'][3]['expiry_status']['tone'])->toBe('rejected') // part of it has expired
+        ->and($here['rows'][3]['expiry_status']['text'])->toBe(__('reports.expiry_badge.expired'))
+        ->and($here['rows'][3]['expiry']['text'])->toBe(Format::date(now()->subDays(2)));
 
     // All my warehouses: Tripoli adds its rice; the beans on their way there are not a row.
     $all = onScreen($d->admin, $d->beirut, 'stock-on-hand', ['warehouse' => 'all']);
@@ -150,8 +152,8 @@ it('keeps the stock of other warehouses and customers out, on screen and in the 
         ->and(exported($user, $warehouse, 'stock-on-hand', $filters))->toHaveCount($expected);
 })->with([
     'Beirut manager, all warehouses' => ['beirutManager', 'beirut', ['warehouse' => 'all'], 4],
-    'Tripoli operator' => ['tripoliOperator', 'tripoli', [], 2],
-    'Tripoli operator asking for Beirut' => ['tripoliOperator', 'tripoli', ['warehouse' => 'BEIRUT'], 2],
+    'Tripoli operator' => ['tripoliOperator', 'tripoli', [], 1], // the beans on their way there are not stock yet
+    'Tripoli operator asking for Beirut' => ['tripoliOperator', 'tripoli', ['warehouse' => 'BEIRUT'], 1],
     'Acme’s portal login' => ['acmePortal', 'beirut', ['warehouse' => 'all'], 3],
 ]);
 

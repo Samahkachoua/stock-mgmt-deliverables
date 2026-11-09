@@ -319,8 +319,9 @@ abstract class Report
     }
 
     /**
-     * Expiry badge: Expired (red), within $days days (amber, with days left),
-     * or OK (green); empty when the item has no expiry date.
+     * Expiry status badge, without the date (that has its own column,
+     * expiryDateCell): Expired (red), within $days days (amber, with days
+     * left), or OK (green); empty when the item has no expiry date.
      *
      * @return Cell
      */
@@ -330,14 +331,23 @@ abstract class Report
             return '';
         }
 
-        $date = CarbonImmutable::parse($expiry);
         $left = Days::until($expiry, CompanyTime::zone());
 
         return match (true) {
-            $left < 0 => ['text' => __('reports.expiry_badge.expired', ['date' => Format::date($date)]), 'tone' => 'rejected'],
-            $left <= $days => ['text' => __('reports.expiry_badge.soon', ['days' => Format::qty($days), 'date' => Format::date($date), 'left' => Format::qty($left)]), 'tone' => 'pending'],
-            default => ['text' => __('reports.expiry_badge.ok', ['date' => Format::date($date)]), 'tone' => 'completed'],
+            $left < 0 => ['text' => __('reports.expiry_badge.expired'), 'tone' => 'rejected'],
+            $left <= $days => ['text' => __('reports.expiry_badge.soon', ['days' => Format::qty($days), 'left' => Format::qty($left)]), 'tone' => 'pending'],
+            default => ['text' => __('reports.expiry_badge.ok'), 'tone' => 'completed'],
         };
+    }
+
+    /**
+     * The expiry date on its own; empty when the item has no expiry date.
+     *
+     * @return Cell
+     */
+    protected function expiryDateCell(?string $expiry): array|string
+    {
+        return $expiry === null ? '' : ['text' => Format::date(CarbonImmutable::parse($expiry)), 'nowrap' => true];
     }
 
     /**

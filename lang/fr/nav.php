@@ -9,6 +9,7 @@ return [
     'home' => 'Accueil',
     'dashboard' => 'Tableau de bord',
     'stock' => 'Stock',
+    'stock_by_expiry' => 'Stock par date d’expiration',
     'reports' => 'Rapports',
     'imports' => 'Import',
     'items' => 'Articles',

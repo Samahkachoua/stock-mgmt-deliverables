@@ -7,13 +7,15 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * The reports, in the order the Reports page lists them. Stock on hand is the
- * Stock page itself; it is here for its export.
+ * Stock page itself and Stock by expiry has its own sidebar page; they are here
+ * for their exports.
  */
 final class Reports
 {
     /** @var list<class-string<Report>> */
     public const ALL = [
         StockOnHandReport::class,
+        StockByExpiryReport::class,
         StockCardReport::class,
         ExpiryReport::class,
         DormantStockReport::class,
@@ -47,7 +49,7 @@ final class Reports
 
     /**
      * The reports listed on the Reports page that the user may open (the Stock
-     * page is reached from the sidebar).
+     * and Stock by expiry pages are reached from the sidebar).
      *
      * @return array<string, Report>
      */
@@ -55,7 +57,7 @@ final class Reports
     {
         return array_filter(
             self::all(),
-            fn (Report $report) => ! $report instanceof StockOnHandReport && $user->hasPermission($report->permission()),
+            fn (Report $report) => ! $report instanceof StockOnHandReport && ! $report instanceof StockByExpiryReport && $user->hasPermission($report->permission()),
         );
     }
 }

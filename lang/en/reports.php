@@ -36,6 +36,7 @@ return [
         'qty_larger' => 'Quantity (larger units)',
         'in_transit' => 'In transit (arriving)',
         'nearest_expiry' => 'Nearest expiry',
+        'expiry_status' => 'Expiry status',
         'date' => 'Date',
         'type' => 'Type',
         'reference' => 'Reference',
@@ -62,9 +63,9 @@ return [
     ],
 
     'expiry_badge' => [
-        'expired' => 'Expired (:date)',
-        'soon' => '< :days days (:date · :left d left)',
-        'ok' => 'OK (:date)',
+        'expired' => 'Expired',
+        'soon' => '< :days days (:left d left)',
+        'ok' => 'OK',
     ],
 
     'export' => [
@@ -88,6 +89,11 @@ return [
         'empty_body' => 'Stock appears once something is received or an opening balance is entered.',
         'open' => 'Open the stock of :item',
         'footer_total' => '{1} Total · :count row|[2,*] Total · :count rows',
+    ],
+
+    'stock_by_expiry' => [
+        'title' => 'Stock by expiry',
+        'description' => 'Your stock split by batch and expiry date, expired or not.',
     ],
 
     'stock_card' => [
