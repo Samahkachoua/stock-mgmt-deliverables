@@ -42,6 +42,7 @@ final class StockOnHandReport extends Report
             Filter::search('reports.filters.search_item'),
             Filter::customer(),
             Filter::warehouse(),
+            Filter::storage(),
             Filter::toggle('expiring', 'reports.stock_on_hand.expiring'),
         ];
     }
@@ -57,7 +58,7 @@ final class StockOnHandReport extends Report
             'reserved' => ['label' => 'reports.columns.reserved', 'align' => 'end'],
             'available' => ['label' => 'reports.columns.available', 'align' => 'end'],
             'expiry' => ['label' => 'reports.columns.nearest_expiry'],
-            'expiry_status' => ['label' => 'reports.columns.expiry_status'],
+            'storage' => ['label' => 'reports.columns.storage_status', 'priority' => 2],
         ];
     }
 
@@ -85,6 +86,7 @@ final class StockOnHandReport extends Report
                 ->orWhereRaw('lower(p.name_en) like ?', [$like])
                 ->orWhereRaw('lower(p.name_ar) like ?', [$like])
                 ->orWhereRaw('lower(p.name_fr) like ?', [$like])))
+            ->tap(fn ($query) => $this->whereStorage($query, $filters['storage'], 'p.storage_status'))
             ->when($filters['expiring'] === '1', fn ($query) => $query
                 ->where('h.nearest_expiry', '<=', $this->today()->addDays(self::EXPIRING_DAYS)->toDateString()))
             ->select([
@@ -140,7 +142,7 @@ final class StockOnHandReport extends Report
             'reserved' => (float) $row->reserved > 0 ? $this->qtyCell($row->reserved, $row->product_id) : ['text' => '', 'value' => 0],
             'available' => $this->qtyCell((float) $row->qty - (float) $row->reserved, $row->product_id) + ['strong' => true],
             'expiry' => $this->expiryDateCell($row->nearest_expiry),
-            'expiry_status' => $this->expiryCell($row->nearest_expiry, self::EXPIRING_DAYS),
+            'storage' => $this->storageCell($product->storage_status),
         ];
     }
 

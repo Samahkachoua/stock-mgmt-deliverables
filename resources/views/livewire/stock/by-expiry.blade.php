@@ -16,7 +16,7 @@
             'customer' => ['label' => __('reports.columns.customer'), 'priority' => 2],
             'warehouse' => ['label' => __('reports.columns.warehouse'), 'priority' => 2],
             'expiry' => ['label' => __('reports.columns.expiry_date')],
-            'expiry_status' => ['label' => __('reports.columns.expiry_status')],
+            'storage' => ['label' => __('reports.columns.storage_status'), 'priority' => 2],
             'qty' => ['label' => __('reports.columns.qty_base'), 'align' => 'end'],
             'reserved' => ['label' => __('reports.columns.reserved'), 'align' => 'end'],
             'available' => ['label' => __('reports.columns.available'), 'align' => 'end'],
@@ -36,7 +36,7 @@
     >
         <x-slot:empty-action>
             <div class="flex flex-wrap justify-center gap-3">
-                @if ($filters['search'] !== '' || $filters['customer'] !== '' || $filters['expiring'] !== '')
+                @if ($filters['search'] !== '' || $filters['customer'] !== '' || $filters['storage'] !== '' || $filters['expiring'] !== '')
                     <x-empty-action action="resetFilters" icon="filter_alt_off" :label="__('transactions.filters.reset')" />
                 @endif
                 @can('stock.in.create')
@@ -54,7 +54,7 @@
                 <x-data-table.cell col="customer" class="text-fg xl:min-w-32"><bdi>{{ $cells['customer'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="warehouse" class="text-fg"><bdi>{{ $cells['warehouse'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="expiry" class="whitespace-nowrap"><x-report.cell :cell="$cells['expiry']" /></x-data-table.cell>
-                <x-data-table.cell col="expiry_status"><x-report.cell :cell="$cells['expiry_status']" /></x-data-table.cell>
+                <x-data-table.cell col="storage" class="text-fg"><x-report.cell :cell="$cells['storage']" /></x-data-table.cell>
                 <x-data-table.cell col="qty" align="end" class="whitespace-nowrap"><x-report.cell :cell="$cells['qty']" /></x-data-table.cell>
                 <x-data-table.cell col="reserved" align="end" class="whitespace-nowrap">
                     @if ($cells['reserved']['text'] !== '')

@@ -7,6 +7,8 @@ return [
     'lines' => '{0} :count ligne|{1} :count ligne|[2,*] :count lignes',
 
     'filters' => [
+        'storage_status' => 'Conditions de stockage',
+        'all_storage' => 'Toutes les conditions de stockage',
         'batch' => 'Lot',
         'search' => 'Recherche',
         'search_item' => 'Article',
@@ -36,7 +38,7 @@ return [
         'qty_larger' => 'Quantité (unités supérieures)',
         'in_transit' => 'En transit (à l’arrivée)',
         'nearest_expiry' => 'Péremption la plus proche',
-        'expiry_status' => 'État de péremption',
+        'storage_status' => 'Conditions de stockage',
         'date' => 'Date',
         'type' => 'Type',
         'reference' => 'Référence',

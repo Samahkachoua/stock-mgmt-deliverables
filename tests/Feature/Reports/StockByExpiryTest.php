@@ -5,6 +5,7 @@ use App\Models\User;
 use App\Models\Warehouse;
 use App\Support\Format;
 use App\Support\Permissions;
+use App\Support\StorageStatuses;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -64,12 +65,9 @@ it('shows the Stock page split per batch and expiry date, expired or not', funct
         ->and($rows[0])->not->toHaveKey('batch') // no Batch column (still one row per lot)
         ->and(stockByExpiryColumn($rows, 'code'))->toContain('YOGURT')
         ->and(array_column(array_column($rows, 'qty'), 'value'))->toBe([28.0, 2.0, 9.0, 2.0, 12.0, 6.0])
-        ->and(array_column(array_slice(array_column($rows, 'expiry_status'), 3), 'tone'))->toBe(['rejected', 'pending', 'completed'])
-        // The date stands alone; the status column has only the label.
         ->and(array_column(array_slice(array_column($rows, 'expiry'), 3), 'text'))->toBe([Format::date(now()->subDays(2)), Format::date(now()->addDays(10)), Format::date(now()->addDays(100))])
-        ->and($rows[3]['expiry_status']['text'])->toBe(__('reports.expiry_badge.expired'))
-        ->and($rows[0]['expiry'])->toBe('')
-        ->and($rows[0]['expiry_status'])->toBe('');
+        ->and($rows[3])->not->toHaveKey('expiry_status')
+        ->and($rows[0]['expiry'])->toBe('');
 });
 
 it('adds up the same totals as the Stock page', function () {
@@ -118,4 +116,15 @@ it('sits in the sidebar under Stock, with its own permission', function () {
     Permissions::flush();
 
     $this->actingAs(User::find($d->tripoliOperator->id))->get(route('stock-by-expiry'))->assertForbidden();
+});
+
+it('shows each item\'s storage status and filters by it', function () {
+    $d = $this->data;
+    DB::table('product')->where('sku', 'YOGURT')->update(['storage_status' => 'CHILLED']);
+
+    $chilled = stockByExpiryRows(stockByExpiry($d->admin, $d->beirut, ['storage' => 'CHILLED']));
+
+    expect(stockByExpiryColumn($chilled, 'item'))->toBe(['Yogurt', 'Yogurt', 'Yogurt'])
+        ->and(stockByExpiryColumn($chilled, 'storage'))->each->toBe(StorageStatuses::label('CHILLED'))
+        ->and(stockByExpiryColumn(stockByExpiryRows(stockByExpiry($d->admin, $d->beirut, ['storage' => 'none'])), 'item'))->toBe(['Canned Beans', 'Phone', 'Rice 5kg']);
 });

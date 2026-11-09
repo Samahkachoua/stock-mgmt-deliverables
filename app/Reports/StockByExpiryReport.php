@@ -33,6 +33,7 @@ final class StockByExpiryReport extends Report
             Filter::search('reports.filters.search_item'),
             Filter::customer(),
             Filter::warehouse(),
+            Filter::storage(),
             Filter::toggle('expiring', 'reports.stock_on_hand.expiring'),
         ];
     }
@@ -45,7 +46,7 @@ final class StockByExpiryReport extends Report
             'customer' => ['label' => 'reports.columns.customer', 'priority' => 2],
             'warehouse' => ['label' => 'reports.columns.warehouse', 'priority' => 2],
             'expiry' => ['label' => 'reports.columns.expiry_date'],
-            'expiry_status' => ['label' => 'reports.columns.expiry_status'],
+            'storage' => ['label' => 'reports.columns.storage_status', 'priority' => 2],
             'qty' => ['label' => 'reports.columns.qty_base', 'align' => 'end'],
             'reserved' => ['label' => 'reports.columns.reserved', 'align' => 'end'],
             'available' => ['label' => 'reports.columns.available', 'align' => 'end'],
@@ -67,6 +68,7 @@ final class StockByExpiryReport extends Report
             ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query
                 ->whereIn('stock_balance.product_id', Product::query()->search($search)->select('product.id'))
                 ->orWhereRaw('upper(stock_balance.batch_no) like ?', ['%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], mb_strtoupper($search)).'%'])))
+            ->tap(fn ($query) => $this->whereStorage($query, $filters['storage'], 'p.storage_status'))
             ->when($filters['expiring'] === '1', fn ($query) => $query
                 ->where('stock_balance.expiry_date', '<=', $this->today()->addDays(StockOnHandReport::EXPIRING_DAYS)->toDateString()))
             ->select([
@@ -123,7 +125,7 @@ final class StockByExpiryReport extends Report
             'customer' => (string) $row->customer_name,
             'warehouse' => (string) $row->warehouse_name,
             'expiry' => $this->expiryDateCell($row->expiry_date),
-            'expiry_status' => $this->expiryCell($row->expiry_date, StockOnHandReport::EXPIRING_DAYS),
+            'storage' => $this->storageCell($product->storage_status),
             'qty' => $this->qtyCell($row->qty, $row->product_id) + ['strong' => true],
             'reserved' => (float) $row->reserved > 0 ? $this->qtyCell($row->reserved, $row->product_id) : ['text' => '', 'value' => 0],
             'available' => $this->qtyCell((float) $row->qty - (float) $row->reserved, $row->product_id) + ['strong' => true],

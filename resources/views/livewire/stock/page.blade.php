@@ -19,7 +19,7 @@
             'reserved' => ['label' => __('reports.columns.reserved'), 'align' => 'end'],
             'available' => ['label' => __('reports.columns.available'), 'align' => 'end'],
             'expiry' => ['label' => __('reports.columns.nearest_expiry')],
-            'expiry_status' => ['label' => __('reports.columns.expiry_status')],
+            'storage' => ['label' => __('reports.columns.storage_status'), 'priority' => 2],
         ]"
         :paginator="$rows"
         :footer="$totals === null ? null : [
@@ -36,7 +36,7 @@
     >
         <x-slot:empty-action>
             <div class="flex flex-wrap justify-center gap-3">
-                @if ($filters['search'] !== '' || $filters['customer'] !== '' || $filters['expiring'] !== '')
+                @if ($filters['search'] !== '' || $filters['customer'] !== '' || $filters['storage'] !== '' || $filters['expiring'] !== '')
                     <x-empty-action action="resetFilters" icon="filter_alt_off" :label="__('transactions.filters.reset')" />
                 @endif
                 @can('stock.in.create')
@@ -66,7 +66,7 @@
                 </x-data-table.cell>
                 <x-data-table.cell col="available" align="end" class="whitespace-nowrap"><x-report.cell :cell="$cells['available']" /></x-data-table.cell>
                 <x-data-table.cell col="expiry" class="whitespace-nowrap"><x-report.cell :cell="$cells['expiry']" /></x-data-table.cell>
-                <x-data-table.cell col="expiry_status"><x-report.cell :cell="$cells['expiry_status']" /></x-data-table.cell>
+                <x-data-table.cell col="storage" class="text-fg"><x-report.cell :cell="$cells['storage']" /></x-data-table.cell>
             </x-data-table.row>
         @endforeach
     </x-data-table>

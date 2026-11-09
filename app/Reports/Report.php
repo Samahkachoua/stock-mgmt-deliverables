@@ -10,6 +10,7 @@ use App\Support\CompanyTime;
 use App\Support\DateRange;
 use App\Support\Days;
 use App\Support\Format;
+use App\Support\StorageStatuses;
 use App\Support\Transactions\TransactionTypes;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
@@ -338,6 +339,34 @@ abstract class Report
             $left <= $days => ['text' => __('reports.expiry_badge.soon', ['days' => Format::qty($days), 'left' => Format::qty($left)]), 'tone' => 'pending'],
             default => ['text' => __('reports.expiry_badge.ok'), 'tone' => 'completed'],
         };
+    }
+
+    /**
+     * Limits rows to the storage status chosen in Filter::storage()
+     * ($column: the item's storage_status column, e.g. "p.storage_status").
+     *
+     * @template TQuery of EloquentBuilder<*>|Builder
+     *
+     * @param  TQuery  $query
+     * @return TQuery
+     */
+    protected function whereStorage(EloquentBuilder|Builder $query, string $storage, string $column): EloquentBuilder|Builder
+    {
+        return match ($storage) {
+            '' => $query,
+            Filter::NO_STORAGE => $query->whereNull($column),
+            default => $query->where($column, $storage),
+        };
+    }
+
+    /**
+     * The item's storage status, "Chilled (2 to 8 °C)"; empty when not set.
+     *
+     * @return Cell
+     */
+    protected function storageCell(?string $code): array|string
+    {
+        return StorageStatuses::label($code) ?? '';
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Models\Warehouse;
 use App\Reports\Reports;
 use App\Services\Stock\PostingService;
 use App\Support\Format;
+use App\Support\StorageStatuses;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
@@ -106,9 +107,8 @@ it('shows stock on hand in the base unit (no larger-unit column) and nearest exp
         ->and(column($here['rows'], 'item'))->toBe(['Canned Beans', 'Phone', 'Rice 5kg', 'Yogurt'])
         ->and(array_column(array_column($here['rows'], 'qty'), 'value'))->toBe([28.0, 2.0, 9.0, 20.0])
         ->and($here['rows'][0])->not->toHaveKey('breakdown')
-        ->and($here['rows'][3]['expiry_status']['tone'])->toBe('rejected') // part of it has expired
-        ->and($here['rows'][3]['expiry_status']['text'])->toBe(__('reports.expiry_badge.expired'))
-        ->and($here['rows'][3]['expiry']['text'])->toBe(Format::date(now()->subDays(2)));
+        ->and($here['rows'][3])->not->toHaveKey('expiry_status')
+        ->and($here['rows'][3]['expiry']['text'])->toBe(Format::date(now()->subDays(2))); // part of it has expired
 
     // All my warehouses: Tripoli adds its rice; the beans on their way there are not a row.
     $all = onScreen($d->admin, $d->beirut, 'stock-on-hand', ['warehouse' => 'all']);
@@ -496,4 +496,20 @@ it('shows who approved a damage that needed approval', function () {
     expect($rows)->toHaveCount(1)
         ->and($rows[0]['approved_by'])->toBe($d->beirutManager->full_name)
         ->and(column(onScreen($d->admin, $d->beirut, 'damage', ['reason' => 'HANDLING'])['rows'], 'approved_by'))->toBe(['']);
+});
+
+it('shows each item\'s storage status on the Stock page and filters by it', function () {
+    $d = $this->data;
+    DB::table('product')->where('sku', 'YOGURT')->update(['storage_status' => 'CHILLED']);
+
+    $all = onScreen($d->admin, $d->beirut, 'stock-on-hand');
+    $chilled = onScreen($d->admin, $d->beirut, 'stock-on-hand', ['storage' => 'CHILLED']);
+
+    expect($all['rows'][3]['storage'])->toBe(StorageStatuses::label('CHILLED'))
+        ->and($all['rows'][0]['storage'])->toBe('') // not set
+        ->and(column($chilled['rows'], 'item'))->toBe(['Yogurt'])
+        ->and(column(onScreen($d->admin, $d->beirut, 'stock-on-hand', ['storage' => 'none'])['rows'], 'item'))->toBe(['Canned Beans', 'Phone', 'Rice 5kg'])
+        ->and(onScreen($d->admin, $d->beirut, 'stock-on-hand', ['storage' => 'FROZEN'])['total'])->toBe(0)
+        // Anything unknown falls back to all.
+        ->and(onScreen($d->admin, $d->beirut, 'stock-on-hand', ['storage' => 'HOT'])['total'])->toBe(4);
 });

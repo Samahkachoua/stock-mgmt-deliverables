@@ -7,6 +7,8 @@ return [
     'lines' => '{0} :count lines|{1} :count line|[2,*] :count lines',
 
     'filters' => [
+        'storage_status' => 'Storage status',
+        'all_storage' => 'All storage statuses',
         'batch' => 'Batch',
         'search' => 'Search',
         'search_item' => 'Item',
@@ -36,7 +38,7 @@ return [
         'qty_larger' => 'Quantity (larger units)',
         'in_transit' => 'In transit (arriving)',
         'nearest_expiry' => 'Nearest expiry',
-        'expiry_status' => 'Expiry status',
+        'storage_status' => 'Storage status',
         'date' => 'Date',
         'type' => 'Type',
         'reference' => 'Reference',

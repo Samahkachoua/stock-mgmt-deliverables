@@ -7,6 +7,8 @@ return [
     'lines' => '{0} :count سطر|{1} سطر واحد|{2} سطران|[3,10] :count أسطر|[11,*] :count سطرًا',
 
     'filters' => [
+        'storage_status' => 'حالة التخزين',
+        'all_storage' => 'كل حالات التخزين',
         'batch' => 'الدفعة',
         'search' => 'بحث',
         'search_item' => 'الصنف',
@@ -36,7 +38,7 @@ return [
         'qty_larger' => 'الكمية (الوحدات الأكبر)',
         'in_transit' => 'قيد النقل (قادم)',
         'nearest_expiry' => 'أقرب انتهاء صلاحية',
-        'expiry_status' => 'حالة الصلاحية',
+        'storage_status' => 'حالة التخزين',
         'date' => 'التاريخ',
         'type' => 'النوع',
         'reference' => 'المرجع',

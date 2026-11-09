@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Support\DateRange;
 use App\Support\Ids;
+use App\Support\StorageStatuses;
 
 /**
  * One filter of a report: how it is shown and how a value from the browser
@@ -24,6 +25,7 @@ use App\Support\Ids;
  *   number     whole number between $min and $max
  *   select     one of $options (value => label key)
  *   toggle     '1' or ''
+ *   storage    an item storage status code, 'none' (not set) or '' for all
  */
 final class Filter
 {
@@ -95,6 +97,18 @@ final class Filter
     }
 
     /**
+     * The item's storage status (App\Support\StorageStatuses): a code,
+     * self::NO_STORAGE for items without one, or '' for all.
+     */
+    public static function storage(): self
+    {
+        return new self('storage', 'storage', 'reports.filters.storage_status');
+    }
+
+    /** Storage filter value: items whose storage status is not set. */
+    public const NO_STORAGE = 'none';
+
+    /**
      * A safe value for the query. $previous holds the filters normalized so far
      * (the item filter needs the customer).
      *
@@ -118,6 +132,7 @@ final class Filter
             'number' => ctype_digit($value) && (int) $value >= $this->min && (int) $value <= $this->max ? (string) (int) $value : $this->default,
             'select' => array_key_exists($value, $this->options) ? $value : $this->default,
             'toggle' => $value === '1' ? '1' : '',
+            'storage' => $value === self::NO_STORAGE || isset(StorageStatuses::all()[$value]) ? $value : '',
             default => '',
         };
     }
@@ -141,6 +156,8 @@ final class Filter
                 ->mapWithKeys(fn (Product $product) => [$product->id => $product->sku.' · '.$product->name()])
                 ->all()),
             'select' => array_map(fn (string $key) => __($key), $this->options),
+            'storage' => ['' => __('reports.filters.all_storage')] + StorageStatuses::options()
+                + [self::NO_STORAGE => __('items.storage.none')],
             default => [],
         };
     }
