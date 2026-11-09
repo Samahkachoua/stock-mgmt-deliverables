@@ -44,7 +44,6 @@ final class StockByExpiryReport extends Report
             'code' => ['label' => 'reports.columns.code', 'priority' => 2],
             'customer' => ['label' => 'reports.columns.customer', 'priority' => 2],
             'warehouse' => ['label' => 'reports.columns.warehouse', 'priority' => 2],
-            'batch' => ['label' => 'reports.columns.batch'],
             'expiry' => ['label' => 'reports.columns.expiry_date'],
             'expiry_status' => ['label' => 'reports.columns.expiry_status'],
             'qty' => ['label' => 'reports.columns.qty_base', 'align' => 'end'],
@@ -117,18 +116,12 @@ final class StockByExpiryReport extends Report
     public function row(object $row, array $filters): array
     {
         $product = $this->product($row->product_id);
-        $batch = match (true) {
-            $row->batch_no !== null => (string) $row->batch_no,
-            $row->expiry_date !== null => __('stock.batch.none'),
-            default => '',
-        };
 
         return [
             'item' => ['text' => $product->name(), 'strong' => true],
             'code' => ['text' => $product->sku, 'ltr' => true],
             'customer' => (string) $row->customer_name,
             'warehouse' => (string) $row->warehouse_name,
-            'batch' => ['text' => $batch, 'ltr' => $row->batch_no !== null],
             'expiry' => $this->expiryDateCell($row->expiry_date),
             'expiry_status' => $this->expiryCell($row->expiry_date, StockOnHandReport::EXPIRING_DAYS),
             'qty' => $this->qtyCell($row->qty, $row->product_id) + ['strong' => true],

@@ -21,7 +21,7 @@
 /*
  * Colour tokens. This file is the ONLY place colour values live; views use the
  * utilities generated below (bg-surface, text-muted, bg-type-delivery, ...).
- * Brand: ETL logo blue #0074b5 (primary) and red #c12f30 (accent). The red is only used for
+ * Brand: ETLS logo blue #0074b5 (primary) and red #c12f30 (accent). The red is only used for
  * destructive actions and errors, never as decoration, so "brand" and "danger" can't be confused.
  * Full 50-900 scales are in @theme below (bg-primary-50, text-accent-700, ...); the semantic
  * tokens here repeat the scale values they use, because the contrast test reads hex values.

@@ -1,8 +1,8 @@
 @props(['compact' => false])
 
 {{--
-    Logo block. The ETL logo reads on light and dark backgrounds, so one image serves both themes.
-    `compact` is the sidebar: the ETL mark; on a tablet (icons only) the parcel icon.
+    Logo block. The ETLS logo reads on light and dark backgrounds, so one image serves both themes.
+    `compact` is the sidebar: the ETLS mark; on a tablet (icons only) the parcel icon.
     Otherwise (login) the full logo with the Arabic and English company names.
 --}}
 @if ($compact)

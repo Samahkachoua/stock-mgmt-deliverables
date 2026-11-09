@@ -131,7 +131,7 @@ enabled = true
 # [storage.image_transformation]
 # enabled = true
 
-# Store analytical data in S3 for running ETL jobs over Iceberg Catalog
+# Store analytical data in S3 for running ETLS jobs over Iceberg Catalog
 # This feature is only available on the hosted platform.
 [storage.analytics]
 enabled = false

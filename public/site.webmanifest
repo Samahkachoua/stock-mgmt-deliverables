@@ -1,6 +1,6 @@
 {
     "name": "ETLS Supply Chain",
-    "short_name": "ETL WMS",
+    "short_name": "ETLS WMS",
     "start_url": "/",
     "display": "standalone",
     "theme_color": "#0074b5",

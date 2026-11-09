@@ -84,7 +84,6 @@ return [
         'title' => 'Stock',
         'description' => 'Ce que chaque client a dans vos entrepôts maintenant.',
         'expiring' => 'Périme dans < 30 jours',
-        'item_and_code' => 'Article et code',
         'empty_title' => 'Pas encore de stock ici',
         'empty_body' => 'Le stock apparaît après une réception ou la saisie d’un stock d’ouverture.',
         'open' => 'Ouvrir le stock de :item',

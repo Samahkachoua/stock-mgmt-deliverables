@@ -468,7 +468,7 @@ it('shows the Stock page, item details and reports in Arabic, right to left', fu
     }
 
     // Codes stay left to right.
-    $this->get(route('stock'))->assertSee('<span dir="ltr" class="tabular rounded bg-card-hover px-1.5 py-0.5 text-small font-semibold tracking-wide text-muted">BEANS</span>', false);
+    $this->get(route('stock'))->assertSee('<span dir="ltr" class="tabular text-muted">BEANS</span>', false);
 });
 
 it('filters every report by item name or code', function (string $report, array $filters, int $all, int $rice) {

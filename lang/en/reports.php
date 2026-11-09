@@ -84,7 +84,6 @@ return [
         'title' => 'Stock',
         'description' => 'What each customer has in your warehouses now.',
         'expiring' => 'Expiring < 30 days',
-        'item_and_code' => 'Item & code',
         'empty_title' => 'No stock here yet',
         'empty_body' => 'Stock appears once something is received or an opening balance is entered.',
         'open' => 'Open the stock of :item',

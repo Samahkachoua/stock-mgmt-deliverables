@@ -61,7 +61,8 @@ it('shows the Stock page split per batch and expiry date, expired or not', funct
 
     // Yogurt has three lots (nearest first); the other items one row each.
     expect(stockByExpiryColumn($rows, 'item'))->toBe(['Canned Beans', 'Phone', 'Rice 5kg', 'Yogurt', 'Yogurt', 'Yogurt'])
-        ->and(stockByExpiryColumn($rows, 'batch'))->toBe(['', '', '', Stock::batch($expired), Stock::batch($soon), Stock::batch($later)])
+        ->and($rows[0])->not->toHaveKey('batch') // no Batch column (still one row per lot)
+        ->and(stockByExpiryColumn($rows, 'code'))->toContain('YOGURT')
         ->and(array_column(array_column($rows, 'qty'), 'value'))->toBe([28.0, 2.0, 9.0, 2.0, 12.0, 6.0])
         ->and(array_column(array_slice(array_column($rows, 'expiry_status'), 3), 'tone'))->toBe(['rejected', 'pending', 'completed'])
         // The date stands alone; the status column has only the label.
@@ -86,8 +87,8 @@ it('filters by item, batch, customer and expiring within 30 days', function () {
     $d = $this->data;
     $soonBatch = Stock::batch(now()->addDays(10)->toDateString());
 
-    expect(stockByExpiryColumn(stockByExpiryRows(stockByExpiry($d->admin, $d->beirut, ['search' => 'yogurt'])), 'batch'))->toHaveCount(3)
-        ->and(stockByExpiryColumn(stockByExpiryRows(stockByExpiry($d->admin, $d->beirut, ['search' => strtolower($soonBatch)])), 'batch'))->toBe([$soonBatch])
+    expect(stockByExpiryColumn(stockByExpiryRows(stockByExpiry($d->admin, $d->beirut, ['search' => 'yogurt'])), 'item'))->toHaveCount(3)
+        ->and(stockByExpiryColumn(stockByExpiryRows(stockByExpiry($d->admin, $d->beirut, ['search' => strtolower($soonBatch)])), 'expiry'))->toBe([Format::date(now()->addDays(10))])
         ->and(stockByExpiryColumn(stockByExpiryRows(stockByExpiry($d->admin, $d->beirut, ['customer' => $d->cedar->id])), 'item'))->toBe(['Rice 5kg'])
         ->and(array_column(array_column(stockByExpiryRows(stockByExpiry($d->admin, $d->beirut, ['expiring' => '1'])), 'qty'), 'value'))->toBe([2.0, 12.0]);
 });

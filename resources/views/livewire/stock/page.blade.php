@@ -11,7 +11,8 @@
 
     <x-data-table
         :columns="[
-            'item' => ['label' => __('reports.stock_on_hand.item_and_code'), 'card' => 'title'],
+            'item' => ['label' => __('reports.columns.item'), 'card' => 'title'],
+            'code' => ['label' => __('reports.columns.code')],
             'customer' => ['label' => __('reports.columns.customer'), 'priority' => 2],
             'warehouse' => ['label' => __('reports.columns.warehouse'), 'priority' => 2],
             'qty' => ['label' => __('reports.columns.qty_base'), 'align' => 'end'],
@@ -48,12 +49,8 @@
                 $cells = $row['cells'];
             @endphp
             <x-data-table.row wire:key="stock-{{ $rows->firstItem() + $loop->index }}" :href="$row['link']" :label="__('reports.stock_on_hand.open', ['item' => $cells['item']['text']])">
-                <x-data-table.cell col="item" class="xl:min-w-56">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <bdi class="font-semibold text-fg">{{ $cells['item']['text'] }}</bdi>
-                        <span dir="ltr" class="tabular rounded bg-card-hover px-1.5 py-0.5 text-small font-semibold tracking-wide text-muted">{{ $cells['code']['text'] }}</span>
-                    </div>
-                </x-data-table.cell>
+                <x-data-table.cell col="item" class="font-semibold text-fg xl:min-w-48"><bdi>{{ $cells['item']['text'] }}</bdi></x-data-table.cell>
+                <x-data-table.cell col="code" class="whitespace-nowrap"><span dir="ltr" class="tabular text-muted">{{ $cells['code']['text'] }}</span></x-data-table.cell>
                 <x-data-table.cell col="customer" class="text-fg xl:min-w-32"><bdi>{{ $cells['customer'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="warehouse" class="text-fg"><bdi>{{ $cells['warehouse'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="qty" align="end" class="whitespace-nowrap"><x-report.cell :cell="$cells['qty']" /></x-data-table.cell>
