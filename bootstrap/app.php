@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureHasWarehouse;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
+use App\Http\TrustedProxies;
 use App\Support\ErrorReference;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,9 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(SecurityHeaders::class);
 
         // Behind a load balancer (hosting platform), trust its forwarded IP and HTTPS
-        // headers: TRUSTED_PROXIES=* or a comma-separated list. Unset = trust none.
-        if (filled(env('TRUSTED_PROXIES'))) {
-            $middleware->trustProxies(at: env('TRUSTED_PROXIES') === '*' ? '*' : explode(',', (string) env('TRUSTED_PROXIES')));
+        // headers: TRUSTED_PROXIES=* (the load balancer + Cloudflare, App\Http\TrustedProxies)
+        // or a comma-separated list. Unset = trust none.
+        if (($proxies = TrustedProxies::from(env('TRUSTED_PROXIES'))) !== null) {
+            $middleware->trustProxies(at: $proxies);
         }
 
         // A page left open past the session lifetime still carries the old CSRF token,
