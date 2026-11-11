@@ -29,6 +29,13 @@ services:
       - key: TRUSTED_PROXIES
         value: "*"
 
+      # Country of each sign-in (free MaxMind GeoLite2 account); downloaded at
+      # each container start (docker/start.sh) and weekly by the scheduler.
+      - key: MAXMIND_ACCOUNT_ID
+        sync: false
+      - key: MAXMIND_LICENSE_KEY
+        sync: false
+
       # Supabase: session-mode pooler or direct connection on 5432, never 6543.
       - key: DB_CONNECTION
         value: pgsql

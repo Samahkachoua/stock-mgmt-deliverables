@@ -44,7 +44,11 @@ class UpdateGeoIp extends Command
             $archive = $work.'/GeoLite2-Country.tar.gz';
             Http::withBasicAuth($account, $key)->timeout(120)->sink($archive)->get(self::URL)->throw();
 
-            (new PharData($archive))->extractTo($work);
+            $phar = new PharData($archive);
+            $phar->extractTo($work);
+            // Release the archive, or Windows keeps the folder locked and it can't be removed.
+            unset($phar);
+            PharData::unlinkArchive($archive);
             $file = collect(File::allFiles($work))->first(fn ($f) => $f->getFilename() === 'GeoLite2-Country.mmdb');
 
             if ($file === null) {

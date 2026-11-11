@@ -164,6 +164,14 @@ Scheduled today:
   and emails the administrators; it changes nothing. Run it by hand any time:
   `php artisan stock:reconcile`.
 - **Weekly:** prunes failed queue jobs older than 30 days.
+- **Wednesday 03:00 — `geoip:update`:** downloads MaxMind's GeoLite2 Country
+  file, used to save the country of each sign-in (Reports › Login history).
+  Needs `MAXMIND_ACCOUNT_ID` and `MAXMIND_LICENSE_KEY` (free account at
+  maxmind.com); without them it is skipped and the country stays empty.
+
+On Render (Docker) there is no cron: `docker/start.sh` runs the scheduler
+in a loop next to the queue worker, and downloads the GeoLite2 file at each
+start, because the container's disk is wiped on every deploy and restart.
 
 ## 4. Backup and restore
 
