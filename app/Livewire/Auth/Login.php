@@ -3,6 +3,7 @@
 namespace App\Livewire\Auth;
 
 use App\Models\User;
+use App\Support\Auth\LoginLog;
 use Illuminate\Contracts\Auth\UserProvider;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -37,6 +38,7 @@ class Login extends Component
 
         foreach ([$key => self::MAX_ATTEMPTS, $ipKey => self::MAX_ATTEMPTS_PER_IP] as $limited => $max) {
             if (RateLimiter::tooManyAttempts($limited, $max)) {
+                LoginLog::record(null, $this->email, LoginLog::THROTTLED, $this->remember);
                 $this->addError('email', __('auth.throttle', ['seconds' => RateLimiter::availableIn($limited)]));
 
                 return;
@@ -55,6 +57,12 @@ class Login extends Component
         $user = $provider->retrieveByCredentials($credentials);
 
         if (! $user instanceof User || ! $provider->validateCredentials($user, $credentials)) {
+            LoginLog::record(
+                $user instanceof User ? $user : null,
+                $this->email,
+                $user instanceof User ? LoginLog::WRONG_PASSWORD : LoginLog::UNKNOWN_EMAIL,
+                $this->remember,
+            );
             RateLimiter::hit($key);
             RateLimiter::hit($ipKey);
             $this->addError('email', __('auth.failed'));
@@ -64,6 +72,7 @@ class Login extends Component
 
         // Only said once the password is right, so it does not reveal which emails exist.
         if (! $user->active) {
+            LoginLog::record($user, $this->email, LoginLog::INACTIVE, $this->remember);
             RateLimiter::hit($key);
             $this->addError('email', __('auth.inactive'));
 
@@ -75,6 +84,7 @@ class Login extends Component
         RateLimiter::clear($key);
         Auth::login($user, $this->remember);
         session()->regenerate();
+        LoginLog::record($user, $this->email, LoginLog::SUCCESS, $this->remember);
 
         $this->redirectIntended(route('home'));
     }

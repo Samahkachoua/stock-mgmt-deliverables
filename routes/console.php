@@ -16,3 +16,11 @@ Schedule::command('stock:reconcile')
 
 // Uploaded import files and finished queue jobs are kept; old failed jobs are pruned.
 Schedule::command('queue:prune-failed --hours=720')->weekly();
+
+// The country of each sign-in (login_log.country): MaxMind's GeoLite2 file.
+// Skipped with a warning while MAXMIND_ACCOUNT_ID / MAXMIND_LICENSE_KEY are not set.
+Schedule::command('geoip:update')
+    ->weeklyOn(3, '03:00')
+    ->timezone(config('app.timezone'))
+    ->withoutOverlapping()
+    ->onOneServer();

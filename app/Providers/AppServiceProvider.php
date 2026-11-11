@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureHasWarehouse;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Reports\Reports;
+use App\Support\Auth\IpCountry;
 use App\Support\CompanyTime;
 use App\Support\Format;
 use App\Support\Notify;
@@ -30,6 +31,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // The company time zone, read once per request.
         $this->app->singleton(CompanyTime::class);
+
+        // The GeoLite2 file is opened once per request.
+        $this->app->singleton(IpCountry::class);
     }
 
     /**

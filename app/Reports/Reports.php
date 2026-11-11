@@ -25,6 +25,7 @@ final class Reports
         TransferShortagesReport::class,
         DeliveryDifferencesReport::class,
         AuditLogReport::class,
+        LoginHistoryReport::class,
     ];
 
     /**

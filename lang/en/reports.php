@@ -229,6 +229,28 @@ return [
         ],
     ],
 
+    'login_history' => [
+        'title' => 'Login history',
+        'description' => 'Every sign-in to the system, successful or not, with the address and device.',
+        'search' => 'Person, email, IP address or country code',
+        'all_results' => 'All results',
+        'all_failed' => 'All failed sign-ins',
+        'when' => 'When',
+        'user' => 'User',
+        'result' => 'Result',
+        'country' => 'Country',
+        'unknown_country' => 'Unknown',
+        'ip' => 'IP address',
+        'device' => 'Device',
+        'results' => [
+            'SUCCESS' => 'Signed in',
+            'WRONG_PASSWORD' => 'Wrong password',
+            'UNKNOWN_EMAIL' => 'Unknown email',
+            'INACTIVE' => 'Inactive user',
+            'THROTTLED' => 'Too many attempts',
+        ],
+    ],
+
     'item' => [
         'in_stock' => ':qty in stock',
         'stock_card' => 'Stock card',

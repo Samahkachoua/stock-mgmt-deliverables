@@ -28,6 +28,15 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // Country of a sign-in IP (login_log.country): MaxMind's free GeoLite2
+    // Country file, downloaded by `php artisan geoip:update` (weekly schedule).
+    // Without an account the file is missing and the country stays empty.
+    'maxmind' => [
+        'account_id' => env('MAXMIND_ACCOUNT_ID'),
+        'license_key' => env('MAXMIND_LICENSE_KEY'),
+        'database' => env('MAXMIND_DATABASE', storage_path('app/private/geoip/GeoLite2-Country.mmdb')),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

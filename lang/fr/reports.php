@@ -229,6 +229,28 @@ return [
         ],
     ],
 
+    'login_history' => [
+        'title' => 'Historique des connexions',
+        'description' => 'Chaque connexion au système, réussie ou non, avec l’adresse et l’appareil.',
+        'search' => 'Personne, e-mail, adresse IP ou code pays',
+        'all_results' => 'Tous les résultats',
+        'all_failed' => 'Toutes les connexions échouées',
+        'when' => 'Quand',
+        'user' => 'Utilisateur',
+        'result' => 'Résultat',
+        'country' => 'Pays',
+        'unknown_country' => 'Inconnu',
+        'ip' => 'Adresse IP',
+        'device' => 'Appareil',
+        'results' => [
+            'SUCCESS' => 'Connecté',
+            'WRONG_PASSWORD' => 'Mot de passe incorrect',
+            'UNKNOWN_EMAIL' => 'E-mail inconnu',
+            'INACTIVE' => 'Utilisateur inactif',
+            'THROTTLED' => 'Trop de tentatives',
+        ],
+    ],
+
     'item' => [
         'in_stock' => ':qty en stock',
         'stock_card' => 'Fiche de stock',

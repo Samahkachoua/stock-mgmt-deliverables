@@ -776,6 +776,29 @@ CREATE INDEX idx_audit_created ON audit_log (created_at DESC, id DESC);
 -- Home's recent activity: one user's newest rows.
 CREATE INDEX idx_audit_user ON audit_log (user_id, id DESC);
 
+-- Login history: every sign-in, successful or not (App\Support\Auth\LoginLog).
+-- user_id is NULL when the email matches no user. The password is never stored.
+CREATE TABLE login_log (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id     BIGINT REFERENCES app_user(id) ON DELETE SET NULL,
+    email       VARCHAR(255) NOT NULL,   -- as typed, trimmed and lower case
+    result      VARCHAR(20) NOT NULL
+                CHECK (result IN ('SUCCESS', 'WRONG_PASSWORD', 'UNKNOWN_EMAIL', 'INACTIVE', 'THROTTLED')),
+    ip_address  VARCHAR(45) NOT NULL,
+    -- ISO country of the IP (App\Support\Auth\IpCountry, MaxMind GeoLite2);
+    -- NULL for local/private addresses or when the GeoLite2 file is missing.
+    country     CHAR(2) CHECK (country ~ '^[A-Z]{2}$'),
+    user_agent  VARCHAR(500),            -- browser / device, cut to 500 characters
+    remember    BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- The login history report: newest first, by period.
+CREATE INDEX idx_login_log_created ON login_log (created_at DESC, id DESC);
+CREATE INDEX idx_login_log_user ON login_log (user_id, id DESC);
+-- Failed sign-ins from one address (password guessing).
+CREATE INDEX idx_login_log_ip ON login_log (ip_address, created_at DESC);
+
 -- ----------------------------------------------------------------------------
 -- IMPORT (Excel staging)
 -- ----------------------------------------------------------------------------
@@ -1221,6 +1244,8 @@ INSERT INTO permission (code, description, module) VALUES
     ('report.transfer_shortages.view', 'View the transfer shortages report', 'REPORT'),
     ('report.delivery_differences.view', 'View the delivery discrepancies report', 'REPORT'),
     ('audit.view', 'View audit log', 'REPORT'),
+    -- Not in the "every report" grant below: ADMIN and AUDITOR only.
+    ('report.login_history.view', 'View the login history', 'REPORT'),
     ('dashboard.view', 'View the owner dashboard', 'REPORT'),
     ('admin.users.manage', 'Manage users and roles', 'ADMIN'),
     ('admin.settings.manage', 'Manage thresholds and system settings', 'ADMIN');
@@ -1259,7 +1284,7 @@ SELECT r.id, p.id
     -- Drivers: whoever manages master data.
     ('MANAGER', 'driver.view'), ('MANAGER', 'driver.create'), ('MANAGER', 'driver.edit'), ('MANAGER', 'driver.delete'),
     ('DATA_ENTRY', 'driver.view'), ('DATA_ENTRY', 'driver.create'), ('DATA_ENTRY', 'driver.edit'), ('DATA_ENTRY', 'driver.delete'),
-    ('AUDITOR', 'stock.view'), ('AUDITOR', 'audit.view'),
+    ('AUDITOR', 'stock.view'), ('AUDITOR', 'audit.view'), ('AUDITOR', 'report.login_history.view'),
     ('AUDITOR', 'stock.in.cancel'), ('AUDITOR', 'stock.out.cancel'), ('AUDITOR', 'stock.opening.cancel'),
     ('CUSTOMER', 'stock.view')
   ) AS g (role_code, permission_code)
@@ -1270,7 +1295,7 @@ SELECT r.id, p.id
 INSERT INTO role_permission (role_id, permission_id)
 SELECT r.id, p.id
   FROM role r
-  JOIN permission p ON p.code LIKE 'report.%.view'
+  JOIN permission p ON p.code LIKE 'report.%.view' AND p.code <> 'report.login_history.view'
  WHERE r.code IN ('MANAGER', 'AUDITOR');
 
 -- Stock by expiry (the Stock page per lot): every other role that sees the Stock page.
