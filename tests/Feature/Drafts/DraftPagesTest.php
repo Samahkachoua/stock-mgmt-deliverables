@@ -269,6 +269,63 @@ it('cancels an order only with the cancel orders permission', function () {
     expect($order->fresh()->status)->toBe('CANCELLED');
 });
 
+it('shows an order\'s activity only with the order activity permission', function () {
+    $this->stock->post('IN', [$this->stock->line('BEANS', 5)]);
+    $order = savedDraft($this, 'OUT', [1]);
+    $viewer = userWithPermissions($this->stock->warehouse, ['draft.out.view']);
+    $auditor = userWithPermissions($this->stock->warehouse, ['draft.out.view', 'draft.out.activity']);
+
+    Livewire::actingAs($viewer)
+        ->test(DraftPage::class, ['type' => 'OUT', 'reference' => $order->doc_no])
+        ->assertOk()
+        ->assertViewHas('activity', null)
+        ->assertDontSee(__('transactions.activity.heading'));
+
+    Livewire::actingAs($auditor)
+        ->test(DraftPage::class, ['type' => 'OUT', 'reference' => $order->doc_no])
+        ->assertViewHas('activity', fn ($activity) => is_array($activity) && $activity !== [])
+        ->assertSee(__('transactions.activity.heading'));
+
+    // Draft receipts have no such permission: viewing one shows its activity.
+    $receipt = savedDraft($this, 'IN', [1]);
+    Livewire::actingAs(userWithPermissions($this->stock->warehouse, ['draft.in.view']))
+        ->test(DraftPage::class, ['type' => 'IN', 'reference' => $receipt->doc_no])
+        ->assertSee(__('transactions.activity.heading'));
+});
+
+it('shows the delivery notes an order created only to whoever may work on delivery notes', function () {
+    $this->stock->post('IN', [$this->stock->line('BEANS', 5)]);
+    $note = $this->stock->confirmOrder([$this->stock->line('BEANS', 1)]);
+    $order = StockDraft::findOrFail($note->draft_id);
+    $viewer = userWithPermissions($this->stock->warehouse, ['draft.out.view', 'draft.out.confirm']);
+    $dispatcher = userWithPermissions($this->stock->warehouse, ['draft.out.view', 'stock.out.create']);
+
+    Livewire::actingAs($viewer)
+        ->test(DraftPage::class, ['type' => 'OUT', 'reference' => $order->doc_no])
+        ->assertViewHas('documents', [])
+        ->assertDontSee(__('drafts.types.order.created_heading'))
+        ->assertDontSee($note->doc_no);
+
+    Livewire::actingAs($dispatcher)
+        ->test(DraftPage::class, ['type' => 'OUT', 'reference' => $order->doc_no])
+        ->assertSee(__('drafts.types.order.created_heading'))
+        ->assertSee($note->doc_no);
+});
+
+it('shows the item code in its own column, after # and before the item', function () {
+    $order = savedDraft($this, 'IN', [1]);
+    $html = Livewire::actingAs($this->stock->user)
+        ->test(DraftPage::class, ['type' => 'IN', 'reference' => $order->doc_no])
+        ->html();
+
+    $headers = [__('transactions.lines.code'), __('transactions.lines.item')];
+    expect(strpos($html, '>#</th>'))->toBeLessThan(strpos($html, '>'.$headers[0].'</th>'))
+        ->and(strpos($html, '>'.$headers[0].'</th>'))->toBeLessThan(strpos($html, '>'.$headers[1].'</th>'))
+        // The code is its own cell, no longer a badge beside the item name.
+        ->and($html)->toContain('<td data-label="'.$headers[0].'"')
+        ->and($html)->not->toContain('rounded bg-card-hover px-1.5 py-0.5');
+});
+
 it('lists drafts the user may see, and opens list, details and print pages', function () {
     $draft = savedDraft($this, 'IN', [1]);
 

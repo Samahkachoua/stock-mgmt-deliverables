@@ -14,7 +14,6 @@ return [
     'now' => 'Now',
     'loading' => 'Loading figures…',
 
-
     'branches' => [
         'title' => 'Orders by branch',
         'hint' => 'Orders of each branch, customer by customer, and how far they have got. Open a branch to see its orders.',

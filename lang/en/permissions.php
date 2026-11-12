@@ -23,6 +23,7 @@ return [
 
     'labels' => [
         'stock_view' => 'See stock',
+        'stock_item_view' => 'Open an item’s stock in a warehouse',
         'stock_in_create' => 'Create receipts',
         'stock_out_create' => 'Dispatch and deliver delivery notes',
         'stock_transfer_dispatch' => 'Dispatch transfers',
@@ -60,6 +61,7 @@ return [
         'stock_opening_cancel' => 'Cancel opening balances',
         'draft_in_cancel' => 'Cancel draft receipts',
         'draft_out_cancel' => 'Cancel orders',
+        'draft_out_activity' => 'See the activity of an order (created, edited, confirmed…)',
     ],
 
     'report' => 'See the :report report',

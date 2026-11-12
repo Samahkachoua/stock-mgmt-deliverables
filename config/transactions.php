@@ -209,6 +209,11 @@ return [
             'create' => 'draft.out.create',
             'confirm' => 'draft.out.confirm',
             'cancel' => 'draft.out.cancel',
+            // Seeing the order's activity (created, edited, confirmed...) needs this too.
+            'activity' => 'draft.out.activity',
+            // The "Delivery notes created" section shows only to whoever may work on
+            // delivery notes (their create permission: dispatch and deliver them).
+            'documents' => 'stock.out.create',
             'lang' => 'order',
             'notify' => 'notify_new_orders',
             // Asks for a delivery date and a priority.

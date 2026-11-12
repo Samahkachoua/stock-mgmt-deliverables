@@ -52,6 +52,25 @@ final class DraftUi
     }
 
     /**
+     * The permission that shows a draft's activity (orders: draft.out.activity);
+     * null when viewing the draft is enough.
+     */
+    public function activityPermission(): ?string
+    {
+        return $this->config['activity'] ?? null;
+    }
+
+    /**
+     * The permission that shows the documents confirming a draft created
+     * (orders: stock.out.create, whoever may work on delivery notes); null
+     * when viewing the draft is enough.
+     */
+    public function documentsPermission(): ?string
+    {
+        return $this->config['documents'] ?? null;
+    }
+
+    /**
      * The app_user column that says whether a confirmer gets an email about
      * these drafts (e.g. notify_new_orders).
      */

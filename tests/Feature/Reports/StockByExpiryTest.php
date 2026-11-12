@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Stock\StockByExpiryPage;
+use App\Livewire\Stock\StockPage;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Support\Format;
@@ -116,6 +117,28 @@ it('sits in the sidebar under Stock, with its own permission', function () {
     Permissions::flush();
 
     $this->actingAs(User::find($d->tripoliOperator->id))->get(route('stock-by-expiry'))->assertForbidden();
+});
+
+it('opens an item\'s stock from Stock and Stock by expiry only with its own permission', function () {
+    $d = $this->data;
+    $link = route('stock.item', [$d->stock->id('BEANS'), $d->beirut->id]);
+    $viewer = userWithPermissions($d->beirut, ['stock.view', 'report.stock_by_expiry.view']);
+    $opener = userWithPermissions($d->beirut, ['stock.view', 'report.stock_by_expiry.view', 'stock.item.view']);
+
+    foreach ([StockPage::class, StockByExpiryPage::class] as $page) {
+        $without = Livewire::actingAs($viewer)->test($page)->call('loadRows');
+        $with = Livewire::actingAs($opener)->test($page)->call('loadRows');
+
+        // Without it the rows are still listed, with no arrow and no link.
+        expect($without->viewData('rows')->total())->toBeGreaterThan(0)
+            ->and(collect($without->viewData('rows')->items())->pluck('link')->filter()->all())->toBe([])
+            ->and(collect($with->viewData('rows')->items())->pluck('link'))->toContain($link);
+        $without->assertDontSeeHtml('href="'.$link.'"');
+        $with->assertSeeHtml('href="'.$link.'"');
+    }
+
+    $this->actingAs($viewer)->get($link)->assertForbidden();
+    $this->actingAs($opener)->get($link)->assertOk();
 });
 
 it('shows each item\'s storage status and filters by it', function () {

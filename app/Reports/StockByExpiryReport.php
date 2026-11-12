@@ -134,8 +134,8 @@ final class StockByExpiryReport extends Report
 
     public function link(object $row): ?string
     {
-        // The item's stock page needs the Stock permission.
-        return Gate::allows('stock.view')
+        // The item's stock page has its own permission; without it the row opens nothing.
+        return Gate::allows('stock.item.view')
             ? route('stock.item', ['product' => $row->product_id, 'warehouse' => $row->warehouse_id])
             : null;
     }

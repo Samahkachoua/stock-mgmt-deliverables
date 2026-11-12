@@ -1195,6 +1195,7 @@ INSERT INTO unit (code, name) VALUES
 -- document type and draft kind, then items, master data, reports, admin.
 INSERT INTO permission (code, description, module) VALUES
     ('stock.view', 'View stock balances', 'STOCK'),
+    ('stock.item.view', 'Open an item''s stock in a warehouse (from Stock and Stock by expiry)', 'STOCK'),
     -- Each type: its list, details and print pages (view; creating / approving
     -- it opens them too), what it lets the user do, and cancelling it.
     ('draft.in.view', 'View draft receipts', 'DRAFT_IN'),
@@ -1208,6 +1209,7 @@ INSERT INTO permission (code, description, module) VALUES
     ('draft.out.create', 'Create and edit orders', 'DRAFT_OUT'),
     ('draft.out.confirm', 'Confirm orders (creates the delivery notes)', 'DRAFT_OUT'),
     ('draft.out.cancel', 'Cancel orders', 'DRAFT_OUT'),
+    ('draft.out.activity', 'See the activity of an order (created, edited, confirmed...)', 'DRAFT_OUT'),
     ('stock.out.view', 'View delivery notes', 'OUT'),
     ('stock.out.create', 'Dispatch delivery notes and confirm delivery (they are created from orders)', 'OUT'),
     ('stock.out.cancel', 'Cancel delivery notes', 'OUT'),
@@ -1305,6 +1307,22 @@ SELECT rp.role_id, p.id
   JOIN permission sv ON sv.id = rp.permission_id AND sv.code = 'stock.view'
   JOIN role r ON r.id = rp.role_id AND r.code NOT IN ('ADMIN', 'MANAGER', 'AUDITOR')
   JOIN permission p ON p.code = 'report.stock_by_expiry.view';
+
+-- An order's activity: every other role that sees orders, at first.
+INSERT INTO role_permission (role_id, permission_id)
+SELECT rp.role_id, p.id
+  FROM role_permission rp
+  JOIN permission ov ON ov.id = rp.permission_id AND ov.code = 'draft.out.view'
+  JOIN role r ON r.id = rp.role_id AND r.code <> 'ADMIN'
+  JOIN permission p ON p.code = 'draft.out.activity';
+
+-- An item's stock in a warehouse: every other role that sees the Stock page, at first.
+INSERT INTO role_permission (role_id, permission_id)
+SELECT rp.role_id, p.id
+  FROM role_permission rp
+  JOIN permission sv ON sv.id = rp.permission_id AND sv.code = 'stock.view'
+  JOIN role r ON r.id = rp.role_id AND r.code <> 'ADMIN'
+  JOIN permission p ON p.code = 'stock.item.view';
 
 -- Each type's list: every role that sees stock (stock.view) at first.
 INSERT INTO role_permission (role_id, permission_id)

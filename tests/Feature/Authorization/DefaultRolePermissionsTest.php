@@ -30,8 +30,8 @@ it('grants every permission to ADMIN', function () {
 /** Every role that sees stock and documents sees each type's list. */
 const LIST_VIEWS = ['stock.in.view', 'stock.out.view', 'stock.transfer.view', 'stock.adjustment.view', 'stock.damage.view', 'stock.opening.view'];
 
-/** Every role that sees the Stock page also sees Stock by expiry (its lots). */
-const STOCK_PAGES = ['stock.view', 'report.stock_by_expiry.view'];
+/** Every role that sees the Stock page also sees Stock by expiry (its lots) and opens an item's stock. */
+const STOCK_PAGES = ['stock.view', 'stock.item.view', 'report.stock_by_expiry.view'];
 
 /** One permission per report (Stock on hand is stock.view, the audit log audit.view). */
 const REPORT_VIEWS = [
@@ -49,14 +49,14 @@ it('grants the default permissions to each role', function (string $role, array 
         'stock.opening.create', ...STOCK_PAGES, ...REPORT_VIEWS, 'masterdata.manage',
         'product.manage', 'product.import', 'stock.in.cancel', 'stock.out.cancel', 'stock.opening.cancel',
         'draft.in.create', 'draft.in.confirm', 'draft.out.create', 'draft.out.confirm',
-        'draft.in.view', 'draft.out.view', 'draft.in.cancel', 'draft.out.cancel', ...LIST_VIEWS,
+        'draft.in.view', 'draft.out.view', 'draft.in.cancel', 'draft.out.cancel', 'draft.out.activity', ...LIST_VIEWS,
     ]],
     'OPERATOR' => ['OPERATOR', [
         'stock.in.create', 'stock.out.create', 'stock.damage.create', 'stock.adjustment.create',
         'stock.transfer.dispatch', 'stock.transfer.receive', ...STOCK_PAGES,
-        'draft.in.create', 'draft.out.create', 'draft.in.view', 'draft.out.view', 'draft.in.cancel', 'draft.out.cancel', ...LIST_VIEWS,
+        'draft.in.create', 'draft.out.create', 'draft.in.view', 'draft.out.view', 'draft.in.cancel', 'draft.out.cancel', 'draft.out.activity', ...LIST_VIEWS,
     ]],
     'DATA_ENTRY' => ['DATA_ENTRY', ['product.manage', 'product.import', 'masterdata.manage', ...STOCK_PAGES, ...LIST_VIEWS]],
     'AUDITOR' => ['AUDITOR', [...STOCK_PAGES, ...REPORT_VIEWS, 'audit.view', 'stock.in.cancel', 'stock.out.cancel', 'stock.opening.cancel', ...LIST_VIEWS]],
-    'CUSTOMER' => ['CUSTOMER', [...STOCK_PAGES, 'draft.in.create', 'draft.out.create', 'draft.in.view', 'draft.out.view', 'draft.in.cancel', 'draft.out.cancel', ...LIST_VIEWS]],
+    'CUSTOMER' => ['CUSTOMER', [...STOCK_PAGES, 'draft.in.create', 'draft.out.create', 'draft.in.view', 'draft.out.view', 'draft.in.cancel', 'draft.out.cancel', 'draft.out.activity', ...LIST_VIEWS]],
 ]);

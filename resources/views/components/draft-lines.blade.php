@@ -28,6 +28,7 @@
             <thead>
                 <tr class="h-thead bg-surface text-small font-semibold uppercase tracking-wide text-muted">
                     <th scope="col" class="w-14 ps-edge text-start">#</th>
+                    <th scope="col" class="px-cell text-start">{{ __('transactions.lines.code') }}</th>
                     <th scope="col" class="px-cell text-start">{{ __('transactions.lines.item') }}</th>
                     <th scope="col" class="px-cell text-start">{{ __('transactions.lines.unit') }}</th>
                     @if ($batches)
@@ -44,10 +45,10 @@
                 @foreach ($lines as $line)
                     <tr class="h-row" @isset($lineErrors[$line['id']]) aria-invalid="true" @endisset>
                         <td data-card="hide" class="py-cell-y ps-edge text-muted tabular">{{ Format::qty($loop->iteration) }}</td>
+                        <td data-label="{{ __('transactions.lines.code') }}" class="px-cell py-cell-y text-fg"><span dir="ltr" class="tabular font-semibold">{{ $line['code'] }}</span></td>
                         <td data-card="title" class="px-cell py-cell-y">
                             <div class="flex flex-wrap items-center gap-2">
                                 <bdi class="font-semibold text-fg">{{ $line['name'] }}</bdi>
-                                <span dir="ltr" class="tabular rounded bg-card-hover px-1.5 py-0.5 text-small font-semibold tracking-wide text-muted">{{ $line['code'] }}</span>
                                 <x-storage-status :label="$line['storage'] ?? null" />
                             </div>
                             @foreach ($line['details'] as $detail)
@@ -71,7 +72,7 @@
             </tbody>
             <tfoot>
                 <tr class="h-row bg-surface">
-                    <th scope="row" colspan="2" class="ps-edge text-start font-normal text-muted">{{ __('transactions.details.summary_total') }}</th>
+                    <th scope="row" colspan="3" class="ps-edge text-start font-normal text-muted">{{ __('transactions.details.summary_total') }}</th>
                     <td colspan="{{ $columns - 1 }}" class="pe-edge text-end font-semibold text-fg">
                         {{ Format::itemsTotal($lines->count(), $lines->sum('base_qty'), $lines->pluck('base_unit')->all()) }}
                     </td>

@@ -23,6 +23,7 @@ return [
 
     'labels' => [
         'stock_view' => 'عرض المخزون',
+        'stock_item_view' => 'فتح مخزون صنف في مستودع',
         'stock_in_create' => 'إنشاء الاستلامات',
         'stock_out_create' => 'شحن أذونات التسليم وتأكيد تسليمها',
         'stock_transfer_dispatch' => 'إرسال التحويلات',
@@ -60,6 +61,7 @@ return [
         'stock_opening_cancel' => 'إلغاء الأرصدة الافتتاحية',
         'draft_in_cancel' => 'إلغاء مسودات الاستلام',
         'draft_out_cancel' => 'إلغاء الطلبيات',
+        'draft_out_activity' => 'عرض سجلّ نشاط الطلبية (الإنشاء، التعديل، التأكيد…)',
     ],
 
     'report' => 'عرض تقرير :report',

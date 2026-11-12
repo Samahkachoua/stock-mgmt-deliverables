@@ -14,7 +14,6 @@ return [
     'now' => 'Maintenant',
     'loading' => 'Chargement des chiffres…',
 
-
     'branches' => [
         'title' => 'Commandes par agence',
         'hint' => 'Les commandes de chaque agence, client par client, et où elles en sont. Ouvrez une agence pour voir ses commandes.',

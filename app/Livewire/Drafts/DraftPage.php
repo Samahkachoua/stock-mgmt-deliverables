@@ -143,6 +143,10 @@ class DraftPage extends Component
             // A confirmer who lacks a warehouse of the draft is told which.
             'confirmBlocked' => $draft['status'] === 'DRAFT' && Gate::allows($kind->confirmPermission()) && $confirm->denied() ? $confirm->message() : null,
             'canCancel' => Gate::allows('cancel', $draft['model']),
+            // Orders: only with draft.out.activity.
+            'activity' => Gate::allows('viewActivity', $draft['model']) ? $draft['activity'] : null,
+            // Orders: "Delivery notes created" only for whoever may work on delivery notes.
+            'documents' => $kind->documentsPermission() === null || Gate::allows($kind->documentsPermission()) ? $draft['documents'] : [],
         ])->title($draft['reference']);
     }
 

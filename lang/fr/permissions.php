@@ -23,6 +23,7 @@ return [
 
     'labels' => [
         'stock_view' => 'Voir le stock',
+        'stock_item_view' => 'Ouvrir le stock d’un article dans un entrepôt',
         'stock_in_create' => 'Créer des réceptions',
         'stock_out_create' => 'Expédier les bons de livraison et confirmer la livraison',
         'stock_transfer_dispatch' => 'Expédier des transferts',
@@ -60,6 +61,7 @@ return [
         'stock_opening_cancel' => 'Annuler des stocks initiaux',
         'draft_in_cancel' => 'Annuler des brouillons de réception',
         'draft_out_cancel' => 'Annuler des commandes',
+        'draft_out_activity' => 'Voir l’activité d’une commande (création, modification, confirmation…)',
     ],
 
     'report' => 'Voir le rapport « :report »',

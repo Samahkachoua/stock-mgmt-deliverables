@@ -149,6 +149,7 @@ return [
     ],
 
     'lines' => [
+        'code' => 'Code',
         'item' => 'Article',
         'unit' => 'Unité',
         'expiry' => 'Date de péremption',

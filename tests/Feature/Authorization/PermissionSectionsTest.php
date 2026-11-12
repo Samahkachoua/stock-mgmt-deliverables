@@ -60,9 +60,9 @@ it('shows Stock, then one section per document type, then the rest', function ()
         ->instance()->modules;
 
     expect($modules->keys()->all())->toBe(Permission::MODULES)
-        ->and($modules['STOCK']->pluck('code')->all())->toBe(['stock.view'])
+        ->and($modules['STOCK']->pluck('code')->all())->toBe(['stock.item.view', 'stock.view'])
         ->and($modules['IN']->pluck('code')->all())->toBe(['stock.in.view', 'stock.in.create', 'stock.in.cancel'])
-        ->and($modules['DRAFT_OUT']->pluck('code')->all())->toBe(['draft.out.view', 'draft.out.create', 'draft.out.confirm', 'draft.out.cancel'])
+        ->and($modules['DRAFT_OUT']->pluck('code')->all())->toBe(['draft.out.view', 'draft.out.create', 'draft.out.confirm', 'draft.out.cancel', 'draft.out.activity'])
         ->and($modules['REPORT']->pluck('code')->all())->toContain('audit.view', 'dashboard.view', 'report.stock_card.view');
 });
 

@@ -6,6 +6,7 @@ use App\Models\StockBalance;
 use App\Models\User;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Stock on hand (the Stock page, stock.view): what each customer has in each of
@@ -146,8 +147,11 @@ final class StockOnHandReport extends Report
         ];
     }
 
-    public function link(object $row): string
+    public function link(object $row): ?string
     {
-        return route('stock.item', ['product' => $row->product_id, 'warehouse' => $row->warehouse_id]);
+        // The item's stock page has its own permission; without it the row opens nothing.
+        return Gate::allows('stock.item.view')
+            ? route('stock.item', ['product' => $row->product_id, 'warehouse' => $row->warehouse_id])
+            : null;
     }
 }

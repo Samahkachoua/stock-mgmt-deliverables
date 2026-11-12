@@ -52,11 +52,11 @@
 
     <x-transaction-summary :rows="$summary" />
 
-    @if ($draft['documents'] !== [])
+    @if ($documents !== [])
         <section class="rounded-xl border border-default bg-card p-card shadow-card" aria-labelledby="created-documents">
             <h2 id="created-documents" class="text-h3 font-semibold text-fg">{{ $kind->label('created_heading') }}</h2>
             <ul class="mt-3 flex flex-col divide-y divide-default">
-                @foreach ($draft['documents'] as $document)
+                @foreach ($documents as $document)
                     <li class="flex flex-wrap items-center justify-between gap-3 py-2">
                         <a href="{{ DraftPage::documentUrl($document['type'], $document['reference']) }}" wire:navigate class="inline-flex min-h-control items-center gap-2 font-semibold text-link hover:underline">
                             <span dir="ltr" class="tabular">{{ $document['reference'] }}</span>
@@ -73,7 +73,9 @@
 
     <x-draft-lines :lines="$draft['lines']" :line-errors="$lineErrors" />
 
-    <x-activity-list :entries="$draft['activity']" />
+    @if ($activity !== null)
+        <x-activity-list :entries="$activity" />
+    @endif
 
     <x-confirm-modal :confirm="$confirm" />
 </div>

@@ -150,6 +150,7 @@ return [
     ],
 
     'lines' => [
+        'code' => 'Code',
         'item' => 'Item',
         'unit' => 'Unit',
         'expiry' => 'Expiry date',

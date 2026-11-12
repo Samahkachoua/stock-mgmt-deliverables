@@ -73,12 +73,12 @@ Route::middleware(['auth', 'warehouse'])->group(function () {
     // Transfer lines that arrived short, for managers: now a report with exports.
     Route::redirect('/transfer/shortages', '/reports/transfer-shortages')->name('transfer.shortages');
 
-    // Stock (stock.view) and one item's stock in one warehouse.
+    // Stock (stock.view) and one item's stock in one warehouse (stock.item.view).
     Route::get('/stock', StockPage::class)->name('stock')->middleware('can:stock.view');
     Route::get('/stock/{product}/{warehouse}', [ItemStockController::class, 'show'])
         ->name('stock.item')
         ->whereNumber(['product', 'warehouse'])
-        ->middleware('can:stock.view');
+        ->middleware('can:stock.item.view');
     // The Stock page per lot (batch + expiry date); its own report permission.
     Route::get('/stock-by-expiry', StockByExpiryPage::class)->name('stock-by-expiry')->middleware('can:report.stock_by_expiry.view');
     // From the top bar search: the Stock page filtered to an item or a customer.

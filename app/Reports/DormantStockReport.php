@@ -9,6 +9,7 @@ use App\Support\Format;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Dormant stock: items still in stock whose last movement (in or out) in that
@@ -105,8 +106,11 @@ final class DormantStockReport extends Report
     /**
      * The item's stock in that warehouse (as on the Stock page).
      */
-    public function link(object $row): string
+    public function link(object $row): ?string
     {
-        return route('stock.item', ['product' => $row->product_id, 'warehouse' => $row->warehouse_id]);
+        // The item's stock page has its own permission; without it the row opens nothing.
+        return Gate::allows('stock.item.view')
+            ? route('stock.item', ['product' => $row->product_id, 'warehouse' => $row->warehouse_id])
+            : null;
     }
 }

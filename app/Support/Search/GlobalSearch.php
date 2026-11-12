@@ -210,7 +210,7 @@ final class GlobalSearch
      */
     private static function serials(string $text): array
     {
-        if (! Gate::allows('stock.view')) {
+        if (! Gate::allows('stock.item.view')) {
             return [];
         }
 
@@ -244,7 +244,7 @@ final class GlobalSearch
     {
         $batch = Batches::normalize($text);
 
-        if (! Gate::allows('stock.view') || $batch === '') {
+        if (! Gate::allows('stock.item.view') || $batch === '') {
             return [];
         }
 

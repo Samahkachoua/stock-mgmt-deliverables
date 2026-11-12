@@ -59,6 +59,19 @@ class StockDraftPolicy
             && DraftService::canSee($this->header($draft), $user);
     }
 
+    /**
+     * See a draft's activity (created, edited, confirmed...): the draft itself
+     * is visible, plus the kind's activity permission when it has one
+     * (orders: draft.out.activity).
+     */
+    public function viewActivity(User $user, StockDraft $draft): bool
+    {
+        $permission = DraftTypes::get($draft->transaction_type)->activityPermission();
+
+        return ($permission === null || $user->hasPermission($permission))
+            && DraftService::canSee($this->header($draft), $user);
+    }
+
     private function header(StockDraft $draft): object
     {
         return (object) $draft->only(['id', 'customer_id', 'customer_branch_id', 'warehouse_id', 'created_by']);
