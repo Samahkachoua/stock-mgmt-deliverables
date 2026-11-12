@@ -3,11 +3,13 @@
 namespace App\Reports;
 
 use App\Models\Customer;
+use App\Models\CustomerBranch;
 use App\Models\Product;
 use App\Models\User;
 use App\Support\DateRange;
 use App\Support\Ids;
 use App\Support\StorageStatuses;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 
 /**
  * One filter of a report: how it is shown and how a value from the browser
@@ -21,6 +23,7 @@ use App\Support\StorageStatuses;
  *   warehouse  one of the user's warehouses (user_warehouse); default the
  *              user's default warehouse; 'all' = all of them when $allowAll
  *   item       one of the chosen customer's items ('' until chosen)
+ *   branch     one of the chosen customer's branches the user may see, or '' for all
  *   date       Y-m-d, or '' for no date (the default): see App\Support\DateRange
  *   number     whole number between $min and $max
  *   select     one of $options (value => label key)
@@ -61,6 +64,12 @@ final class Filter
     public static function item(): self
     {
         return new self('item', 'item', 'reports.filters.item');
+    }
+
+    /** Comes after Filter::customer(): its branches only. */
+    public static function branch(): self
+    {
+        return new self('branch', 'branch', 'reports.filters.branch');
     }
 
     public static function date(string $name, string $label): self
@@ -128,6 +137,7 @@ final class Filter
             },
             'item' => $value !== '' && Ids::valid($value) && ($previous['customer'] ?? '') !== ''
                 && Product::whereKey($value)->where('customer_id', $previous['customer'])->exists() ? $value : '',
+            'branch' => $value !== '' && Ids::valid($value) && self::branches($user, $previous['customer'] ?? '')->whereKey($value)->exists() ? $value : '',
             'date' => DateRange::day($value),
             'number' => ctype_digit($value) && (int) $value >= $this->min && (int) $value <= $this->max ? (string) (int) $value : $this->default,
             'select' => array_key_exists($value, $this->options) ? $value : $this->default,
@@ -155,10 +165,25 @@ final class Filter
                 ->get()
                 ->mapWithKeys(fn (Product $product) => [$product->id => $product->sku.' · '.$product->name()])
                 ->all()),
+            'branch' => ['' => __('reports.filters.all_branches')]
+                + self::branches($user, $filters['customer'] ?? '')->orderBy('name')->pluck('name', 'id')->all(),
             'select' => array_map(fn (string $key) => __($key), $this->options),
             'storage' => ['' => __('reports.filters.all_storage')] + StorageStatuses::options()
                 + [self::NO_STORAGE => __('items.storage.none')],
             default => [],
         };
+    }
+
+    /**
+     * Branches of $customer the user may pick (none until a customer is
+     * chosen; a customer user linked to branches: only those).
+     *
+     * @return EloquentBuilder<CustomerBranch>
+     */
+    private static function branches(User $user, string $customer): EloquentBuilder
+    {
+        return CustomerBranch::query()
+            ->where('customer_id', Ids::valid($customer) ? $customer : null)
+            ->when($user->branchIds() !== [], fn ($query) => $query->whereIn('id', $user->branchIds()));
     }
 }

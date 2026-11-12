@@ -1,10 +1,14 @@
 {{--
-    Owner dashboard (App\Livewire\Dashboard): filters, key figures, documents
-    per type (one small chart per type, in its colour, so no two colours have
-    to be told apart), lines per warehouse, and two short tables. Every chart
-    also opens as a table. The figures load right after the first paint.
+    Owner dashboard (App\Livewire\Dashboard): filters, orders by
+    customer branch (one bar per branch, split by stage; a row opens the
+    Orders list on that branch), delivery discrepancies by branch (split by
+    reason; a row opens that report on the branch), lines per warehouse and
+    per customer (a customer narrows the whole dashboard to it), and two
+    short tables.
+    Every chart also opens as a table. The figures load right after the first paint.
 --}}
 @use('App\Reports\Dashboard')
+@use('App\Services\Stock\PostingService')
 @use('App\Support\Format')
 @use('Carbon\CarbonImmutable')
 
@@ -15,14 +19,11 @@
         $period->to !== '' => __('dashboard.period.to', ['to' => Format::date(CarbonImmutable::parse($period->to))]),
         default => __('dashboard.period.all'),
     };
-    $bucketLabel = fn (string $bucket, string $step) => CarbonImmutable::parse($bucket)->locale(app()->getLocale())->isoFormat(match ($step) {
-        'day' => 'D MMM',
-        'month' => 'MMM YYYY',
-        default => 'YYYY',
-    });
     $card = 'flex min-w-0 flex-col gap-3 rounded-xl border border-default bg-card p-card shadow-card';
     $heading = 'text-h3 font-semibold text-fg';
     $hint = 'text-small text-muted';
+    // No customer chosen: the cards list several customers (and name them).
+    $noCustomer = $filters['customer'] === '';
     $tableToggle = 'cursor-pointer self-start rounded text-small font-semibold text-link underline-offset-2 hover:underline';
 @endphp
 
@@ -31,21 +32,12 @@
 
     <x-report.filters :definitions="$definitions" :choices="$choices" :values="$filters" :defaults="$defaults" :date-error="$dateError" />
 
-    @if ($tiles === null)
+    @if (! $loaded)
         {{-- First paint: grey shapes where the figures will be; the browser asks for them at once. --}}
         <div wire:init="loadRows" aria-busy="true" class="flex flex-col gap-section">
             <span class="sr-only" role="status">{{ __('dashboard.loading') }}</span>
-            <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5" aria-hidden="true">
-                @foreach (range(1, 5) as $i)
-                    <div class="flex h-28 flex-col gap-3 rounded-xl border border-default bg-card p-card shadow-card">
-                        <span class="block h-3 w-2/3 animate-pulse rounded bg-card-hover"></span>
-                        <span class="block h-6 w-1/3 animate-pulse rounded bg-card-hover"></span>
-                        <span class="block h-3 w-1/2 animate-pulse rounded bg-card-hover"></span>
-                    </div>
-                @endforeach
-            </div>
             <div class="grid gap-section xl:grid-cols-2" aria-hidden="true">
-                @foreach (range(1, 2) as $i)
+                @foreach (range(1, 4) as $i)
                     <div class="h-64 animate-pulse rounded-xl border border-default bg-card shadow-card"></div>
                 @endforeach
             </div>
@@ -53,149 +45,241 @@
     @else
         <x-table-loading target="filters,resetFilters" class="flex flex-col gap-section">
             <div class="flex flex-col gap-section">
-                {{-- Key figures. Each opens what it counts, with the same filters. --}}
-                <section aria-labelledby="dashboard-figures" class="flex flex-col gap-3">
-                    <h2 id="dashboard-figures" class="sr-only">{{ __('dashboard.tiles.heading') }}</h2>
-                    @php
-                        $figures = [
-                            [
-                                'target' => 'pending', 'icon' => 'verified_user', 'label' => __('dashboard.tiles.pending'),
-                                'value' => $tiles['pending']['count'], 'when' => __('dashboard.now'),
-                                'note' => $tiles['pending']['oldest_days'] !== null
-                                    ? trans_choice('dashboard.tiles.pending_oldest', $tiles['pending']['oldest_days'], ['count' => Format::qty($tiles['pending']['oldest_days'])])
-                                    : __('dashboard.tiles.pending_none'),
-                                'tone' => $tiles['pending']['count'] > 0 ? 'pending' : null,
-                                'opens' => $pendingOpens,
-                            ],
-                            [
-                                'target' => 'transfers-in-transit', 'icon' => 'local_shipping', 'label' => __('dashboard.tiles.transit'),
-                                'value' => $tiles['transit']['count'], 'when' => __('dashboard.now'),
-                                'note' => trans_choice('dashboard.tiles.transit_late', $tiles['transit']['late'], ['count' => Format::qty($tiles['transit']['late']), 'days' => Format::qty(Dashboard::LATE_TRANSIT_DAYS)]),
-                                'tone' => $tiles['transit']['late'] > 0 ? 'pending' : null,
-                                'opens' => $canReport['transfers-in-transit'],
-                            ],
-                            [
-                                'target' => 'expiry', 'icon' => 'lock_clock', 'label' => __('dashboard.tiles.expiry', ['days' => Format::qty(Dashboard::EXPIRY_DAYS)]),
-                                'value' => $tiles['expiry']['count'], 'when' => __('dashboard.now'),
-                                'note' => trans_choice('dashboard.tiles.expired', $tiles['expiry']['expired'], ['count' => Format::qty($tiles['expiry']['expired'])]),
-                                'tone' => $tiles['expiry']['expired'] > 0 ? 'rejected' : ($tiles['expiry']['count'] > 0 ? 'pending' : null),
-                                'opens' => $canReport['expiry'],
-                            ],
-                            [
-                                'target' => 'damage', 'icon' => 'report', 'label' => __('dashboard.tiles.damage'),
-                                'value' => $tiles['damage']['lines'], 'when' => $periodText, 'note' => null, 'tone' => null,
-                                'opens' => $canReport['damage'],
-                            ],
-                            [
-                                'target' => 'adjustments', 'icon' => 'tune', 'label' => __('dashboard.tiles.adjustments'),
-                                'value' => $tiles['adjustments']['lines'], 'when' => $periodText, 'note' => null, 'tone' => null,
-                                'opens' => $canReport['adjustments'],
-                            ],
-                        ];
-                    @endphp
-                    <ul class="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-5">
-                        @foreach ($figures as $figure)
-                            @php
-                                $tileClass = 'flex h-full w-full flex-col items-start gap-1 rounded-xl border bg-card p-card text-start shadow-card '
-                                    .($figure['tone'] ? config('ui.statuses.'.$figure['tone']) : 'border-default text-fg');
-                            @endphp
-                            <li data-tile="{{ $figure['target'] }}" class="min-w-0">
-                                @if ($figure['opens'])
-                                    <button type="button" wire:click="open('{{ $figure['target'] }}')" class="{{ $tileClass }} hover:bg-card-hover" aria-label="{{ __('dashboard.tiles.open', ['what' => $figure['label']]) }}">
-                                @else
-                                    <div class="{{ $tileClass }}">
-                                @endif
-                                    <span class="flex w-full items-center gap-2 text-small font-semibold">
-                                        <x-icon :name="$figure['icon']" class="size-5" />
-                                        <span class="min-w-0 flex-1 break-words">{{ $figure['label'] }}</span>
-                                        @if ($figure['opens'])
-                                            <x-icon name="chevron_right" class="size-5 shrink-0 rtl:-scale-x-100" />
-                                        @endif
-                                    </span>
-                                    <span class="text-h1 font-semibold tabular" data-value>{{ Format::qty($figure['value']) }}</span>
-                                    @if ($figure['note'])
-                                        <span class="text-small font-semibold">{{ $figure['note'] }}</span>
-                                    @endif
-                                    <span class="mt-auto text-small opacity-80">{{ $figure['when'] }}</span>
-                                @if ($figure['opens'])
-                                    </button>
-                                @else
-                                    </div>
-                                @endif
-                            </li>
-                        @endforeach
-                    </ul>
-                </section>
-
                 <div class="grid gap-section xl:grid-cols-2">
-                    {{-- Documents per type: one small chart per type (its colour names it, its title too). --}}
-                    <section aria-labelledby="dashboard-activity" class="{{ $card }}">
-                        <div class="flex flex-wrap items-baseline justify-between gap-x-3">
-                            <h2 id="dashboard-activity" class="{{ $heading }}">{{ __('dashboard.activity.title') }}</h2>
-                            <span class="{{ $hint }}">{{ $periodText }}@if ($activity['buckets'] !== []) · {{ __('dashboard.activity.step.'.$activity['step']) }}@endif</span>
-                        </div>
-                        <p class="{{ $hint }}">{{ __('dashboard.activity.hint') }}</p>
-
-                        @if ($activity['buckets'] === [] || collect($activity['series'])->sum('total') === 0)
-                            <p class="rounded-lg border border-dashed border-default p-card text-body text-muted">{{ __('dashboard.activity.empty') }}</p>
-                        @else
-                            @php($peak = max(1, ...array_map(fn ($series) => max([0, ...array_values($series['counts'])]), array_values($activity['series']))))
-                            <ul class="grid gap-4 sm:grid-cols-2">
-                                @foreach ($activity['series'] as $code => $series)
-                                    <li data-series="{{ $code }}" class="flex flex-col gap-2">
-                                        <div class="flex items-center gap-2">
-                                            <span @class(['grid size-7 shrink-0 place-items-center rounded-md', $series['type']->colours()['soft']])>
-                                                <x-icon :name="$series['type']->icon()" @class(['size-5', $series['type']->colours()['icon']]) />
-                                            </span>
-                                            <span class="min-w-0 flex-1 truncate text-body font-semibold text-fg">{{ $series['type']->label('title') }}</span>
-                                            <span class="text-body font-semibold text-fg tabular">{{ Format::qty($series['total']) }}</span>
-                                        </div>
-                                        {{-- Same scale for every type, so the charts compare. --}}
-                                        <div class="flex h-20 items-end gap-0.5 overflow-hidden border-b border-default" aria-hidden="true">
-                                            @foreach ($activity['buckets'] as $bucket)
-                                                @php($count = $series['counts'][$bucket] ?? 0)
-                                                <div class="flex h-full min-w-0 flex-1 items-end" title="{{ __('dashboard.activity.bar', ['period' => $bucketLabel($bucket, $activity['step']), 'count' => Format::qty($count)]) }}">
-                                                    @if ($count > 0)
-                                                        <div @class(['w-full rounded-t', $series['type']->colours()['strong']]) style="height: {{ max(4, round($count / $peak * 100)) }}%"></div>
-                                                    @endif
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </li>
-                                @endforeach
-                            </ul>
-                            <div class="flex justify-between text-small text-muted" aria-hidden="true">
-                                <span>{{ $bucketLabel($activity['buckets'][0], $activity['step']) }}</span>
-                                <span>{{ $bucketLabel($activity['buckets'][count($activity['buckets']) - 1], $activity['step']) }}</span>
+                    {{-- Orders by branch: one bar per branch, split by how far its orders have got; customer by customer, each on its own scale. --}}
+                    @if ($branches !== null)
+                        @php
+                            $stageColours = ['open' => 'bg-status-draft', 'ready' => 'bg-status-pending', 'on_way' => 'bg-status-transit', 'delivered' => 'bg-status-completed'];
+                            // Each customer on its own: its own block, its own scale.
+                            $branchGroups = collect($branches)->groupBy('customer_id');
+                            $moreBranches = $branchGroups->contains(fn ($rows) => $rows->count() > Dashboard::TOP_BRANCHES);
+                        @endphp
+                        <section aria-labelledby="dashboard-branches" class="{{ $card }}">
+                            <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+                                <h2 id="dashboard-branches" class="{{ $heading }}">{{ __('dashboard.branches.title') }}</h2>
+                                <span class="{{ $hint }}">{{ $periodText }}</span>
                             </div>
+                            <p class="{{ $hint }}">{{ __('dashboard.branches.hint') }}</p>
 
-                            <details class="min-w-0">
-                                <summary class="{{ $tableToggle }}">{{ __('dashboard.table.show') }}</summary>
-                                <div class="mt-2 min-w-0 overflow-x-auto">
-                                    <table class="w-full text-table">
-                                        <thead>
-                                            <tr class="text-small font-semibold text-muted">
-                                                <th scope="col" class="px-2 py-1 text-start">{{ __('dashboard.table.period') }}</th>
-                                                @foreach ($activity['series'] as $series)
-                                                    <th scope="col" class="px-2 py-1 text-end">{{ $series['type']->label('title') }}</th>
-                                                @endforeach
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-default">
-                                            @foreach ($activity['buckets'] as $bucket)
-                                                <tr>
-                                                    <th scope="row" class="whitespace-nowrap px-2 py-1 text-start font-normal text-fg">{{ $bucketLabel($bucket, $activity['step']) }}</th>
-                                                    @foreach ($activity['series'] as $series)
-                                                        <td class="px-2 py-1 text-end text-fg tabular">{{ Format::qty($series['counts'][$bucket] ?? 0) }}</td>
+                            @if ($branches === [])
+                                <p class="rounded-lg border border-dashed border-default p-card text-body text-muted">{{ __('dashboard.branches.empty') }}</p>
+                            @else
+                                <ul class="flex flex-wrap gap-x-4 gap-y-1 text-small text-muted" aria-label="{{ __('dashboard.branches.legend') }}">
+                                    @foreach (Dashboard::ORDER_STAGES as $stage)
+                                        <li class="flex items-center gap-1.5">
+                                            <span @class(['size-3 shrink-0 rounded-sm', $stageColours[$stage]]) aria-hidden="true"></span>
+                                            {{ __('dashboard.branches.stage.'.$stage) }}
+                                        </li>
+                                    @endforeach
+                                </ul>
+
+                                @foreach ($branchGroups as $customerRows)
+                                    @php
+                                        $busiestBranch = max(1, $customerRows->max('total'));
+                                    @endphp
+                                    <div data-customer-group="{{ $customerRows->first()['customer_id'] }}" class="flex flex-col">
+                                    @if ($noCustomer)
+                                        <h3 class="border-b border-default pb-1 text-small font-semibold text-muted">{{ $customerRows->first()['customer'] }}</h3>
+                                    @endif
+                                <ul class="-mx-card flex flex-col">
+                                    @foreach ($allBranches ? $customerRows : $customerRows->take(Dashboard::TOP_BRANCHES) as $row)
+                                        <li data-branch="{{ $row['branch_id'] }}">
+                                            <button type="button" wire:click="open('orders', '{{ $row['branch_id'] }}')"
+                                                class="flex min-h-control w-full flex-col gap-1.5 px-card py-2 text-start hover:bg-card-hover"
+                                                aria-label="{{ __('dashboard.branches.open', ['branch' => $row['branch'], 'customer' => $row['customer']]) }}">
+                                                <span class="flex w-full items-start gap-3">
+                                                    <span class="flex min-w-0 flex-1 flex-col">
+                                                        <span class="truncate text-body font-semibold text-fg">{{ $row['branch'] }}</span>
+                                                    </span>
+                                                    <span class="flex shrink-0 flex-col items-end text-body tabular">
+                                                        <span class="font-semibold text-fg">{{ trans_choice('dashboard.branches.orders', $row['total'], ['count' => Format::qty($row['total'])]) }}</span>
+                                                        @if ($row['late'] > 0)
+                                                            <span class="flex items-center gap-1 text-small font-semibold text-status-rejected">
+                                                                <x-icon name="schedule" class="size-4" />
+                                                                {{ trans_choice('dashboard.branches.late', $row['late'], ['count' => Format::qty($row['late'])]) }}
+                                                            </span>
+                                                        @endif
+                                                    </span>
+                                                    <x-icon name="chevron_right" class="size-5 shrink-0 self-center text-muted rtl:-scale-x-100" />
+                                                </span>
+                                                <span class="block h-3 w-full overflow-hidden rounded-full bg-card-hover" aria-hidden="true">
+                                                    <span class="flex h-full overflow-hidden rounded-full" style="width: {{ max(2, round($row['total'] / $busiestBranch * 100)) }}%" data-bar>
+                                                        @foreach (Dashboard::ORDER_STAGES as $stage)
+                                                            @if ($row['stages'][$stage] > 0)
+                                                                <span @class(['h-full', $stageColours[$stage]]) style="width: {{ round($row['stages'][$stage] / $row['total'] * 100, 2) }}%"
+                                                                    title="{{ __('dashboard.branches.stage.'.$stage) }}: {{ Format::qty($row['stages'][$stage]) }}"></span>
+                                                            @endif
+                                                        @endforeach
+                                                    </span>
+                                                </span>
+                                            </button>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                                    </div>
+                                @endforeach
+
+                                @if ($moreBranches)
+                                    <button type="button" wire:click="$toggle('allBranches')" class="flex h-control items-center gap-1 self-start rounded-lg px-1 text-body font-semibold text-link hover:underline">
+                                        {{ $allBranches ? __('dashboard.branches.fewer') : __('dashboard.branches.see_all', ['count' => Format::qty(count($branches))]) }}
+                                    </button>
+                                @endif
+
+                                <details class="min-w-0">
+                                    <summary class="{{ $tableToggle }}">{{ __('dashboard.table.show') }}</summary>
+                                    <div class="mt-2 min-w-0 overflow-x-auto">
+                                        <table class="w-full text-table">
+                                            <thead>
+                                                <tr class="text-small font-semibold text-muted">
+                                                    <th scope="col" class="px-2 py-1 text-start">{{ __('dashboard.branches.branch') }}</th>
+                                                    @if ($noCustomer)
+                                                        <th scope="col" class="px-2 py-1 text-start">{{ __('dashboard.branches.customer') }}</th>
+                                                    @endif
+                                                    @foreach (Dashboard::ORDER_STAGES as $stage)
+                                                        <th scope="col" class="px-2 py-1 text-end">{{ __('dashboard.branches.stage.'.$stage) }}</th>
                                                     @endforeach
+                                                    <th scope="col" class="px-2 py-1 text-end">{{ __('dashboard.branches.total') }}</th>
+                                                    <th scope="col" class="px-2 py-1 text-end">{{ __('dashboard.branches.late_column') }}</th>
                                                 </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </details>
-                        @endif
-                    </section>
+                                            </thead>
+                                            <tbody class="divide-y divide-default">
+                                                @foreach ($branches as $row)
+                                                    <tr>
+                                                        <th scope="row" class="px-2 py-1 text-start font-normal text-fg">{{ $row['branch'] }}</th>
+                                                        @if ($noCustomer)
+                                                            <td class="px-2 py-1 text-start text-fg">{{ $row['customer'] }}</td>
+                                                        @endif
+                                                        @foreach (Dashboard::ORDER_STAGES as $stage)
+                                                            <td class="px-2 py-1 text-end text-fg tabular">{{ Format::qty($row['stages'][$stage]) }}</td>
+                                                        @endforeach
+                                                        <td class="px-2 py-1 text-end font-semibold text-fg tabular">{{ Format::qty($row['total']) }}</td>
+                                                        <td class="px-2 py-1 text-end text-fg tabular">{{ Format::qty($row['late']) }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </details>
+                            @endif
+                        </section>
+                    @endif
+
+                    {{-- Delivery discrepancies by branch: one bar per branch, split by the reason given; customer by customer, each on its own scale. --}}
+                    @if ($discrepancies !== null)
+                        @php
+                            // One colour per reason (PostingService::DELIVERY_REASONS); a reason added later gets a neutral one.
+                            $reasonPalette = ['NOT_AVAILABLE' => 'bg-status-rejected', 'REFUSED' => 'bg-status-pending', 'DAMAGED' => 'bg-status-cancelled', 'REPLACED' => 'bg-status-transit'];
+                            $reasonColours = collect(PostingService::DELIVERY_REASONS)->mapWithKeys(fn ($reason) => [$reason => $reasonPalette[$reason] ?? 'bg-status-draft'])->all();
+                            // Each customer on its own: its own block, its own scale.
+                            $discrepancyGroups = collect($discrepancies)->groupBy('customer_id');
+                            $moreDiscrepancies = $discrepancyGroups->contains(fn ($rows) => $rows->count() > Dashboard::TOP_BRANCHES);
+                        @endphp
+                        <section aria-labelledby="dashboard-discrepancies" data-card="discrepancies" class="{{ $card }}">
+                            <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+                                <h2 id="dashboard-discrepancies" class="{{ $heading }}">{{ __('dashboard.discrepancies.title') }}</h2>
+                                <span class="{{ $hint }}">{{ $periodText }}</span>
+                            </div>
+                            <p class="{{ $hint }}">{{ __('dashboard.discrepancies.hint') }}</p>
+
+                            @if ($discrepancies === [])
+                                <p class="rounded-lg border border-dashed border-default p-card text-body text-muted">{{ __('dashboard.discrepancies.empty') }}</p>
+                            @else
+                                <ul class="flex flex-wrap gap-x-4 gap-y-1 text-small text-muted" aria-label="{{ __('dashboard.discrepancies.legend') }}">
+                                    @foreach ($reasonColours as $reason => $colour)
+                                        <li class="flex items-center gap-1.5">
+                                            <span @class(['size-3 shrink-0 rounded-sm', $colour]) aria-hidden="true"></span>
+                                            {{ __('deliveries.reasons.'.$reason) }}
+                                        </li>
+                                    @endforeach
+                                </ul>
+
+                                @foreach ($discrepancyGroups as $customerRows)
+                                    @php
+                                        $mostShort = max(1, $customerRows->max('short'));
+                                    @endphp
+                                    <div data-customer-group="{{ $customerRows->first()['customer_id'] }}" class="flex flex-col">
+                                    @if ($noCustomer)
+                                        <h3 class="border-b border-default pb-1 text-small font-semibold text-muted">{{ $customerRows->first()['customer'] }}</h3>
+                                    @endif
+                                <ul class="-mx-card flex flex-col">
+                                    @foreach ($allDiscrepancies ? $customerRows : $customerRows->take(Dashboard::TOP_BRANCHES) as $row)
+                                        <li data-discrepancy="{{ $row['branch_id'] }}">
+                                            <button type="button" wire:click="open('delivery-differences', '{{ $row['branch_id'] }}')"
+                                                class="flex min-h-control w-full flex-col gap-1.5 px-card py-2 text-start hover:bg-card-hover"
+                                                aria-label="{{ __('dashboard.discrepancies.open', ['branch' => $row['branch'], 'customer' => $row['customer']]) }}">
+                                                <span class="flex w-full items-start gap-3">
+                                                    <span class="flex min-w-0 flex-1 flex-col">
+                                                        <span class="truncate text-body font-semibold text-fg">{{ $row['branch'] }}</span>
+                                                    </span>
+                                                    <span class="flex shrink-0 flex-col items-end text-body tabular">
+                                                        <span class="font-semibold text-fg">{{ trans_choice('dashboard.discrepancies.short', $row['short'], ['count' => Format::qty($row['short'])]) }}</span>
+                                                        <span class="text-small text-muted">{{ __('dashboard.discrepancies.rate', ['rate' => Format::qty($row['rate'])]) }}</span>
+                                                    </span>
+                                                    <x-icon name="chevron_right" class="size-5 shrink-0 self-center text-muted rtl:-scale-x-100" />
+                                                </span>
+                                                <span class="block h-3 w-full overflow-hidden rounded-full bg-card-hover" aria-hidden="true">
+                                                    <span class="flex h-full overflow-hidden rounded-full" style="width: {{ max(2, round($row['short'] / $mostShort * 100)) }}%" data-short-bar>
+                                                        @foreach ($reasonColours as $reason => $colour)
+                                                            @if ($row['reasons'][$reason] > 0)
+                                                                <span @class(['h-full', $colour]) style="width: {{ round($row['reasons'][$reason] / $row['short'] * 100, 2) }}%"
+                                                                    title="{{ __('deliveries.reasons.'.$reason) }}: {{ Format::qty($row['reasons'][$reason]) }}"></span>
+                                                            @endif
+                                                        @endforeach
+                                                    </span>
+                                                </span>
+                                            </button>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                                    </div>
+                                @endforeach
+
+                                @if ($moreDiscrepancies)
+                                    <button type="button" wire:click="$toggle('allDiscrepancies')" class="flex h-control items-center gap-1 self-start rounded-lg px-1 text-body font-semibold text-link hover:underline">
+                                        {{ $allDiscrepancies ? __('dashboard.branches.fewer') : __('dashboard.branches.see_all', ['count' => Format::qty(count($discrepancies))]) }}
+                                    </button>
+                                @endif
+
+                                <details class="min-w-0">
+                                    <summary class="{{ $tableToggle }}">{{ __('dashboard.table.show') }}</summary>
+                                    <div class="mt-2 min-w-0 overflow-x-auto">
+                                        <table class="w-full text-table">
+                                            <thead>
+                                                <tr class="text-small font-semibold text-muted">
+                                                    <th scope="col" class="px-2 py-1 text-start">{{ __('dashboard.branches.branch') }}</th>
+                                                    @if ($noCustomer)
+                                                        <th scope="col" class="px-2 py-1 text-start">{{ __('dashboard.branches.customer') }}</th>
+                                                    @endif
+                                                    @foreach (array_keys($reasonColours) as $reason)
+                                                        <th scope="col" class="px-2 py-1 text-end">{{ __('deliveries.reasons.'.$reason) }}</th>
+                                                    @endforeach
+                                                    <th scope="col" class="px-2 py-1 text-end">{{ __('dashboard.discrepancies.short_column') }}</th>
+                                                    <th scope="col" class="px-2 py-1 text-end">{{ __('dashboard.discrepancies.delivered_column') }}</th>
+                                                    <th scope="col" class="px-2 py-1 text-end">%</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-default">
+                                                @foreach ($discrepancies as $row)
+                                                    <tr>
+                                                        <th scope="row" class="px-2 py-1 text-start font-normal text-fg">{{ $row['branch'] }}</th>
+                                                        @if ($noCustomer)
+                                                            <td class="px-2 py-1 text-start text-fg">{{ $row['customer'] }}</td>
+                                                        @endif
+                                                        @foreach (array_keys($reasonColours) as $reason)
+                                                            <td class="px-2 py-1 text-end text-fg tabular">{{ Format::qty($row['reasons'][$reason]) }}</td>
+                                                        @endforeach
+                                                        <td class="px-2 py-1 text-end font-semibold text-fg tabular">{{ Format::qty($row['short']) }}</td>
+                                                        <td class="px-2 py-1 text-end text-fg tabular">{{ Format::qty($row['delivered']) }}</td>
+                                                        <td class="px-2 py-1 text-end text-fg tabular">{{ Format::qty($row['rate']) }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </details>
+                            @endif
+                        </section>
+                    @endif
 
                     {{-- Lines per warehouse: one bar each, the number written next to it. --}}
                     <section aria-labelledby="dashboard-warehouses" class="{{ $card }}">
@@ -205,7 +289,9 @@
                         </div>
                         <p class="{{ $hint }}">{{ __('dashboard.warehouses.hint') }}</p>
 
-                        @php($busiest = max(1, collect($warehouses)->max('lines') ?? 1))
+                        @php
+                            $busiest = max(1, collect($warehouses)->max('lines') ?? 1);
+                        @endphp
                         <ul class="flex flex-col gap-3">
                             @foreach ($warehouses as $warehouse)
                                 <li data-warehouse class="flex flex-col gap-1">
@@ -224,6 +310,107 @@
                                 </li>
                             @endforeach
                         </ul>
+                    </section>
+
+                    {{-- Workload by customer: each customer on its own (A–Z), its bar showing only how its own work splits by kind (each in its type's colour), never scaled against the others. --}}
+                    @php
+                        $shownCustomers = $allCustomers ? $customers : array_slice($customers, 0, Dashboard::TOP_BRANCHES);
+                        $groupColour = fn (string $group) => $customerGroups[$group][0]->colours()['strong'];
+                    @endphp
+                    <section aria-labelledby="dashboard-customers" data-card="customers" class="{{ $card }}">
+                        <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+                            <h2 id="dashboard-customers" class="{{ $heading }}">{{ __('dashboard.customers.title') }}</h2>
+                            <span class="{{ $hint }}">{{ $periodText }}</span>
+                        </div>
+                        <p class="{{ $hint }}">{{ __('dashboard.customers.hint') }}</p>
+
+                        @if ($customers === [])
+                            <p class="rounded-lg border border-dashed border-default p-card text-body text-muted">{{ __('dashboard.customers.empty') }}</p>
+                        @else
+                            <ul class="flex flex-wrap gap-x-4 gap-y-1 text-small text-muted" aria-label="{{ __('dashboard.customers.legend') }}">
+                                @foreach (array_keys($customerGroups) as $group)
+                                    <li class="flex items-center gap-1.5">
+                                        <span @class(['size-3 shrink-0 rounded-sm', $groupColour($group)]) aria-hidden="true"></span>
+                                        {{ __('dashboard.customers.groups.'.$group) }}
+                                    </li>
+                                @endforeach
+                            </ul>
+
+                            <ul class="-mx-card flex flex-col">
+                                @foreach ($shownCustomers as $row)
+                                    <li data-customer="{{ $row['customer_id'] }}">
+                                        @if ($noCustomer)
+                                            <button type="button" wire:click="showCustomer('{{ $row['customer_id'] }}')"
+                                                class="flex min-h-control w-full flex-col gap-1.5 px-card py-2 text-start hover:bg-card-hover"
+                                                aria-label="{{ __('dashboard.customers.show', ['customer' => $row['customer']]) }}">
+                                        @else
+                                            <div class="flex min-h-control w-full flex-col gap-1.5 px-card py-2">
+                                        @endif
+                                            <span class="flex w-full items-start gap-3">
+                                                <span class="min-w-0 flex-1 truncate text-body font-semibold text-fg">{{ $row['customer'] }}</span>
+                                                <span class="shrink-0 text-body tabular">
+                                                    <span class="font-semibold text-fg">{{ trans_choice('dashboard.warehouses.items', $row['lines'], ['count' => Format::qty($row['lines'])]) }}</span>
+                                                    <span class="text-muted">· {{ trans_choice('dashboard.warehouses.documents', $row['documents'], ['count' => Format::qty($row['documents'])]) }}</span>
+                                                </span>
+                                                @if ($noCustomer)
+                                                    <x-icon name="chevron_right" class="size-5 shrink-0 self-center text-muted rtl:-scale-x-100" />
+                                                @endif
+                                            </span>
+                                            <span class="block h-3 w-full overflow-hidden rounded-full bg-card-hover" aria-hidden="true">
+                                                <span class="flex h-full w-full overflow-hidden rounded-full" data-customer-bar>
+                                                    @foreach (array_keys($customerGroups) as $group)
+                                                        @if ($row['groups'][$group] > 0)
+                                                            <span @class(['h-full', $groupColour($group)]) style="width: {{ round($row['groups'][$group] / $row['lines'] * 100, 2) }}%"
+                                                                title="{{ __('dashboard.customers.groups.'.$group) }}: {{ Format::qty($row['groups'][$group]) }}"></span>
+                                                        @endif
+                                                    @endforeach
+                                                </span>
+                                            </span>
+                                        @if ($noCustomer)
+                                            </button>
+                                        @else
+                                            </div>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+
+                            @if (count($customers) > Dashboard::TOP_BRANCHES)
+                                <button type="button" wire:click="$toggle('allCustomers')" class="flex h-control items-center gap-1 self-start rounded-lg px-1 text-body font-semibold text-link hover:underline">
+                                    {{ $allCustomers ? __('dashboard.customers.fewer') : __('dashboard.customers.see_all', ['count' => Format::qty(count($customers))]) }}
+                                </button>
+                            @endif
+
+                            <details class="min-w-0">
+                                <summary class="{{ $tableToggle }}">{{ __('dashboard.table.show') }}</summary>
+                                <div class="mt-2 min-w-0 overflow-x-auto">
+                                    <table class="w-full text-table">
+                                        <thead>
+                                            <tr class="text-small font-semibold text-muted">
+                                                <th scope="col" class="px-2 py-1 text-start">{{ __('dashboard.branches.customer') }}</th>
+                                                @foreach (array_keys($customerGroups) as $group)
+                                                    <th scope="col" class="px-2 py-1 text-end">{{ __('dashboard.customers.groups.'.$group) }}</th>
+                                                @endforeach
+                                                <th scope="col" class="px-2 py-1 text-end">{{ __('dashboard.table.lines') }}</th>
+                                                <th scope="col" class="px-2 py-1 text-end">{{ __('dashboard.table.documents') }}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-default">
+                                            @foreach ($customers as $row)
+                                                <tr>
+                                                    <th scope="row" class="px-2 py-1 text-start font-normal text-fg">{{ $row['customer'] }}</th>
+                                                    @foreach (array_keys($customerGroups) as $group)
+                                                        <td class="px-2 py-1 text-end text-fg tabular">{{ Format::qty($row['groups'][$group]) }}</td>
+                                                    @endforeach
+                                                    <td class="px-2 py-1 text-end font-semibold text-fg tabular">{{ Format::qty($row['lines']) }}</td>
+                                                    <td class="px-2 py-1 text-end text-fg tabular">{{ Format::qty($row['documents']) }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </details>
+                        @endif
                     </section>
                 </div>
 

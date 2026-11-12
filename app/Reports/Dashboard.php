@@ -2,13 +2,16 @@
 
 namespace App\Reports;
 
+use App\Models\StockDraft;
 use App\Models\StockTransaction;
 use App\Models\User;
-use App\Services\Stock\Availability;
+use App\Services\Stock\PostingService;
+use App\Support\CompanyTime;
 use App\Support\DateRange;
+use App\Support\Drafts\DraftTypes;
+use App\Support\Drafts\DraftUi;
 use App\Support\Transactions\TransactionTypes;
 use App\Support\Transactions\TypeUi;
-use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -22,9 +25,9 @@ use Illuminate\Support\Facades\DB;
  * Quantities of different items (and units) are never added together: the
  * figures are documents, lines, items or days.
  *
- * Current state (pending approvals, transfers in transit, expiry, dormant
- * stock) ignores the dates; the dates limit the work done (documents, lines,
- * damage, adjustments), by the document's own date.
+ * Current state (orders not delivered yet, expiry, dormant stock) ignores
+ * the dates where it says "Now"; the dates limit the work done, by the
+ * document's own date (deliveries: the day delivered).
  *
  * @phpstan-import-type Cell from Report
  */
@@ -33,11 +36,14 @@ final class Dashboard
     /** "Expiring soon" on the dashboard: within this many days. */
     public const EXPIRY_DAYS = 30;
 
-    /** A transfer on its way longer than this is late. */
-    public const LATE_TRANSIT_DAYS = 7;
-
     /** Rows of each short table (the report has the rest). */
     public const TOP_ROWS = 5;
+
+    /** Branches shown in "Orders by branch" before "See all". */
+    public const TOP_BRANCHES = 8;
+
+    /** Steps of an order, in order (lang dashboard.branches.stage.*). */
+    public const ORDER_STAGES = ['open', 'ready', 'on_way', 'delivered'];
 
     /**
      * @return list<Filter>
@@ -84,32 +90,6 @@ final class Dashboard
     }
 
     /**
-     * The figures at the top, keyed by tile.
-     *
-     * @param  array<string, string>  $filters
-     * @return array{
-     *     pending: array{count: int, oldest_days: int|null, type: string|null},
-     *     transit: array{count: int, late: int, oldest_days: int|null},
-     *     expiry: array{count: int, expired: int},
-     *     damage: array{lines: int},
-     *     adjustments: array{lines: int},
-     * }
-     */
-    public function tiles(array $filters, User $user): array
-    {
-        return [
-            'pending' => $this->pending($filters, $user),
-            'transit' => $this->transit($filters, $user),
-            'expiry' => [
-                'count' => $this->reportCount('expiry', $filters, $user),
-                'expired' => Reports::get('expiry')->count($this->reportFilters('expiry', $filters, $user, 'expired'), $user),
-            ],
-            'damage' => ['lines' => $this->reportCount('damage', $filters, $user)],
-            'adjustments' => ['lines' => $this->reportCount('adjustments', $filters, $user)],
-        ];
-    }
-
-    /**
      * Rows of report $key with the dashboard's filters: how many, the first
      * few, and the report's "days" filter (expiring within / not moved for).
      *
@@ -126,69 +106,6 @@ final class Dashboard
             'rows' => $report->top($reportFilters, $user, self::TOP_ROWS),
             'days' => (int) ($reportFilters['days'] ?? 0),
         ];
-    }
-
-    /**
-     * Completed documents per type over the period, in steps of a day, a month
-     * or a year (whichever keeps the chart readable). Without dates: from the
-     * first document to today.
-     *
-     * @param  array<string, string>  $filters
-     * @return array{step: string, buckets: list<string>, series: array<string, array{type: TypeUi, total: int, counts: array<string, int>}>}
-     */
-    public function activity(array $filters, User $user): array
-    {
-        $types = $this->types();
-        $documents = $this->completed($filters, $user);
-        $dates = $this->dates($filters);
-
-        $first = $dates->from !== '' ? $dates->from : (clone $documents)->min('stock_transaction.document_date');
-        $last = $dates->to !== '' ? $dates->to : max($this->today($user)->toDateString(), (string) (clone $documents)->max('stock_transaction.document_date'));
-
-        $series = $types->map(fn (TypeUi $type) => ['type' => $type, 'total' => 0, 'counts' => []])->all();
-
-        if ($first === null || $dates->invalid()) {
-            return ['step' => 'day', 'buckets' => [], 'series' => $series];
-        }
-
-        $start = CarbonImmutable::parse($first);
-        $end = CarbonImmutable::parse($last);
-        $step = match (true) {
-            $start->diffInDays($end) < 31 => 'day',
-            $start->diffInMonths($end) < 24 => 'month',
-            default => 'year',
-        };
-
-        $buckets = [];
-        $bucket = match ($step) {
-            'day' => $start,
-            'month' => $start->startOfMonth(),
-            default => $start->startOfYear(),
-        };
-
-        while ($bucket <= $end) {
-            $buckets[] = $bucket->toDateString();
-            $bucket = match ($step) {
-                'day' => $bucket->addDay(),
-                'month' => $bucket->addMonthNoOverflow(),
-                default => $bucket->addYear(),
-            };
-        }
-
-        $counts = $documents
-            ->selectRaw("date_trunc('{$step}', stock_transaction.document_date)::date as bucket, stock_transaction.transaction_type, count(*) as documents")
-            ->groupByRaw('1, 2')
-            ->toBase()
-            ->get();
-
-        foreach ($counts as $row) {
-            if (isset($series[$row->transaction_type])) {
-                $series[$row->transaction_type]['counts'][$row->bucket] = (int) $row->documents;
-                $series[$row->transaction_type]['total'] += (int) $row->documents;
-            }
-        }
-
-        return ['step' => $step, 'buckets' => $buckets, 'series' => $series];
     }
 
     /**
@@ -225,58 +142,206 @@ final class Dashboard
     }
 
     /**
-     * Documents waiting for approval (anyone's), and how long the oldest has waited.
+     * Orders per customer branch over the period (by the order's date), split
+     * by how far each has got: open (not confirmed), ready to dispatch, on the
+     * way, delivered. Cancelled orders (or whose delivery notes were all
+     * cancelled) are left out. Late: not delivered, delivery date before today.
+     * Grouped by customer (A–Z), busiest branch first within each. Only
+     * branches the user may see (DraftScope).
      *
      * @param  array<string, string>  $filters
-     * @return array{count: int, oldest_days: int|null, type: string|null}
+     * @return list<array{branch_id: string, customer_id: string, branch: string, customer: string, stages: array<string, int>, total: int, late: int}>
      */
-    private function pending(array $filters, User $user): array
+    public function ordersByBranch(array $filters, User $user): array
     {
-        $oldest = $this->documents($filters, $user)
-            ->where('status', 'PENDING_APPROVAL')
-            ->orderBy('created_at')
+        $kind = self::ordersKind();
+
+        if ($kind === null || $this->dates($filters)->invalid()) {
+            return [];
+        }
+
+        // Each order's delivery notes (older orders may have several): which steps they are at.
+        $notes = DB::table('stock_transaction')
+            ->whereNotNull('draft_id')
+            ->groupBy('draft_id')
+            ->selectRaw("draft_id, bool_or(status = 'CONFIRMED') as ready, bool_or(status = 'DISPATCHED') as on_way, bool_or(status = 'POSTED') as delivered");
+
+        // An order with several notes counts at its least advanced one.
+        $stage = "CASE WHEN stock_draft.status = 'DRAFT' THEN 'open' WHEN stock_draft.status = 'POSTED' THEN "
+            ."CASE WHEN notes.ready THEN 'ready' WHEN notes.on_way THEN 'on_way' WHEN notes.delivered THEN 'delivered' END END";
+
+        $selects = collect(self::ORDER_STAGES)->map(fn (string $name) => "count(*) FILTER (WHERE {$stage} = '{$name}') as {$name}")->implode(', ');
+
+        $rows = StockDraft::query()
+            ->leftJoinSub($notes, 'notes', 'notes.draft_id', '=', 'stock_draft.id')
+            ->join('customer_branch as branch', 'branch.id', '=', 'stock_draft.customer_branch_id')
+            ->join('customer', 'customer.id', '=', 'stock_draft.customer_id')
+            ->where('stock_draft.transaction_type', $kind->code)
+            ->whereIn('stock_draft.warehouse_id', $this->warehouseIds($filters, $user))
+            ->when($filters['customer'] !== '', fn ($query) => $query->where('stock_draft.customer_id', $filters['customer']))
+            ->tap(fn ($query) => $this->dates($filters)->whereDay($query, 'stock_draft.document_date'))
+            ->whereRaw("({$stage}) IS NOT NULL")
+            ->groupBy('branch.id', 'branch.name', 'customer.id', 'customer.name')
+            ->selectRaw("branch.id as branch_id, branch.name as branch_name, customer.id as customer_id, customer.name as customer_name, {$selects}, "
+                ."count(*) FILTER (WHERE ({$stage}) <> 'delivered' AND stock_draft.delivery_date < ?) as late", [CompanyTime::today()->toDateString()])
             ->toBase()
-            ->first(['transaction_type', 'created_at']);
+            ->get();
 
-        return [
-            'count' => $this->documents($filters, $user)->where('status', 'PENDING_APPROVAL')->count(),
-            'oldest_days' => $oldest ? $this->daysSince($oldest->created_at) : null,
-            'type' => $oldest?->transaction_type,
-        ];
+        return $rows
+            ->map(function ($row) {
+                $stages = collect(self::ORDER_STAGES)->mapWithKeys(fn (string $name) => [$name => (int) $row->{$name}])->all();
+
+                return [
+                    'branch_id' => (string) $row->branch_id,
+                    'customer_id' => (string) $row->customer_id,
+                    'branch' => (string) $row->branch_name,
+                    'customer' => (string) $row->customer_name,
+                    'stages' => $stages,
+                    'total' => array_sum($stages),
+                    'late' => (int) $row->late,
+                ];
+            })
+            // Each customer on its own (A–Z), its branches busiest first: branches of different customers are never ranked together.
+            ->sort(fn (array $a, array $b) => [$a['customer'], $a['customer_id'], $b['total'], $a['branch']] <=> [$b['customer'], $b['customer_id'], $a['total'], $b['branch']])
+            ->values()
+            ->all();
     }
 
     /**
-     * Transfers dispatched and not received yet, from or to the warehouses.
+     * Delivery note lines delivered short per customer branch, by reason, over
+     * the period (by the day delivered, as the Delivery discrepancies report
+     * counts them), and the share of the branch's delivered lines that were
+     * short. Branches with nothing short are left out. Grouped by customer
+     * (A–Z), most short first within each.
      *
      * @param  array<string, string>  $filters
-     * @return array{count: int, late: int, oldest_days: int|null}
+     * @return list<array{branch_id: string, customer_id: string, branch: string, customer: string, reasons: array<string, int>, short: int, delivered: int, rate: int}>
      */
-    private function transit(array $filters, User $user): array
+    public function discrepanciesByBranch(array $filters, User $user): array
     {
-        $codes = $this->types()->filter(fn (TypeUi $type) => $type->dispatchReceive())->keys()->all();
-        $warehouses = $this->warehouseIds($filters, $user);
+        if ($this->dates($filters)->invalid()) {
+            return [];
+        }
 
-        $query = fn () => StockTransaction::query()
-            ->whereIn('transaction_type', $codes)
-            ->where('status', 'DISPATCHED')
-            ->where(fn ($query) => $query->whereIn('warehouse_id', $warehouses)->orWhereIn('to_warehouse_id', $warehouses))
-            ->when($filters['customer'] !== '', fn ($query) => $query->where('customer_id', $filters['customer']));
+        $selects = collect(PostingService::DELIVERY_REASONS)
+            ->map(fn (string $reason, int $i) => "count(*) FILTER (WHERE l.shortage_reason = '{$reason}') as reason_{$i}")
+            ->implode(', ');
 
-        $oldest = $query()->min('dispatched_at');
+        $rows = StockTransaction::query()
+            ->join('stock_transaction_line as l', 'l.transaction_id', '=', 'stock_transaction.id')
+            ->join('customer_branch as branch', 'branch.id', '=', 'stock_transaction.customer_branch_id')
+            ->join('customer', 'customer.id', '=', 'stock_transaction.customer_id')
+            ->where('stock_transaction.transaction_type', 'OUT')
+            ->where('stock_transaction.status', 'POSTED')
+            ->whereIn('stock_transaction.warehouse_id', $this->warehouseIds($filters, $user))
+            ->when($filters['customer'] !== '', fn ($query) => $query->where('stock_transaction.customer_id', $filters['customer']))
+            ->when($user->branchIds() !== [], fn ($query) => $query->whereIn('stock_transaction.customer_branch_id', $user->branchIds()))
+            ->tap(fn ($query) => $this->dates($filters)->whereInstant($query, 'stock_transaction.delivered_at', CompanyTime::zone()))
+            ->groupBy('branch.id', 'branch.name', 'customer.id', 'customer.name')
+            ->havingRaw('count(l.shortage_reason) > 0')
+            ->selectRaw('branch.id as branch_id, branch.name as branch_name, customer.id as customer_id, customer.name as customer_name, '
+                ."{$selects}, count(*) FILTER (WHERE l.replaces_line_id IS NULL) as delivered")
+            ->toBase()
+            ->get();
 
-        return [
-            'count' => $query()->count(),
-            'late' => $query()->where('dispatched_at', '<', now()->subDays(self::LATE_TRANSIT_DAYS))->count(),
-            'oldest_days' => $oldest !== null ? $this->daysSince($oldest) : null,
-        ];
+        return $rows
+            ->map(function ($row) {
+                $reasons = [];
+                foreach (PostingService::DELIVERY_REASONS as $i => $reason) {
+                    $reasons[$reason] = (int) $row->{'reason_'.$i};
+                }
+                $short = array_sum($reasons);
+                $delivered = (int) $row->delivered;
+
+                return [
+                    'branch_id' => (string) $row->branch_id,
+                    'customer_id' => (string) $row->customer_id,
+                    'branch' => (string) $row->branch_name,
+                    'customer' => (string) $row->customer_name,
+                    'reasons' => $reasons,
+                    'short' => $short,
+                    'delivered' => $delivered,
+                    'rate' => $delivered > 0 ? (int) round($short / $delivered * 100) : 0,
+                ];
+            })
+            // Each customer on its own (A–Z), its branches with the most short first.
+            ->sort(fn (array $a, array $b) => [$a['customer'], $a['customer_id'], $b['short'], $a['branch']] <=> [$b['customer'], $b['customer_id'], $a['short'], $b['branch']])
+            ->values()
+            ->all();
     }
 
     /**
-     * @param  array<string, string>  $filters
+     * The kind of draft that is an order (it has a delivery date), if any.
      */
-    private function reportCount(string $key, array $filters, User $user): int
+    public static function ordersKind(): ?DraftUi
     {
-        return Reports::get($key)->count($this->reportFilters($key, $filters, $user), $user);
+        return collect(DraftTypes::all())->first(fn (DraftUi $kind) => $kind->hasDelivery());
+    }
+
+    /**
+     * Lines of completed documents per customer over the period, counted as
+     * byWarehouse() counts them, split by kind of work (typeGroups()). Each
+     * customer stands on its own: listed A–Z, never ranked against the others
+     * or shown as a share of their work.
+     *
+     * @param  array<string, string>  $filters
+     * @return list<array{customer_id: string, customer: string, groups: array<string, int>, lines: int, documents: int}>
+     */
+    public function byCustomer(array $filters, User $user): array
+    {
+        if ($this->dates($filters)->invalid()) {
+            return [];
+        }
+
+        $groups = $this->typeGroups();
+        $query = $this->completed($filters, $user)
+            ->join('stock_transaction_line as l', 'l.transaction_id', '=', 'stock_transaction.id')
+            ->join('customer', 'customer.id', '=', 'stock_transaction.customer_id')
+            ->groupBy('customer.id', 'customer.name')
+            ->orderBy('customer.name')
+            ->orderBy('customer.id')
+            ->selectRaw('customer.id as customer_id, customer.name as customer_name, count(*) as lines, count(distinct stock_transaction.id) as documents');
+
+        foreach ($groups as $group => $types) {
+            $codes = array_map(fn (TypeUi $type) => $type->code, $types);
+            $marks = implode(', ', array_fill(0, count($codes), '?'));
+            $query->selectRaw("count(*) FILTER (WHERE stock_transaction.transaction_type IN ({$marks})) as group_{$group}", $codes);
+        }
+
+        return $query->toBase()->get()
+            ->map(fn ($row) => [
+                'customer_id' => (string) $row->customer_id,
+                'customer' => (string) $row->customer_name,
+                'groups' => collect($groups)->map(fn ($types, string $group) => (int) $row->{'group_'.$group})->all(),
+                'lines' => (int) $row->lines,
+                'documents' => (int) $row->documents,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Kinds of work, from each type's own data (never its code): transfers
+     * (dispatch then receive), stock in, stock out, counts (direction decided
+     * per line). Each with its types in sidebar order; empty kinds left out.
+     *
+     * @return array<string, non-empty-list<TypeUi>>
+     */
+    public function typeGroups(): array
+    {
+        $groups = ['in' => [], 'out' => [], 'transfers' => [], 'counts' => []];
+
+        foreach ($this->types() as $type) {
+            $group = match (true) {
+                $type->dispatchReceive() => 'transfers',
+                $type->postingDirection() === 'IN' => 'in',
+                $type->postingDirection() === 'OUT' => 'out',
+                default => 'counts',
+            };
+            $groups[$group][] = $type;
+        }
+
+        return array_filter($groups);
     }
 
     /**
@@ -325,20 +390,5 @@ final class Dashboard
     private function warehouseIds(array $filters, User $user): array
     {
         return ($filters['warehouse'] ?? 'all') === 'all' ? $user->warehouseIds() : [$filters['warehouse']];
-    }
-
-    private function daysSince(mixed $instant): int
-    {
-        return (int) CarbonImmutable::parse($instant)->diffInDays(now());
-    }
-
-    /**
-     * Today in the user's default warehouse (its time zone).
-     */
-    private function today(User $user): CarbonImmutable
-    {
-        $warehouse = $user->defaultWarehouseId();
-
-        return $warehouse !== null ? app(Availability::class)->today($warehouse) : CarbonImmutable::today();
     }
 }

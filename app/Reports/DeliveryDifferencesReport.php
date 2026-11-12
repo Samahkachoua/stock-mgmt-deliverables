@@ -37,6 +37,7 @@ final class DeliveryDifferencesReport extends Report
             Filter::select('reason', 'reports.filters.reason', $reasons),
             Filter::warehouse(),
             Filter::customer(),
+            Filter::branch(),
         ];
     }
 
@@ -47,6 +48,7 @@ final class DeliveryDifferencesReport extends Report
             'reference' => ['label' => 'reports.columns.reference', 'card' => 'title'],
             'order' => ['label' => 'deliveries.differences.columns.order', 'priority' => 2],
             'customer' => ['label' => 'reports.columns.customer', 'priority' => 2],
+            'branch' => ['label' => 'reports.columns.branch', 'priority' => 2],
             'item' => ['label' => 'reports.columns.item'],
             'code' => ['label' => 'reports.columns.code', 'priority' => 2, 'card' => 'hide'],
             'ordered' => ['label' => 'deliveries.differences.columns.ordered', 'align' => 'end'],
@@ -65,6 +67,7 @@ final class DeliveryDifferencesReport extends Report
         return StockTransaction::query()
             ->join('stock_transaction_line as l', 'l.transaction_id', '=', 'stock_transaction.id')
             ->join('customer as c', 'c.id', '=', 'stock_transaction.customer_id')
+            ->leftJoin('customer_branch as b', 'b.id', '=', 'stock_transaction.customer_branch_id')
             ->leftJoin('stock_draft as d', 'd.id', '=', 'stock_transaction.draft_id')
             ->leftJoin('app_user as u', 'u.id', '=', 'stock_transaction.delivered_by')
             // The item delivered instead, if any (a line pointing at this one).
@@ -77,11 +80,14 @@ final class DeliveryDifferencesReport extends Report
             ->tap(fn ($query) => $this->dates($filters)->whereInstant($query, 'stock_transaction.delivered_at', $timezone))
             ->when($filters['reason'] !== '', fn ($query) => $query->where('l.shortage_reason', $filters['reason']))
             ->when($filters['customer'] !== '', fn ($query) => $query->where('stock_transaction.customer_id', $filters['customer']))
+            ->when($filters['branch'] !== '', fn ($query) => $query->where('stock_transaction.customer_branch_id', $filters['branch']))
+            // A customer user linked to branches: only theirs.
+            ->when($user->branchIds() !== [], fn ($query) => $query->whereIn('stock_transaction.customer_branch_id', $user->branchIds()))
             ->select([
                 'stock_transaction.doc_no', 'stock_transaction.delivered_at',
                 'l.product_id', 'l.qty_base', 'l.qty_received', 'l.shortage_reason',
                 'i.product_id as instead_product_id', 'i.qty_base as instead_qty',
-                'd.doc_no as order_reference', 'c.name as customer_name', 'u.full_name as delivered_by_name',
+                'd.doc_no as order_reference', 'c.name as customer_name', 'b.name as branch_name', 'u.full_name as delivered_by_name',
             ])
             ->orderByDesc('stock_transaction.delivered_at')
             ->orderBy('l.line_no');
@@ -98,6 +104,7 @@ final class DeliveryDifferencesReport extends Report
             'reference' => $this->referenceCell($row->doc_no),
             'order' => ['text' => (string) $row->order_reference, 'ltr' => true],
             'customer' => (string) $row->customer_name,
+            'branch' => (string) $row->branch_name,
             'item' => ['text' => $product->name(), 'strong' => true],
             'code' => ['text' => $product->sku, 'ltr' => true],
             'ordered' => $this->qtyCell($row->qty_base, $row->product_id),

@@ -9,7 +9,6 @@ use App\Reports\Dashboard as Figures;
 use App\Reports\Reports;
 use App\Support\ListState;
 use App\Support\Notify;
-use App\Support\Transactions\TransactionTypes;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -19,7 +18,7 @@ use Livewire\WithoutUrlPagination;
 use Livewire\WithPagination;
 
 /**
- * The owner dashboard (dashboard.view): figures, two charts and two short
+ * The owner dashboard (dashboard.view): figures, orders by branch, workload by warehouse and two short
  * tables (App\Reports\Dashboard). Filters are kept in the session like a
  * list's (CLAUDE.md "List state"); a figure opens its report or list through
  * open(), which hands the same filters over in the session, never the URL.
@@ -32,6 +31,15 @@ class Dashboard extends Component
 
     /** @var array<string, string> filter name => value (normalized) */
     public array $filters = [];
+
+    /** "Orders by branch" shows every branch, not only the busiest. */
+    public bool $allBranches = false;
+
+    /** "Delivery discrepancies by branch" shows every branch, not only the most. */
+    public bool $allDiscrepancies = false;
+
+    /** "Workload by customer" shows every customer, not only the busiest. */
+    public bool $allCustomers = false;
 
     public function mount(): void
     {
@@ -48,6 +56,22 @@ class Dashboard extends Component
         }
     }
 
+    /**
+     * A customer of "Workload by customer": the whole dashboard narrows to it
+     * (one the card shows for this user's warehouses and dates).
+     */
+    public function showCustomer(string $customer): void
+    {
+        Gate::authorize('dashboard.view');
+        $user = $this->user();
+        $filters = $this->figures()->normalize($this->filters, $user);
+
+        $known = collect($this->figures()->byCustomer(['customer' => ''] + $filters, $user))->contains('customer_id', $customer);
+        abort_unless($known, 404);
+
+        $this->filters = $this->figures()->normalize(['customer' => $customer] + $filters, $user);
+    }
+
     public function resetFilters(): void
     {
         $this->clearListState();
@@ -56,30 +80,32 @@ class Dashboard extends Component
 
     /**
      * Opens what a figure counts: a report with the dashboard's filters, or
-     * (pending approvals) the list of the type that has waited longest.
+     * (a branch of "Orders by branch") the Orders list on that branch.
      */
-    public function open(string $target): void
+    public function open(string $target, string $branch = ''): void
     {
         Gate::authorize('dashboard.view');
         $user = $this->user();
         $filters = $this->figures()->normalize($this->filters, $user);
 
-        if ($target === 'pending') {
-            $code = $this->figures()->tiles($filters, $user)['pending']['type'];
-            $type = $code !== null ? TransactionTypes::get($code) : null;
-            abort_unless($type !== null && Gate::allows($type->viewGate()), 403);
-
-            ListState::put($type->slug(), ['status' => 'PENDING_APPROVAL', 'warehouse' => $filters['warehouse'], 'customer' => $filters['customer']]);
-            $this->redirect($type->route(), navigate: true);
+        if ($target === 'orders') {
+            $this->openOrders($filters, $user, $branch);
 
             return;
         }
 
-        $status = $target === 'expired' ? 'expired' : 'all';
-        $report = Reports::get($target === 'expired' ? 'expiry' : $target);
+        $report = Reports::get($target);
         Gate::authorize($report->permission());
 
-        ListState::put('reports.'.$report->key(), ['filters' => $this->figures()->reportFilters($report->key(), $filters, $user, $status)]);
+        // A branch of "Delivery discrepancies by branch": one the dashboard
+        // counts for this user; its customer comes from there, not the browser.
+        if ($branch !== '' && $report->key() === 'delivery-differences') {
+            $row = collect($this->figures()->discrepanciesByBranch($filters, $user))->firstWhere('branch_id', $branch);
+            abort_if($row === null, 404);
+            $filters = ['customer' => $row['customer_id'], 'branch' => $row['branch_id']] + $filters;
+        }
+
+        ListState::put('reports.'.$report->key(), ['filters' => $this->figures()->reportFilters($report->key(), $filters, $user)]);
         $this->redirect(route('reports.show', $report->key()), navigate: true);
     }
 
@@ -89,8 +115,7 @@ class Dashboard extends Component
         $user = $this->user();
         $dateError = $figures->dates($this->filters)->invalid();
         $loaded = $this->rowsLoaded;
-        $tiles = $loaded ? $figures->tiles($this->filters, $user) : null;
-        $pendingType = $tiles['pending']['type'] ?? null;
+        $canReport = collect(Reports::all())->map(fn ($report) => Gate::allows($report->permission()))->all();
 
         return view('livewire.dashboard', [
             'definitions' => $figures->filters(),
@@ -98,15 +123,19 @@ class Dashboard extends Component
             'defaults' => $figures->normalize([], $user),
             'dateError' => $dateError,
             'period' => $figures->dates($this->filters),
-            'tiles' => $tiles,
-            // Pending approvals open the list of the type that has waited longest.
-            'pendingOpens' => $pendingType !== null && Gate::allows(TransactionTypes::get($pendingType)->viewGate()),
-            'activity' => $loaded ? $figures->activity($this->filters, $user) : null,
+            'loaded' => $loaded,
+            // Orders by branch: only for users who may open the Orders list it links to.
+            'branches' => $loaded && $this->canOpenOrders() ? $figures->ordersByBranch($this->filters, $user) : null,
+            'ordersKind' => Figures::ordersKind(),
+            // Discrepancies by branch: only for users who may open the report it links to.
+            'discrepancies' => $loaded && ($canReport['delivery-differences'] ?? false) ? $figures->discrepanciesByBranch($this->filters, $user) : null,
             'warehouses' => $loaded ? $figures->byWarehouse($this->filters, $user) : [],
+            'customers' => $loaded ? $figures->byCustomer($this->filters, $user) : null,
+            'customerGroups' => $figures->typeGroups(),
             'expiring' => $loaded ? $figures->table('expiry', $this->filters, $user) : null,
             'dormant' => $loaded ? $figures->table('dormant-stock', $this->filters, $user) : null,
             // Figures that open a report only link for users who may open that report (key => bool).
-            'canReport' => collect(Reports::all())->map(fn ($report) => Gate::allows($report->permission()))->all(),
+            'canReport' => $canReport,
         ])->title(__('dashboard.title'));
     }
 
@@ -123,6 +152,40 @@ class Dashboard extends Component
     protected function restoredListState(): void
     {
         $this->filters = $this->figures()->normalize($this->filters, $this->user());
+    }
+
+    /**
+     * Opens the Orders list on one branch (and the dashboard's dates). The
+     * branch must be one the dashboard counts for this user; its customer
+     * comes from there, not from the browser.
+     *
+     * @param  array<string, string>  $filters
+     */
+    private function openOrders(array $filters, User $user, string $branch): void
+    {
+        $kind = Figures::ordersKind();
+        abort_unless($kind !== null && $this->canOpenOrders(), 403);
+
+        $row = collect($this->figures()->ordersByBranch($filters, $user))->firstWhere('branch_id', $branch);
+        abort_if($row === null, 404);
+
+        $dates = $this->figures()->dates($filters);
+        ListState::put($kind->slug(), [
+            'search' => '',
+            'customer' => $row['customer_id'],
+            'branch' => $row['branch_id'],
+            'dateFrom' => $dates->from,
+            'dateTo' => $dates->to,
+            'status' => '',
+        ]);
+        $this->redirect($kind->route(), navigate: true);
+    }
+
+    private function canOpenOrders(): bool
+    {
+        $kind = Figures::ordersKind();
+
+        return $kind !== null && Gate::allows('drafts.'.strtolower($kind->code).'.open');
     }
 
     private function figures(): Figures

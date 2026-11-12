@@ -14,30 +14,39 @@ return [
     'now' => 'Now',
     'loading' => 'Loading figures…',
 
-    'tiles' => [
-        'heading' => 'Key figures',
-        'pending' => 'Waiting for approval',
-        'pending_oldest' => '{1} Oldest waiting :count day|[0,*] Oldest waiting :count days',
-        'pending_none' => 'Nothing waiting',
-        'transit' => 'Transfers on the way',
-        'transit_late' => '{0} None over :days days|{1} :count over :days days|[2,*] :count over :days days',
-        'expiry' => 'Expired or expiring within :days days',
-        'expired' => '{0} None expired yet|[1,*] :count already expired',
-        'damage' => 'Damage lines',
-        'adjustments' => 'Adjustment lines',
-        'open' => 'Open: :what',
+
+    'branches' => [
+        'title' => 'Orders by branch',
+        'hint' => 'Orders of each branch, customer by customer, and how far they have got. Open a branch to see its orders.',
+        'legend' => 'Stages',
+        'stage' => [
+            'open' => 'Open',
+            'ready' => 'Ready to dispatch',
+            'on_way' => 'On the way',
+            'delivered' => 'Delivered',
+        ],
+        'orders' => '{1} :count order|[0,*] :count orders',
+        'late' => '{1} :count late|[0,*] :count late',
+        'open' => 'Open the orders of :branch (:customer)',
+        'see_all' => 'See all branches (:count)',
+        'fewer' => 'Show the busiest only',
+        'branch' => 'Branch',
+        'customer' => 'Customer',
+        'total' => 'Total',
+        'late_column' => 'Late',
+        'empty' => 'No orders in this period. Change the dates, the warehouse or the customer to see more.',
     ],
 
-    'activity' => [
-        'title' => 'Activity by type',
-        'hint' => 'Receipts, delivery notes, transfers… done over time.',
-        'step' => [
-            'day' => 'Per day',
-            'month' => 'Per month',
-            'year' => 'Per year',
-        ],
-        'bar' => ':period: :count',
-        'empty' => 'No activity in this period. Change the dates or the warehouse to see more.',
+    'discrepancies' => [
+        'title' => 'Delivery discrepancies by branch',
+        'hint' => 'Delivered lines where the branch got less than it ordered, or another item, by reason. Open a branch to see the lines.',
+        'legend' => 'Reasons',
+        'short' => '{1} :count short line|[0,*] :count short lines',
+        'rate' => ':rate% of delivered lines',
+        'open' => 'Open the delivery discrepancies of :branch (:customer)',
+        'short_column' => 'Short',
+        'delivered_column' => 'Delivered lines',
+        'empty' => 'No delivery discrepancies in this period: every branch got what it ordered.',
     ],
 
     'warehouses' => [
@@ -45,6 +54,22 @@ return [
         'hint' => 'Items handled in each warehouse. A transfer counts where it was sent from.',
         'items' => '{1} :count item|[0,*] :count items',
         'documents' => '{1} :count operation|[0,*] :count operations',
+    ],
+
+    'customers' => [
+        'title' => 'Workload by customer',
+        'hint' => 'Items handled for each customer, and what kind of work they were. Choose a customer to see only theirs on the dashboard.',
+        'legend' => 'Kind of work',
+        'groups' => [
+            'in' => 'In',
+            'out' => 'Out',
+            'transfers' => 'Transfers',
+            'counts' => 'Counts',
+        ],
+        'fewer' => 'Show fewer',
+        'show' => 'Show only :customer on the dashboard',
+        'see_all' => 'See all customers (:count)',
+        'empty' => 'No work done in this period. Change the dates or the warehouse to see more.',
     ],
 
     'table' => [
