@@ -17,5 +17,20 @@ return [
     'recent' => [
         'title' => 'Pick up where you left off',
         'empty' => 'Operations you create or work on will appear here.',
+        // Under the number: whose operation it is and what the user did to it last.
+        'line' => ':customer · :event',
+        'events' => [
+            'created' => 'You created it',
+            'edited' => 'You edited it',
+            'sent_for_approval' => 'You sent it for approval',
+            'approved' => 'You approved it',
+            'rejected' => 'You rejected it',
+            'posted' => 'You completed it',
+            'confirmed' => 'You confirmed it',
+            'dispatched' => 'You dispatched it',
+            'received' => 'You received it',
+            'delivered' => 'You delivered it',
+            'cancelled' => 'You cancelled it',
+        ],
     ],
 ];

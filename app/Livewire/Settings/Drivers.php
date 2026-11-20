@@ -171,7 +171,7 @@ class Drivers extends MasterDataPage
      */
     protected function paginateRows(Builder $query): LengthAwarePaginator
     {
-        return $query->orderBy('name')->orderBy('id')->paginate(self::PER_PAGE);
+        return $query->orderBy('name')->orderBy('id')->paginate($this->perPage());
     }
 
     /**

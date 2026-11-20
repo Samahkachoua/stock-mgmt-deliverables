@@ -1,4 +1,5 @@
 {{-- Emails are always light (like printouts and exports); mail clients ignore the app's CSS variables. --}}
+@php($c = \App\Support\Palette::light())
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
 <head>
@@ -6,8 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $draft['subject'] }}</title>
 </head>
-<body style="margin:0;padding:24px 16px;background:#f7f9fb;color:#1f2933;font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:15px;line-height:1.5;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5e9ef;border-radius:12px;">
+<body style="margin:0;padding:24px 16px;background:{{ $c["surface"] }};color:{{ $c["fg"] }};font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:15px;line-height:1.5;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:{{ $c["card"] }};border:1px solid {{ $c["border"] }};border-radius:12px;">
         <tr>
             <td style="padding:24px;text-align:start;">
                 {{-- Embedded when sent (shows without loading remote images); a plain URL when only rendered. --}}
@@ -30,16 +31,16 @@
                     ] as $label => $value)
                         @if (filled($value))
                             <tr>
-                                <td style="padding:6px 0;border-top:1px solid #e5e7eb;color:#4b5563;width:40%;vertical-align:top;text-align:start;">{{ $label }}</td>
-                                <td style="padding:6px 0;border-top:1px solid #e5e7eb;font-weight:600;text-align:start;">{{ $value }}</td>
+                                <td style="padding:6px 0;border-top:1px solid {{ $c["border"] }};color:{{ $c["muted"] }};width:40%;vertical-align:top;text-align:start;">{{ $label }}</td>
+                                <td style="padding:6px 0;border-top:1px solid {{ $c["border"] }};font-weight:600;text-align:start;">{{ $value }}</td>
                             </tr>
                         @endif
                     @endforeach
                 </table>
 
-                <a href="{{ $draft['url'] }}" style="display:inline-block;padding:10px 20px;background:#0074b5;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;">{{ $draft['open'] }}</a>
+                <a href="{{ $draft['url'] }}" style="display:inline-block;padding:10px 20px;background:{{ $c["brand"] }};color:{{ $c["on-brand"] }};text-decoration:none;border-radius:8px;font-weight:600;">{{ $draft['open'] }}</a>
 
-                <p style="margin:20px 0 0;color:#4b5563;font-size:13px;">{{ $draft['why'] }}</p>
+                <p style="margin:20px 0 0;color:{{ $c["muted"] }};font-size:13px;">{{ $draft['why'] }}</p>
             </td>
         </tr>
     </table>

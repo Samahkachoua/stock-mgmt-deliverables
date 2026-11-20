@@ -58,7 +58,7 @@
     role="region"
     aria-label="{{ __('feedback.region') }}"
     data-toasts
-    class="pointer-events-none fixed inset-x-0 top-0 z-[60] flex flex-col gap-2 p-3 md:inset-x-auto md:end-4 md:top-4 md:w-96 md:gap-3 md:p-0 print:hidden"
+    class="pointer-events-none fixed inset-x-0 top-0 z-60 flex flex-col gap-2 p-3 md:inset-x-auto md:end-4 md:top-4 md:w-96 md:gap-3 md:p-0 print:hidden"
 >
     <template x-for="toast in items" x-bind:key="toast.id">
         <div

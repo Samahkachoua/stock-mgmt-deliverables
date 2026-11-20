@@ -11,6 +11,7 @@ use App\Services\Stock\DraftInput;
 use App\Services\Stock\DraftLineInput;
 use App\Services\Stock\DraftService;
 use Carbon\CarbonImmutable;
+use Facebook\WebDriver\Chrome\ChromeDevToolsDriver;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -211,13 +212,133 @@ class ResponsiveTest extends DuskTestCase
         $this->browse(function (Browser $browser) {
             $browser->logout();
 
-            foreach (array_keys(self::SIZES) as $size) {
-                $this->viewport($browser, $size)->visit('/login')->waitFor('form');
-                $result = $this->sideways($browser);
+            foreach (['en' => 'light', 'ar' => 'dark'] as $language => $theme) {
+                $browser->visit('/login')->waitFor('main form');
+                if ($browser->script('return document.documentElement.lang')[0] !== $language) {
+                    $browser->waitUntil('window.Alpine && document.querySelector("[data-language-toggle]").closest("[x-data]")._x_dataStack')->click('[data-language-toggle]')->waitFor("button[lang=\"$language\"]")->click("button[lang=\"$language\"]")->waitUntil("document.documentElement.lang === '$language'");
+                }
 
-                $this->assertLessThanOrEqual(1, $result['overflow'], "Login at $size");
-                $this->assertSame([], $result['culprits'], "Login at $size");
+                foreach (array_keys(self::SIZES) as $size) {
+                    $this->viewport($browser, $size)->visit('/login')->waitFor('main form');
+                    if ($browser->script("return document.documentElement.classList.contains('dark')")[0] !== ($theme === 'dark')) {
+                        $browser->script("document.querySelector('[data-theme-toggle]').click()");
+                        $browser->pause(300);
+                    }
+                    $result = $this->sideways($browser);
+
+                    $this->assertLessThanOrEqual(1, $result['overflow'], "Login at $size ($language)");
+                    $this->assertSame([], $result['culprits'], "Login at $size ($language)");
+
+                    // The photo loads (WebP, not a 404): beside the form on desktop (end side), above it
+                    // on a tablet, hidden on a phone; the form is fully on screen.
+                    [$photo] = $browser->script(<<<'JS'
+                        const img = document.querySelector('.auth-photo');
+                        const photo = document.querySelector('.auth-panel').getBoundingClientRect();
+                        const box = img.getBoundingClientRect();
+                        // The whole photo at its own ratio (never cropped).
+                        const fit = photo.width === 0 ? 'hidden'
+                            : Math.abs(box.width / box.height - img.naturalWidth / img.naturalHeight) < 0.02 ? 'whole'
+                            : Math.abs(box.width - photo.width) <= 1 && Math.abs(box.height - photo.height) <= 1 ? 'fills' : 'other';
+                        const form = document.querySelector('main > div').getBoundingClientRect();
+                        const rtl = document.dir === 'rtl';
+                        const layout = photo.width === 0 ? 'hidden'
+                            : photo.bottom <= form.top ? 'above'
+                            : (rtl ? photo.right <= form.left : photo.left >= form.right) ? 'beside' : 'overlapping';
+                        return img.decode().then(
+                            () => ({ loaded: img.currentSrc.endsWith('.webp'), layout, fit, filter: getComputedStyle(img).filter, formInView: form.left >= 0 && form.right <= innerWidth }),
+                            () => ({ loaded: false, layout }),
+                        );
+                    JS);
+                    [$layout, $fit] = ['phone' => ['hidden', 'hidden'], 'tablet' => ['above', 'whole'], 'desktop' => ['beside', 'whole']][$size];
+                    $this->assertEquals(['loaded' => true, 'layout' => $layout, 'fit' => $fit, 'filter' => 'none', 'formInView' => true], $photo, "Login photo at $size ($language)");
+
+                    $errors = array_filter($browser->driver->manage()->getLog('browser'), fn (array $entry) => $entry['level'] === 'SEVERE');
+                    $this->assertSame([], array_values($errors), "Console errors on login at $size ($language)");
+
+                    if (getenv('DUSK_SCREENSHOTS')) {
+                        $browser->screenshot("login/$language-$theme-$size");
+                    }
+                }
             }
+        });
+    }
+
+    /** The password stays hidden until the eye button is pressed; "Forgot password?" sits at the end of the "Keep me signed in" row. */
+    public function test_login_password_toggle_and_forgot_link(): void
+    {
+        $this->browse(function (Browser $browser) {
+            $browser->logout();
+            $state = fn () => $browser->script(<<<'JS'
+                const button = document.querySelector('[aria-controls="password"]');
+                return { type: document.getElementById('password').type, pressed: button.getAttribute('aria-pressed'), label: button.getAttribute('aria-label'),
+                    // visibility_off (crossed out) starts with "m644", visibility (open eye) with "M480".
+                    icon: [...button.querySelectorAll('svg')].find(svg => svg.style.display !== 'none').querySelector('path').getAttribute('d').startsWith('m644') ? 'crossed' : 'open' };
+            JS)[0];
+
+            foreach (['en', 'ar'] as $language) {
+                $this->viewport($browser, 'desktop')->visit('/login')->waitFor('main form');
+                if ($browser->script('return document.documentElement.lang')[0] !== $language) {
+                    $browser->waitUntil('window.Alpine && document.querySelector("[data-language-toggle]").closest("[x-data]")._x_dataStack')->click('[data-language-toggle]')->waitFor("button[lang=\"$language\"]")->click("button[lang=\"$language\"]")->waitUntil("document.documentElement.lang === '$language'");
+                }
+                $show = __('auth.show_password', [], $language);
+                $hide = __('auth.hide_password', [], $language);
+
+                $this->assertEquals(['type' => 'password', 'pressed' => 'false', 'label' => $show, 'icon' => 'crossed'], $state(), "Hidden at first ($language)");
+                $browser->type('#password', 'secret-123')->click('[aria-controls="password"]');
+                $this->assertEquals(['type' => 'text', 'pressed' => 'true', 'label' => $hide, 'icon' => 'open'], $state(), "Shown after a click ($language)");
+
+                // A failed sign in re-renders the form: what the user chose stays as it was.
+                $browser->type('#email', 'nobody@example.test')->press(__('auth.submit', [], $language))->waitFor('#email-error');
+                $this->assertEquals(['type' => 'text', 'pressed' => 'true', 'label' => $hide, 'icon' => 'open'], $state(), "Still shown after an error ($language)");
+
+                $browser->click('[aria-controls="password"]');
+                $this->assertEquals(['type' => 'password', 'pressed' => 'false', 'label' => $show, 'icon' => 'crossed'], $state(), "Hidden again ($language)");
+
+                // Same row: "Keep me signed in" at the start, "Forgot password?" at the end (left in Arabic).
+                [$row] = $browser->script(<<<'JS'
+                    const remember = document.querySelector('input[type=checkbox]').closest('label').getBoundingClientRect();
+                    const link = document.querySelector('a[href$="forgot-password"], main form a').getBoundingClientRect();
+                    const form = document.querySelector('main form').getBoundingClientRect();
+                    const rtl = document.dir === 'rtl';
+                    return {
+                        sameRow: Math.abs((remember.top + remember.bottom) / 2 - (link.top + link.bottom) / 2) < 2,
+                        linkAtEnd: rtl ? Math.abs(link.left - form.left) < 1 : Math.abs(link.right - form.right) < 1,
+                    };
+                JS);
+                $this->assertEquals(['sameRow' => true, 'linkAtEnd' => true], $row, "Forgot password row ($language)");
+
+                if (getenv('DUSK_SCREENSHOTS')) {
+                    $browser->screenshot("login/$language-password-toggle");
+                }
+            }
+        });
+    }
+
+    /** Tablet: when the photo and the form don't both fit on the screen, the photo is hidden (no scrolling). */
+    public function test_login_photo_hides_when_it_does_not_fit(): void
+    {
+        $this->browse(function (Browser $browser) {
+            $browser->logout();
+            $resize = fn (int $width, int $height) => (new ChromeDevToolsDriver($browser->driver))
+                ->execute('Emulation.setDeviceMetricsOverride', ['width' => $width, 'height' => $height, 'deviceScaleFactor' => 1, 'mobile' => false]);
+            $state = fn () => $browser->script(<<<'JS'
+                return {
+                    photo: document.querySelector('.auth-panel').getBoundingClientRect().height > 0,
+                    scrolls: document.documentElement.scrollHeight > innerHeight + 1,
+                };
+            JS)[0];
+
+            // Tall tablets show it, a tablet on its side (or a short window) doesn't.
+            foreach ([[768, 1024, true], [1024, 1366, true], [1024, 768, false], [1180, 820, false]] as [$width, $height, $photo]) {
+                $resize($width, $height);
+                $browser->visit('/login')->waitFor('main form');
+                $this->assertEquals(['photo' => $photo, 'scrolls' => false], $state(), "Login at {$width}x{$height}");
+            }
+
+            // Turning the tablet back upright brings it back without a reload.
+            $resize(1024, 1366);
+            $browser->pause(200);
+            $this->assertEquals(['photo' => true, 'scrolls' => false], $state(), 'Login after rotating to 1024x1366');
         });
     }
 
@@ -243,9 +364,9 @@ class ResponsiveTest extends DuskTestCase
 
             match ($size) {
                 // Full sidebar with labels.
-                'desktop' => $this->assertEquals(['width' => 224, 'onScreen' => true, 'labels' => true, 'menuButton' => false], $state),
+                'desktop' => $this->assertEquals(['width' => 224, 'onScreen' => true, 'labels' => true, 'menuButton' => true], $state),
                 // Icons only; the labels are tooltips.
-                'tablet' => $this->assertEquals(['width' => 64, 'onScreen' => true, 'labels' => false, 'menuButton' => false], $state),
+                'tablet' => $this->assertEquals(['width' => 64, 'onScreen' => true, 'labels' => false, 'menuButton' => true], $state),
                 // Hidden; the menu button opens it as a drawer.
                 'phone' => $this->assertEquals(['onScreen' => false, 'menuButton' => true], ['onScreen' => $state['onScreen'], 'menuButton' => $state['menuButton']]),
             };
@@ -277,6 +398,14 @@ class ResponsiveTest extends DuskTestCase
                     $browser->script("document.querySelector('[data-sidebar] a[href$=\"/delivery-note\"]').focus()");
                     $this->assertTrue($tip()['shown']);
 
+                    // The burger opens the full sidebar over the page; a link closes it again.
+                    $browser->script('document.activeElement.blur()');
+                    $browser->click('[data-menu-button]')->pause(350);
+                    $this->assertEquals(['width' => 224, 'onScreen' => true, 'labels' => true, 'menuButton' => true], $sidebar());
+                    $this->assertFalse($tip()['shown']);
+                    $browser->click('[data-sidebar] a[href$="/delivery-note"]')->waitForLocation('/delivery-note')->pause(350);
+                    $this->assertSame(64, $sidebar()['width']);
+
                     // Arabic: the rail is on the right, the label to its left.
                     User::whereKey(self::$userId)->update(['preferred_lang' => 'ar', 'preferred_theme' => 'dark']);
                     $this->open($browser, $size, '/receive')->mouseover('[data-sidebar] a[href$="/delivery-note"]')->pause(100);
@@ -305,7 +434,7 @@ class ResponsiveTest extends DuskTestCase
                 $this->assertFalse($sidebar()['onScreen']);
 
                 // Theme and language are in the user menu.
-                $browser->click('button[aria-haspopup="menu"]')->waitFor('[data-menu-settings]');
+                $browser->click('[data-user-menu]')->waitFor('[data-menu-settings]');
                 $this->assertTrue($browser->script("return document.querySelector('[data-menu-settings]').getBoundingClientRect().width > 0")[0]);
             }
         });

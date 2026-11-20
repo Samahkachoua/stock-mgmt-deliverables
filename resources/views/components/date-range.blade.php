@@ -13,7 +13,7 @@
         'border-danger focus-within:ring-danger/20' => $error,
         'border-control focus-within:border-brand focus-within:ring-brand/20' => ! $error,
     ]) }}>
-        <label for="filter-{{ $model }}" class="shrink-0 text-small font-semibold text-muted">{{ $label }}</label>
+        <label for="filter-{{ $model }}" class="shrink-0 text-label font-semibold text-muted">{{ $label }}</label>
         <input
             id="filter-{{ $model }}"
             type="date"

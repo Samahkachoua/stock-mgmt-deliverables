@@ -10,7 +10,7 @@
                 <button
                     type="button"
                     wire:click="add"
-                    class="flex h-control items-center gap-2 rounded-lg bg-brand px-4 text-body font-semibold text-on-brand shadow-card hover:bg-brand-hover focus:outline-none focus:ring-2 focus:ring-brand/40 focus:ring-offset-2 focus:ring-offset-card"
+                    class="flex h-control items-center gap-2 rounded-lg bg-brand px-4 text-body font-semibold text-on-brand shadow-card hover:bg-brand-add-hover focus:outline-none focus:ring-2 focus:ring-brand/40 focus:ring-offset-2 focus:ring-offset-card"
                 >
                     <x-busy-icon name="add" target="add" />
                     {{ __('settings.users.add') }}
@@ -142,6 +142,19 @@
                 @endif
 
                 <div class="mt-4 flex flex-wrap justify-end gap-3">
+                    {{-- An existing account: email the same link as "Forgot password?". --}}
+                    @if ($editing !== '')
+                        <button
+                            type="button"
+                            wire:click="sendResetLink('{{ $editing }}')"
+                            wire:loading.attr="disabled"
+                            wire:target="sendResetLink"
+                            class="me-auto inline-flex h-control items-center gap-2 rounded-lg border border-control bg-card px-4 text-body font-semibold text-fg hover:bg-card-hover disabled:opacity-50"
+                        >
+                            <x-icon name="mail" class="size-4" />
+                            {{ __('settings.users.send_reset_link') }}
+                        </button>
+                    @endif
                     <button type="button" wire:click="cancel" class="h-control rounded-lg border border-control bg-card px-4 text-body font-semibold text-fg hover:bg-card-hover">
                         {{ __('settings.cancel') }}
                     </button>
@@ -155,7 +168,7 @@
         <div class="relative overflow-x-auto border-t border-default">
             <table class="cards w-full text-table xl:min-w-[760px]">
                 <thead>
-                    <tr class="h-10 bg-surface text-small font-semibold uppercase tracking-wide text-muted">
+                    <tr class="h-thead border-b border-default bg-card text-table font-semibold text-fg">
                         <th scope="col" class="px-edge text-start">{{ __('settings.users.name') }}</th>
                         <th scope="col" class="px-cell text-start">{{ __('settings.users.roles') }}</th>
                         <th scope="col" data-priority="2" class="px-cell text-start">{{ __('settings.users.warehouses') }}</th>
@@ -182,7 +195,7 @@
                             <td data-label="{{ __('settings.users.roles') }}" class="px-cell py-cell-y">
                                 <div class="flex flex-wrap gap-1.5 max-md:justify-end">
                                     @forelse ($user->roles->sortBy('name') as $role)
-                                        <span class="inline-flex h-6 items-center rounded-md border border-default bg-card-hover px-2 text-small font-semibold text-fg">{{ $role->label() }}</span>
+                                        <span class="inline-flex h-badge items-center rounded-md border border-default bg-card-hover px-2 text-small font-semibold text-fg">{{ $role->label() }}</span>
                                     @empty
                                         <span class="text-muted">{{ __('settings.users.no_roles') }}</span>
                                     @endforelse
@@ -206,9 +219,7 @@
                                 </div>
                             </td>
                             <td data-card="badge" class="px-cell py-cell-y">
-                                <span class="inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-small font-semibold {{ config('ui.statuses.'.($user->active ? 'completed' : 'cancelled')) }}">
-                                    {{ $user->active ? __('settings.active') : __('settings.inactive') }}
-                                </span>
+                                <x-master-data.active-badge :active="$user->active" />
                             </td>
                             <td class="px-edge py-cell-y text-end">
                                 <button

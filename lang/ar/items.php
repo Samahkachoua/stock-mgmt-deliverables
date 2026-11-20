@@ -26,7 +26,6 @@ return [
         'name' => 'الاسم',
         'customer' => 'العميل',
         'base_unit' => 'الوحدة الأساسية',
-        'other_units' => 'وحدات أخرى',
         'tracking' => 'التتبّع',
         'expiry' => 'صلاحية',
         'serial' => 'رقم تسلسلي',

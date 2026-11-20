@@ -4,16 +4,12 @@
 @endphp
 
 <div class="flex flex-col gap-section">
-    <x-page-header :icon="$definition->icon()" :title="$definition->title()" :subtitle="$definition->description()" :back="route('reports')" :back-label="__('reports.title')">
-        <x-slot:actions>
-            <x-report.export-buttons :exportable="$exportable" />
-        </x-slot:actions>
-    </x-page-header>
+    <x-page-header :icon="$definition->icon()" :title="$definition->title()" :subtitle="$definition->description()" :back="route('reports')" :back-label="__('reports.title')" />
 
-    <x-report.filters :definitions="$definition->filters()" :choices="$choices" :values="$filters" :defaults="$defaults" :date-error="$dateError" />
+    <x-report.filters :definitions="$definition->filters()" :choices="$choices" :values="$filters" :defaults="$defaults" :date-error="$dateError" :columns="$columns" :list="'report-'.$definition->key()" :exportable="$exportable" />
 
     @if ($missing !== null)
-        <div class="flex flex-col items-center rounded-xl border border-dashed border-default bg-card px-edge py-10 text-center">
+        <div class="flex flex-col items-center rounded-xl border border-dashed border-default bg-card px-edge py-empty text-center">
             <x-icon name="info" class="size-10 text-muted" />
             <p class="mt-3 text-lead font-semibold text-fg">{{ $missing }}</p>
         </div>

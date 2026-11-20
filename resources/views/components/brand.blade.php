@@ -12,14 +12,14 @@
             srcset="{{ asset('images/brand/etl-mark@2x.png') }} 2x"
             width="107" height="24"
             alt="{{ __('app.logo_alt') }}"
-            class="h-6 w-auto shrink-0 md:hidden xl:block"
+            class="h-6 w-auto shrink-0 md:hidden xl:block md:max-xl:expanded:block"
         >
         <img
             src="{{ asset('images/brand/etl-icon.png') }}"
             srcset="{{ asset('images/brand/etl-icon@2x.png') }} 2x"
             width="40" height="32"
             alt="{{ __('app.logo_alt') }}"
-            class="hidden h-8 w-auto shrink-0 md:block xl:hidden"
+            class="hidden h-8 w-auto shrink-0 md:block xl:hidden md:max-xl:expanded:hidden"
         >
     </div>
 @else

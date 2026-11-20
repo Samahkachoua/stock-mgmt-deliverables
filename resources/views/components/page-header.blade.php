@@ -14,16 +14,27 @@
     'back' => null,
     'backLabel' => null,
     'ltr' => false, // titles that are references (DN-2026-000123) stay left-to-right
+    'crumbs' => null,
+    'crumb' => null,
+    'breadcrumbs' => true,
 ])
 
 @php
     $colours = $type?->colours();
     $icon ??= $type?->icon();
+    $crumbs ??= $back ? [[$backLabel, $back]] : [];
+    // A custom current name ("Edit") is plain text; the title itself keeps its direction.
+    $crumbLtr = $crumb === null && $ltr;
+    $crumb ??= $title;
 @endphp
 
 <div {{ $attributes->class('flex flex-col gap-2') }}>
+    @if ($breadcrumbs)
+        <x-breadcrumbs :items="$crumbs" :current="$crumb" :ltr="$crumbLtr" @class(['max-md:hidden' => (bool) $back]) />
+    @endif
+
     @if ($back)
-        <a href="{{ $back }}" wire:navigate class="-ms-1 inline-flex h-control items-center gap-2 self-start rounded-lg px-1 text-body font-semibold text-muted hover:text-fg print:hidden">
+        <a href="{{ $back }}" wire:navigate class="-ms-1 inline-flex md:hidden h-control items-center gap-2 self-start rounded-lg px-1 text-body font-semibold text-muted hover:text-fg print:hidden">
             <x-icon name="arrow_back" class="rtl:-scale-x-100" />
             {{ $backLabel }}
         </a>
@@ -31,18 +42,13 @@
 
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex min-w-0 items-center gap-3">
-            @if ($icon)
-                <div @class(['grid size-10 shrink-0 place-items-center rounded-lg', $colours['soft'] ?? 'bg-card-hover'])>
-                    <x-icon :name="$icon" @class(['size-6', $colours['icon'] ?? 'text-muted']) />
-                </div>
-            @endif
             <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-3">
-                    <h1 @if ($ltr) dir="ltr" @endif @class(['break-words text-h1 font-semibold tracking-tight text-fg', 'tabular' => $ltr])>{{ $title }}</h1>
+                    <h1 @if ($ltr) dir="ltr" @endif @class(['break-words text-h1 font-bold tracking-tight text-fg', 'tabular' => $ltr])>{{ $title }}</h1>
                     {{ $badge ?? '' }}
                 </div>
                 @if ($subtitle)
-                    <p class="text-body text-muted">{{ $subtitle }}</p>
+                    <p class="mt-1 text-body text-muted">{{ $subtitle }}</p>
                 @endif
             </div>
         </div>

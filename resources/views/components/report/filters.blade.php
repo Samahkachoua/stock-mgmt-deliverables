@@ -1,15 +1,17 @@
 {{--
     Filters of a report (App\Reports\Filter), bound to the Livewire `filters` array.
-    <x-report.filters :definitions="$definition->filters()" :choices="$choices" :values="$filters" :defaults="$defaults" />
+    <x-report.filters :definitions="$definition->filters()" :choices="$choices" :values="$filters" :defaults="$defaults" :columns="$columns" :list="$listKey" :exportable="$exportable" />
     `date-error`: "Date from" is after "Date to": both date fields are outlined in red.
     `defaults`: the values of a cleared report, to count the filters in use.
+    `columns` + `list`: the Columns menu (x-list-columns); `exportable`: Excel and PDF.
 
-    Layout (CLAUDE.md "Responsive layout"): the search on the first line; the
-    other filters below it with equal widths, 4 per row on desktop and 2 on
-    tablet. On a phone they sit behind a "Filters · 2" button, in a panel with
-    "Apply" and "Clear filters".
+    Layout (CLAUDE.md "Responsive layout"): the filters first, with equal widths,
+    4 per row on desktop and 2 on tablet; then the toolbar right above the table:
+    the search and "Clear filters" at the start, Columns, Excel and PDF at the end.
+    On a phone the filters sit behind a "Filters · 2" button next to the search,
+    in a panel with "Apply" and "Clear filters".
 --}}
-@props(['definitions', 'choices', 'values', 'dateError' => false, 'defaults' => []])
+@props(['definitions', 'choices', 'values', 'dateError' => false, 'defaults' => [], 'columns' => null, 'list' => null, 'exportable' => false])
 
 @php
     $control = 'h-control w-full rounded-lg border border-control bg-card text-body text-fg focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20';
@@ -20,42 +22,17 @@
     $searches = array_filter($definitions, fn ($filter) => $filter->type === 'search');
     $others = array_filter($definitions, fn ($filter) => $filter->type !== 'search');
     $active = count(array_filter($others, fn ($filter) => ($values[$filter->name] ?? '') !== ($defaults[$filter->name] ?? '')));
+    $tools = ($columns !== null && $list !== null) || $exportable;
 @endphp
 
 <div
-    {{ $attributes->class('flex flex-col gap-3 rounded-xl border border-default bg-card p-card shadow-card print:hidden') }}
+    {{-- Straight on the page (no card): the fields' own borders frame them. --}}
+    {{ $attributes->class('flex flex-col gap-3 print:hidden') }}
     role="search"
     data-filters-bar
     x-data="{ panel: false }"
     x-on:keydown.escape.window="panel = false"
 >
-    <div class="flex items-end gap-3">
-        @foreach ($searches as $filter)
-            @php($id = 'report-filter-'.$filter->name)
-            <div class="min-w-0 flex-1 md:max-w-sm">
-                <label for="{{ $id }}" class="mb-0.5 block text-small font-semibold text-muted">{{ __($filter->label) }}</label>
-                <div class="relative">
-                    <x-input-spinner target="filters.{{ $filter->name }}" />
-                    <input id="{{ $id }}" type="search" wire:model.live.debounce.300ms="filters.{{ $filter->name }}" placeholder="{{ __('reports.filters.search_placeholder') }}" class="{{ $control }} pe-3 ps-10 placeholder:text-subtle">
-                </div>
-            </div>
-        @endforeach
-
-        @if ($others !== [])
-            {{-- Phone: the other filters are in a panel. --}}
-            <button type="button" data-filters-button x-on:click="panel = true" x-bind:aria-expanded="panel.toString()" @class([$button, 'md:hidden', 'flex-1' => $searches === []])>
-                <x-icon name="tune" class="text-muted" />
-                {{ $active > 0 ? __('transactions.filters.filters_count', ['count' => \App\Support\Format::qty($active)]) : __('transactions.filters.filters') }}
-            </button>
-        @endif
-
-        {{-- Clears the filters this list remembers for the user (session), back to the first page. --}}
-        <button type="button" wire:click="resetFilters" @class([$clear, 'ms-auto', 'max-md:hidden' => $others !== []])>
-            <x-icon name="filter_alt_off" />
-            {{ __('transactions.filters.reset') }}
-        </button>
-    </div>
-
     @if ($others !== [])
         <div x-cloak x-show="panel" x-transition.opacity x-on:click="panel = false" class="fixed inset-0 z-40 bg-scrim md:hidden" aria-hidden="true"></div>
 
@@ -93,7 +70,7 @@
                                 <span class="truncate">{{ __($filter->label) }}</span>
                             </button>
                         @else
-                            <label for="{{ $id }}" class="mb-0.5 block truncate text-small font-semibold text-muted">{{ __($filter->label) }}</label>
+                            <label for="{{ $id }}" class="mb-0.5 block truncate text-label font-semibold text-fg">{{ __($filter->label) }}</label>
                             @switch($filter->type)
                                 @case('date')
                                     <input id="{{ $id }}" type="date" wire:model.live="filters.{{ $filter->name }}" @if ($dateError) aria-invalid="true" @endif class="{{ $dateError ? $invalid : $control }} px-3">
@@ -134,4 +111,42 @@
             </div>
         </div>
     @endif
+
+    {{-- Toolbar, right above the table: search and "Clear filters" | Columns, Excel, PDF. --}}
+    <div data-list-toolbar class="flex flex-wrap items-end gap-3">
+        @foreach ($searches as $filter)
+            @php($id = 'report-filter-'.$filter->name)
+            <div class="min-w-0 flex-1 basis-48 md:max-w-sm">
+                <label for="{{ $id }}" class="mb-0.5 block text-label font-semibold text-fg">{{ __($filter->label) }}</label>
+                <div class="relative">
+                    <x-input-spinner target="filters.{{ $filter->name }}" />
+                    <input id="{{ $id }}" type="search" wire:model.live.debounce.300ms="filters.{{ $filter->name }}" placeholder="{{ __('reports.filters.search_placeholder') }}" class="{{ $control }} pe-3 ps-10 placeholder:text-subtle">
+                </div>
+            </div>
+        @endforeach
+
+        @if ($others !== [])
+            {{-- Phone: the other filters are in a panel. --}}
+            <button type="button" data-filters-button x-on:click="panel = true" x-bind:aria-expanded="panel.toString()" @class([$button, 'md:hidden', 'flex-1' => $searches === []])>
+                <x-icon name="tune" class="text-muted" />
+                {{ $active > 0 ? __('transactions.filters.filters_count', ['count' => \App\Support\Format::qty($active)]) : __('transactions.filters.filters') }}
+            </button>
+        @endif
+
+        {{-- Clears the filters this list remembers for the user (session), back to the first page. --}}
+        <button type="button" wire:click="resetFilters" @class([$clear, 'max-md:hidden' => $others !== [], 'ms-auto' => ! $tools])>
+            <x-icon name="filter_alt_off" />
+            {{ __('transactions.filters.reset') }}
+        </button>
+
+        @if ($tools)
+            {{-- Phone: a row of its own under the search, buttons sharing the width. --}}
+            <div class="ms-auto flex flex-wrap items-center gap-2 max-md:w-full max-md:[&>*]:flex-1">
+                @if ($columns !== null && $list !== null)
+                    <x-list-columns :columns="$columns" :list="$list" />
+                @endif
+                <x-report.export-buttons :exportable="$exportable" />
+            </div>
+        @endif
+    </div>
 </div>

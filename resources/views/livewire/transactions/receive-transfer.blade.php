@@ -21,7 +21,7 @@
     <div class="relative overflow-x-auto">
         <table data-form class="cards w-full text-table md:min-w-[672px] xl:min-w-[880px]">
             <thead>
-                <tr class="h-thead bg-surface text-small font-semibold uppercase tracking-wide text-muted">
+                <tr class="h-thead border-b border-default bg-card text-table font-semibold text-fg">
                     <th scope="col" class="w-14 ps-edge text-start">#</th>
                     <th scope="col" class="px-cell text-start">{{ __('transactions.lines.item') }}</th>
                     <th scope="col" class="px-cell text-start">{{ __('transactions.lines.unit') }}</th>

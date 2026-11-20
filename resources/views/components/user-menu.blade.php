@@ -3,6 +3,7 @@
 <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false" @click.outside="open = false">
     <button
         type="button"
+        data-user-menu
         class="flex h-control items-center gap-3 rounded-lg px-1 hover:bg-card-hover"
         :aria-expanded="open.toString()"
         aria-haspopup="menu"
@@ -37,7 +38,7 @@
             </div>
             <div class="flex items-center justify-between gap-3">
                 <span class="text-body font-semibold text-fg">{{ __('app.language') }}</span>
-                <x-language-switch />
+                <x-language-switch labelled />
             </div>
         </div>
 

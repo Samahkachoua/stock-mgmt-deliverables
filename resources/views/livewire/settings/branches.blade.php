@@ -28,16 +28,20 @@
             </x-master-data.editor>
         @endif
 
-        <x-filters-bar :search-placeholder="__('settings.branches.search')" />
-
-        <x-data-table
-            :columns="[
+        @php
+            $columns = [
                 'name' => ['label' => __('settings.branches.name_and_code'), 'card' => 'title'],
                 'customer' => ['label' => __('settings.branches.customer'), 'card' => 'lead'],
                 'manager_email' => ['label' => __('settings.branches.manager_email'), 'priority' => 2],
                 'address' => ['label' => __('settings.branches.address'), 'priority' => 2],
                 'status' => ['label' => __('settings.status'), 'card' => 'badge'],
-            ]"
+            ];
+        @endphp
+
+        <x-filters-bar :search-placeholder="__('settings.branches.search')" :columns="$columns" list="settings-branches" exportable />
+
+        <x-data-table
+            :columns="$columns"
             :paginator="$rows"
             :loading="! $rowsLoaded"
             loading-target="search, resetFilters, gotoPage, nextPage, previousPage, loadRows, save"

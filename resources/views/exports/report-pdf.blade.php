@@ -1,35 +1,36 @@
 {{--
-    A report as a PDF (mPDF). Always light: plain black on white, no theme tokens.
+    A report as a PDF (mPDF). Always light: the light theme's colours (App\Support\Palette: mPDF has no CSS variables).
     Arabic: the whole page is right to left; codes and references stay left to right.
 --}}
 @php
     $start = $rtl ? 'right' : 'left';
     $end = $rtl ? 'left' : 'right';
-    $tones = ['completed' => '#166534', 'pending' => '#92400e', 'rejected' => '#b91c1c', 'transit' => '#1d4ed8', 'cancelled' => '#475569'];
+    $c = \App\Support\Palette::light();
+    $tones = collect(['completed', 'pending', 'rejected', 'transit', 'cancelled'])->mapWithKeys(fn ($tone) => [$tone => $c["status-{$tone}"]])->all();
 @endphp
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ $rtl ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="utf-8">
     <style>
-        body { font-family: {{ \App\Reports\Export\Exporter::PDF_FONT }}; font-size: 9pt; color: #1f2933; background: #ffffff; }
+        body { font-family: {{ \App\Reports\Export\Exporter::PDF_FONT }}; font-size: 9pt; color: {{ $c['fg'] }}; background: {{ $c['card'] }}; }
         h1 { font-size: 15pt; margin: 0 0 2mm 0; }
-        .meta { color: #475569; font-size: 8pt; margin: 0 0 1mm 0; }
+        .meta { color: {{ $c['muted'] }}; font-size: 8pt; margin: 0 0 1mm 0; }
         .summary { margin: 3mm 0; border-collapse: collapse; }
         .summary td { padding: 1.5mm 4mm 1.5mm 0; font-size: 9pt; }
-        .summary .label { color: #475569; }
+        .summary .label { color: {{ $c['muted'] }}; }
         table.rows { width: 100%; border-collapse: collapse; margin-top: 3mm; }
         .logo { height: 12mm; margin: 0 0 3mm 0; }
-        table.rows th { background: #f1f5f9; color: #00578a; font-size: 7.5pt; text-transform: uppercase; text-align: {{ $start }}; padding: 2mm; border-bottom: 0.3mm solid #cbd5e1; }
-        table.rows td { padding: 2mm; border-bottom: 0.2mm solid #e2e8f0; vertical-align: top; text-align: {{ $start }}; }
+        table.rows th { background: {{ $c['card-hover'] }}; color: {{ $c['brand-active'] }}; font-size: 7.5pt; text-transform: uppercase; text-align: {{ $start }}; padding: 2mm; border-bottom: 0.3mm solid {{ $c['subtle'] }}; }
+        table.rows td { padding: 2mm; border-bottom: 0.2mm solid {{ $c['border'] }}; vertical-align: top; text-align: {{ $start }}; }
         table.rows .end { text-align: {{ $end }}; }
         .strong { font-weight: bold; }
-        .empty { color: #475569; margin-top: 6mm; }
+        .empty { color: {{ $c['muted'] }}; margin-top: 6mm; }
     </style>
 </head>
 <body>
     <img class="logo" src="{{ public_path('images/brand/etl-logo-print.png') }}" alt="{{ __('app.logo_alt') }}">
-    <h1>{{ $report->title() }}</h1>
+    <h1>{{ $title }}</h1>
     <p class="meta">{{ __('reports.export.generated', ['date' => \App\Support\Format::dateTime($generatedAt), 'name' => $by]) }}</p>
     @foreach ($filters as $line)
         <p class="meta">{{ $line }}</p>

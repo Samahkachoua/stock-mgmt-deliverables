@@ -4,6 +4,7 @@ namespace App\Livewire\Account;
 
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\Auth\PasswordReset;
 use App\Support\Notify;
 use Illuminate\Auth\SessionGuard;
 use Illuminate\Contracts\View\View;
@@ -61,6 +62,8 @@ class ChangePassword extends Component
 
         DB::transaction(function () use ($user) {
             $user->password_hash = $this->password; // hashed by the model cast
+            // Their own password now, no longer one an administrator typed.
+            $user->must_change_password = false;
             // A "keep me signed in" cookie on another device stops working.
             $user->setRememberToken(Str::random(60));
             $user->save();
@@ -74,6 +77,7 @@ class ChangePassword extends Component
 
             // Never the password itself: only that the user changed it.
             Audit::record('app_user', $user->id, 'UPDATE', null, ['password_changed' => true]);
+            PasswordReset::notifyChanged($user);
         });
 
         // This device stays signed in (with a fresh cookie if it had one).
@@ -117,6 +121,7 @@ class ChangePassword extends Component
     {
         return view('livewire.account.change-password', [
             'minLength' => self::MIN_LENGTH,
+            'mustChange' => (bool) Auth::user()?->must_change_password,
         ])->title(__('account.password.title'));
     }
 }

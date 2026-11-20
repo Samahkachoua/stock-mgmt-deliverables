@@ -5,6 +5,13 @@
         :subtitle="__('account.password.subtitle')"
     />
 
+    @if ($mustChange)
+        <div class="flex w-full max-w-xl items-start gap-3 rounded-lg border border-status-pending-line bg-status-pending-soft p-4" role="status">
+            <x-icon name="warning" class="mt-0.5 size-5 shrink-0 text-status-pending" />
+            <p class="text-body font-semibold text-fg">{{ __('auth.forced_change') }}</p>
+        </div>
+    @endif
+
     <form wire:submit="save" class="w-full max-w-xl rounded-xl border border-default bg-card p-card shadow-card" novalidate>
         <fieldset class="flex flex-col gap-4" wire:loading.attr="disabled" wire:target="save">
             <x-form.input

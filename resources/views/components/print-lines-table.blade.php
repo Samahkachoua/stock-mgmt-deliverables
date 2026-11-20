@@ -29,7 +29,7 @@
 
 <table {{ $attributes->class('print-lines w-full border-collapse border-2 border-black text-table') }}>
     <thead>
-        <tr class="bg-[var(--print-head)] text-on-brand">
+        <tr class="bg-print-head text-on-brand">
             <th scope="col" class="{{ $th }}">{{ __('print.lines.sku') }}</th>
             <th scope="col" class="{{ $th }}">{{ __('print.lines.description') }}</th>
             <th scope="col" class="{{ $th }}">{{ __('print.lines.unit') }}</th>

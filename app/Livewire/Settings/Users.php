@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Settings;
 
+use App\Jobs\SendPasswordResetLink;
 use App\Livewire\Concerns\ConfirmsActions;
 use App\Models\Customer;
 use App\Models\CustomerBranch;
@@ -288,6 +289,9 @@ class Users extends Component
 
             if ($data['password'] !== '') {
                 $user->password_hash = $data['password']; // hashed by the model cast
+                // A password typed here is temporary: the user chooses their own at the next
+                // sign-in (EnsurePasswordChanged). Not for an administrator's own account.
+                $user->must_change_password = $isNew || $user->id !== Auth::id();
             }
 
             $user->save();
@@ -312,6 +316,29 @@ class Users extends Component
         $this->password = '';
         Notify::success(__($isNew ? 'settings.users.added' : 'settings.users.updated', ['name' => $user->full_name]), on: $this);
         unset($this->users);
+    }
+
+    /**
+     * Emails the user the same "Reset password" link as "Forgot password?"
+     * (for someone who forgot it and can't ask in person). Not destructive, so
+     * no confirmation; only an active account can get one.
+     */
+    public function sendResetLink(string $id): void
+    {
+        $user = User::findOrFail($id);
+        $this->authorize('update', $user);
+
+        if (! $user->active) {
+            Notify::error(__('settings.users.reset_link_inactive', ['name' => $user->full_name]), on: $this);
+
+            return;
+        }
+
+        SendPasswordResetLink::dispatch($user->email);
+        // Never the link or its token: only that one was sent.
+        Audit::record('app_user', $user->id, 'UPDATE', null, ['password_reset_link_sent' => true]);
+
+        Notify::success(__('settings.users.reset_link_sent', ['name' => $user->full_name, 'email' => $user->email]), on: $this);
     }
 
     public function render(): View

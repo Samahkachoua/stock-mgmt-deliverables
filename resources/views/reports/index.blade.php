@@ -10,8 +10,8 @@
                         wire:navigate
                         class="flex h-full min-h-24 items-start gap-4 rounded-xl border border-default bg-card p-card shadow-card hover:bg-card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
                     >
-                        <span class="grid size-control shrink-0 place-items-center rounded-lg bg-surface">
-                            <x-icon :name="$report->icon()" class="text-muted" />
+                        <span class="grid size-control shrink-0 place-items-center rounded-lg bg-brand/12 dark:bg-brand/16">
+                            <x-icon :name="$report->icon()" class="text-link" />
                         </span>
                         <span class="flex flex-col gap-1">
                             <span class="text-lead font-semibold text-fg">{{ $report->title() }}</span>

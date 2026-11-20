@@ -3,6 +3,7 @@
 namespace App\Livewire\Transactions;
 
 use App\Livewire\Concerns\DefersRows;
+use App\Livewire\Concerns\ExportsList;
 use App\Livewire\Concerns\RemembersListState;
 use App\Models\Customer;
 use App\Models\User;
@@ -35,7 +36,7 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.app')]
 class TransactionList extends Component
 {
-    use DefersRows, RemembersListState, WithoutUrlPagination, WithPagination;
+    use DefersRows, ExportsList, RemembersListState, WithoutUrlPagination, WithPagination;
 
     public const PER_PAGE = 8;
 
@@ -101,6 +102,16 @@ class TransactionList extends Component
         $this->warehouse = $this->validWarehouse('');
     }
 
+    protected function exportTitle(): string
+    {
+        return $this->typeUi()->label('title');
+    }
+
+    protected function authorizeExport(): void
+    {
+        Gate::authorize($this->typeUi()->viewGate());
+    }
+
     protected function listStateKey(): string
     {
         return $this->typeUi()->slug();
@@ -162,7 +173,7 @@ class TransactionList extends Component
 
         return $this->pageInRange(fn (int $page) => Documents::page($type, $this->warehouseIds(), $this->filters() + [
             'pending_first' => $pendingFirst,
-        ], self::PER_PAGE, $page));
+        ], $this->perPage(), $page));
     }
 
     /**

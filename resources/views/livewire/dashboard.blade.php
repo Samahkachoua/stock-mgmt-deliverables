@@ -19,8 +19,8 @@
         $period->to !== '' => __('dashboard.period.to', ['to' => Format::date(CarbonImmutable::parse($period->to))]),
         default => __('dashboard.period.all'),
     };
-    $card = 'flex min-w-0 flex-col gap-3 rounded-xl border border-default bg-card p-card shadow-card';
-    $heading = 'text-h3 font-semibold text-fg';
+    $card = 'flex min-w-0 flex-col gap-3 rounded-xl border border-default bg-card p-card shadow-card transition-colors duration-200';
+    $heading = 'text-h3 font-bold tracking-tight text-fg';
     $hint = 'text-small text-muted';
     // No customer chosen: the cards list several customers (and name them).
     $noCustomer = $filters['customer'] === '';

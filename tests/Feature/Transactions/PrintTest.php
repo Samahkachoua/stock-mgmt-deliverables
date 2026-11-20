@@ -85,7 +85,7 @@ it('prints right to left in Arabic, with references left to right', function () 
         ->assertSee('lang="ar" dir="rtl"', false)
         ->assertSee(__('print.prepared_by', [], 'ar'))
         ->assertSee(__('transactions.types.delivery_note.singular', [], 'ar'))
-        ->assertSee('<span dir="ltr" class="tabular text-lg font-semibold">'.$deliveryNote->doc_no.'</span>', false);
+        ->assertSee('<span dir="ltr" class="tabular text-h3 font-semibold">'.$deliveryNote->doc_no.'</span>', false);
 });
 
 it('does not print a document of a warehouse the user does not work in', function () {

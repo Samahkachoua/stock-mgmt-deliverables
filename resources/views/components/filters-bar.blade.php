@@ -7,10 +7,11 @@
     `dates` shows the two date pickers (x-date-range); `date-error` outlines them in red.
     `all-statuses` relabels the status filter's default option (e.g. "All statuses, pending first").
 
-    Layout (CLAUDE.md "Responsive layout"): the search on the first line; the
-    other filters below it with equal widths, 4 per row on desktop and 2 on
-    tablet. On a phone they sit behind a "Filters · 2" button, in a panel with
-    "Apply" and "Clear filters".
+    Layout (CLAUDE.md "Responsive layout"): the filters first, with equal widths,
+    4 per row on desktop and 2 on tablet; then the toolbar right above the table:
+    search and "Clear filters" at the start, Columns, Excel and PDF at the end
+    (`columns` + `list`, `exportable`). On a phone the filters sit behind a
+    "Filters · 2" button next to the search, in a panel with "Apply" and "Clear filters".
 --}}
 @props([
     'warehouses' => null,
@@ -22,6 +23,10 @@
     'directions' => null,
     'searchPlaceholder' => '',
     'allStatuses' => null,
+    // The toolbar's end side: the Columns menu (x-list-columns) and Excel / PDF.
+    'columns' => null,
+    'list' => null,
+    'exportable' => false,
 ])
 
 @php
@@ -45,7 +50,8 @@
 @endphp
 
 <div
-    {{ $attributes->class('flex flex-col gap-3 rounded-xl border border-default bg-card p-card shadow-card print:hidden') }}
+    {{-- Straight on the page (no card): the fields' own borders frame them. --}}
+    {{ $attributes->class('flex flex-col gap-3 print:hidden') }}
     role="search"
     data-filters-bar
     x-data="{
@@ -57,28 +63,6 @@
     }"
     x-on:keydown.escape.window="panel = false"
 >
-    <div class="flex items-center gap-3">
-        <div class="relative min-w-0 flex-1 md:max-w-sm">
-            <x-input-spinner target="search" />
-            <label for="filter-search" class="sr-only">{{ __('transactions.filters.search') }}</label>
-            <input id="filter-search" type="search" wire:model.live.debounce.300ms="search" placeholder="{{ $searchPlaceholder }}" class="{{ $control }} pe-3 ps-10 placeholder:text-subtle">
-        </div>
-
-        @if ($models !== [])
-            {{-- Phone: the other filters are in a panel. --}}
-            <button type="button" data-filters-button x-on:click="panel = true" x-bind:aria-expanded="panel.toString()" class="{{ $button }} md:hidden">
-                <x-icon name="tune" class="text-muted" />
-                <span x-text="active > 0 ? @js(__('transactions.filters.filters_count')).replace(':count', active) : @js(__('transactions.filters.filters'))">{{ __('transactions.filters.filters') }}</span>
-            </button>
-        @endif
-
-        {{-- Clears the filters this list remembers for the user (session), back to the first page. --}}
-        <button type="button" wire:click="resetFilters" @class([$clear, 'ms-auto', 'max-md:hidden' => $models !== []])>
-            <x-icon name="filter_alt_off" />
-            <span @class(['max-md:sr-only' => $models === []])>{{ __('transactions.filters.reset') }}</span>
-        </button>
-    </div>
-
     @if ($models !== [])
         <div x-cloak x-show="panel" x-transition.opacity x-on:click="panel = false" class="fixed inset-0 z-40 bg-scrim md:hidden" aria-hidden="true"></div>
 
@@ -144,4 +128,37 @@
             </div>
         </div>
     @endif
+
+    {{-- Toolbar, right above the table: search and "Clear filters" | Columns, Excel, PDF. --}}
+    <div data-list-toolbar class="flex flex-wrap items-center gap-3">
+        <div class="relative min-w-0 flex-1 basis-48 md:max-w-sm">
+            <x-input-spinner target="search" />
+            <label for="filter-search" class="sr-only">{{ __('transactions.filters.search') }}</label>
+            <input id="filter-search" type="search" wire:model.live.debounce.300ms="search" placeholder="{{ $searchPlaceholder }}" class="{{ $control }} pe-3 ps-10 placeholder:text-subtle">
+        </div>
+
+        @if ($models !== [])
+            {{-- Phone: the other filters are in a panel. --}}
+            <button type="button" data-filters-button x-on:click="panel = true" x-bind:aria-expanded="panel.toString()" class="{{ $button }} md:hidden">
+                <x-icon name="tune" class="text-muted" />
+                <span x-text="active > 0 ? @js(__('transactions.filters.filters_count')).replace(':count', active) : @js(__('transactions.filters.filters'))">{{ __('transactions.filters.filters') }}</span>
+            </button>
+        @endif
+
+        {{-- Clears the filters this list remembers for the user (session), back to the first page. --}}
+        <button type="button" wire:click="resetFilters" @class([$clear, 'max-md:hidden' => $models !== []])>
+            <x-icon name="filter_alt_off" />
+            <span @class(['max-md:sr-only' => $models === []])>{{ __('transactions.filters.reset') }}</span>
+        </button>
+
+        @if (($columns !== null && $list !== null) || $exportable)
+            {{-- Phone: a row of its own under the search, buttons sharing the width. --}}
+            <div class="ms-auto flex flex-wrap items-center gap-2 max-md:w-full max-md:[&>*]:flex-1">
+                @if ($columns !== null && $list !== null)
+                    <x-list-columns :columns="$columns" :list="$list" />
+                @endif
+                <x-report.export-buttons :exportable="$exportable" />
+            </div>
+        @endif
+    </div>
 </div>

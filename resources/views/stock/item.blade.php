@@ -29,9 +29,7 @@
         <x-page-header icon="inventory_2" :title="$product->name()" :back="route('stock')" :back-label="__('reports.stock_on_hand.title')">
             <x-slot:badge>
                 <span dir="ltr" class="tabular rounded bg-card-hover px-2 py-0.5 text-body font-semibold text-muted">{{ $product->sku }}</span>
-                <span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-small font-semibold {{ config('ui.statuses.completed') }}">
-                    {{ __('reports.item.in_stock', ['qty' => $converter->breakdown($total)]) }}
-                </span>
+                <x-badge tone="completed">{{ __('reports.item.in_stock', ['qty' => $converter->breakdown($total)]) }}</x-badge>
             </x-slot:badge>
             @if ($stockCard)
                 <x-slot:actions>
@@ -72,7 +70,7 @@
                     <dd class="flex items-center gap-2 font-semibold text-fg">
                         @if ($nearest)
                             {{ Format::date($nearest) }}
-                            <span class="rounded-md border px-2 py-0.5 text-small {{ config('ui.statuses.'.$nearestBadge['tone']) }}">{{ $nearestBadge['text'] }}</span>
+                            <x-badge :tone="$nearestBadge['tone']">{{ $nearestBadge['text'] }}</x-badge>
                         @else
                             —
                         @endif
@@ -94,7 +92,7 @@
                     <div class="relative overflow-x-auto">
                         <table class="cards w-full text-table md:min-w-[560px]">
                             <thead>
-                                <tr class="h-thead bg-surface text-small font-semibold uppercase tracking-wide text-muted">
+                                <tr class="h-thead border-b border-default bg-card text-table font-semibold text-fg">
                                     <th scope="col" class="ps-edge text-start">{{ __('reports.columns.expiry_date') }}</th>
                                     <th scope="col" class="px-cell text-start">{{ __('reports.columns.batch') }}</th>
                                     <th scope="col" class="px-cell text-end">{{ __('reports.columns.qty_base') }}</th>
@@ -114,7 +112,7 @@
                                         <td data-label="{{ __('reports.columns.qty_larger') }}" class="px-cell text-end text-fg">{{ $converter->breakdown($lot['qty']) }}</td>
                                         <td data-card="badge" class="pe-edge text-end">
                                             @if ($status)
-                                                <span class="rounded-md border px-2 py-0.5 text-small font-semibold {{ config('ui.statuses.'.$status['tone']) }}">{{ $status['text'] }}</span>
+                                                <x-badge :tone="$status['tone']">{{ $status['text'] }}</x-badge>
                                             @endif
                                         </td>
                                     </tr>

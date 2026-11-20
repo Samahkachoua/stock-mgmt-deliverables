@@ -27,17 +27,21 @@
             </x-master-data.editor>
         @endif
 
-        <x-filters-bar :search-placeholder="__('settings.drivers.search')" />
-
-        <x-data-table
-            :columns="array_filter([
+        @php
+            $columns = array_filter([
                 'name' => ['label' => __('settings.drivers.name'), 'card' => 'title'],
                 'phone' => ['label' => __('settings.drivers.phone')],
                 'truck_no' => ['label' => __('settings.drivers.truck_no')],
                 'licence_no' => ['label' => __('settings.drivers.licence_no'), 'priority' => 2],
                 'national_id' => ['label' => __('settings.drivers.national_id'), 'priority' => 2],
                 'delete' => $canDelete ? ['label' => ''] : null,
-            ])"
+            ]);
+        @endphp
+
+        <x-filters-bar :search-placeholder="__('settings.drivers.search')" :columns="$columns" list="settings-drivers" exportable />
+
+        <x-data-table
+            :columns="$columns"
             :paginator="$rows"
             :loading="! $rowsLoaded"
             loading-target="search, resetFilters, gotoPage, nextPage, previousPage, loadRows, save"

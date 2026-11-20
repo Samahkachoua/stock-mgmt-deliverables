@@ -32,6 +32,7 @@ it('uses only the density tokens in views', function () {
         .'text-(?:xs|sm|base|lg|xl|[2-9]xl)'          // text-small, text-body, text-h1 ...
         .'|(?:h|size|min-h)-(?:11|12|16)|min-w-11|h-14'   // h-control, h-row, h-thead, h-topbar
         .'|(?:p|px|py|ps|pe)-6|gap-6|text-\[[^\]]+\]'  // p-card, px-edge, gap-section
+        .'|[a-z-]+-\[(?:var|calc)\(var\(--[^\]]+\]'   // bg-print-head, gap-section-lg: a token gets its own utility
         .')(?![\w-])/';
     $found = [];
 

@@ -24,7 +24,7 @@
                 aria-modal="true"
                 aria-labelledby="dispatch-title"
                 aria-describedby="dispatch-hint"
-                class="relative w-full rounded-t-xl border border-default bg-card p-card shadow-pop md:max-w-md md:rounded-xl md:p-5"
+                class="relative w-full rounded-t-xl border border-default bg-card p-card shadow-pop md:max-w-md md:rounded-xl md:p-dialog"
             >
                 <h2 id="dispatch-title" class="text-h3 font-semibold text-fg">{{ __('deliveries.dispatch.title', ['reference' => $reference]) }}</h2>
                 <p id="dispatch-hint" class="mt-1 text-body text-muted">{{ __('deliveries.dispatch.hint') }}</p>

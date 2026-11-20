@@ -91,7 +91,9 @@ class Login extends Component
 
     public function render(): View
     {
-        return view('livewire.auth.login')->title(__('auth.title'));
+        return view('livewire.auth.login')
+            ->title(__('auth.title'))
+            ->layoutData(['photo' => true]);
     }
 
     protected function throttleKey(): string

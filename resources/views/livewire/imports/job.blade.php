@@ -126,9 +126,7 @@
                             @endif
                         @endforeach
                         <x-data-table.cell col="message">
-                            <span class="inline-flex rounded-md border px-2 py-0.5 text-small font-semibold {{ config('ui.statuses.'.($row->status === 'ERROR' ? 'rejected' : 'pending')) }}">
-                                {{ __('imports.check.'.($row->status === 'ERROR' ? 'error' : 'warning')) }}
-                            </span>
+                            <x-badge :tone="$row->status === 'ERROR' ? 'rejected' : 'pending'">{{ __('imports.check.'.($row->status === 'ERROR' ? 'error' : 'warning')) }}</x-badge>
                             <p class="mt-1 text-body text-fg">{{ $row->text() }}</p>
                         </x-data-table.cell>
                         <td class="pe-edge"></td>

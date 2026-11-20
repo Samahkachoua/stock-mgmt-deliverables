@@ -47,10 +47,10 @@ final class Statuses
     }
 
     /**
-     * Badge colour classes from config('ui.statuses'); neutral for codes the UI does not map.
+     * Badge colour classes from config('ui.badges'); neutral for codes the UI does not map.
      */
     public static function classes(string $code): string
     {
-        return config('ui.statuses.'.(config('transactions.statuses.'.$code.'.token') ?? 'cancelled'));
+        return config('ui.badges.'.(config('transactions.statuses.'.$code.'.token') ?? 'cancelled'));
     }
 }

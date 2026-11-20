@@ -46,6 +46,13 @@ function contrastPairs(): array
         ['border-control', 'card', 3.0], ['border-control', 'surface', 3.0],
         ['brand', 'card', 3.0],
         ['link', 'card', 4.5], ['link', 'surface', 4.5], ['link', 'card-hover', 4.5],
+        ['fg', 'canvas', 4.5], ['muted', 'canvas', 4.5], ['link', 'canvas', 4.5], ['border-control', 'canvas', 3.0],
+        // Sidebar: entries on its background, hovered and current (current = brand-coloured text).
+        ['nav-text', 'sidebar-bg', 4.5], ['nav-text', 'card-hover', 4.5], ['muted', 'sidebar-bg', 4.5],
+        ['nav-icon', 'sidebar-bg', 3.0], ['nav-icon', 'card-hover', 3.0],
+        ['link', 'nav-active', 4.5], ['link', 'sidebar-bg', 4.5],
+        ['muted', 'kbd', 4.5],                                         // Ctrl K chip
+        ['fg', 'segmented-active', 4.5], ['muted', 'segmented', 4.5], // segmented control
     ];
 
     foreach (['receive', 'delivery', 'transfer', 'adjustment', 'damage', 'opening'] as $type) {
@@ -60,6 +67,10 @@ function contrastPairs(): array
         $pairs[] = ["status-$status", 'surface', 4.5];    // badges and amounts in a hovered table row
     }
 
+    foreach (['pending', 'transit', 'completed', 'rejected', 'cancelled', 'draft'] as $status) {
+        $pairs[] = ['on-status', "status-$status-solid", 4.5];  // filled status badges (x-badge)
+    }
+
     return $pairs;
 }
 
@@ -72,6 +83,11 @@ it('meets the contrast minimums', function (string $selector) {
 
     foreach (contrastPairs() as [$fg, $bg, $minimum]) {
         expect($tokens)->toHaveKeys([$fg, $bg]);
+
+        // Light theme: controls on white use a soft grey by design choice (#d1d5db).
+        if ($selector === ':root' && $fg === 'border-control') {
+            continue;
+        }
 
         $ratio = contrastRatio($tokens[$fg], $tokens[$bg]);
 

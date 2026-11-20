@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureHasWarehouse;
+use App\Http\Middleware\EnsurePasswordChanged;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Reports\Reports;
@@ -47,8 +48,10 @@ class AppServiceProvider extends ServiceProvider
             Vite::useHotFile(storage_path('framework/vite.hot'));
         }
 
-        // Livewire requests from warehouse-scoped pages re-run the warehouse check.
+        // Livewire requests from warehouse-scoped pages re-run the warehouse check
+        // (and the temporary-password check).
         Livewire::addPersistentMiddleware([
+            EnsurePasswordChanged::class,
             EnsureHasWarehouse::class,
         ]);
 

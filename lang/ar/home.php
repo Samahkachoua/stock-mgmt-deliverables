@@ -14,5 +14,20 @@ return [
     'recent' => [
         'title' => 'تابع من حيث توقفت',
         'empty' => 'ستظهر هنا العمليات التي تنشئها أو تعمل عليها.',
+        'line' => ':customer · :event',
+        // Nouns ("your last action"), so the sentence needs no gender.
+        'events' => [
+            'created' => 'آخر إجراء لك: إنشاء',
+            'edited' => 'آخر إجراء لك: تعديل',
+            'sent_for_approval' => 'آخر إجراء لك: إرسال للموافقة',
+            'approved' => 'آخر إجراء لك: موافقة',
+            'rejected' => 'آخر إجراء لك: رفض',
+            'posted' => 'آخر إجراء لك: إتمام',
+            'confirmed' => 'آخر إجراء لك: تأكيد',
+            'dispatched' => 'آخر إجراء لك: شحن',
+            'received' => 'آخر إجراء لك: استلام',
+            'delivered' => 'آخر إجراء لك: تسليم',
+            'cancelled' => 'آخر إجراء لك: إلغاء',
+        ],
     ],
 ];

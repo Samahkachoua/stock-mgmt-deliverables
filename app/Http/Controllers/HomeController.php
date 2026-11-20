@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\Drafts\DraftTypes;
 use App\Support\Drafts\DraftUi;
 use App\Support\Home\RecentActivity;
+use App\Support\Navigation\Sidebar;
 use App\Support\Transactions\PendingApprovals;
 use App\Support\Transactions\TransactionTypes;
 use App\Support\Transactions\TypeUi;
@@ -63,7 +64,7 @@ class HomeController extends Controller
      */
     private function creatable(User $user, Collection $types): Collection
     {
-        $order = array_column(config('ui.nav'), 'route');
+        $order = array_column(Sidebar::flatItems(), 'route');
 
         return collect(DraftTypes::all())->values()
             ->concat($types->values())

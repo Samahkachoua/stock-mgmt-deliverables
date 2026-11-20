@@ -9,8 +9,8 @@
         @foreach ($types as $type)
             <li>
                 <a href="{{ route('imports.create', $type->slug()) }}" wire:navigate class="flex min-h-20 items-center gap-4 rounded-xl border border-default bg-card p-card shadow-card hover:bg-card-hover">
-                    <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-surface">
-                        <x-icon :name="$type->icon()" class="size-7 text-muted" />
+                    <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-brand/12 dark:bg-brand/16">
+                        <x-icon :name="$type->icon()" class="size-7 text-link" />
                     </span>
                     <span class="flex flex-col">
                         <span class="text-h3 font-semibold text-fg">{{ $type->title() }}</span>
@@ -24,14 +24,23 @@
 
     <h2 class="text-h3 font-semibold text-fg">{{ __('imports.list.heading') }}</h2>
 
-    <x-data-table
-        :columns="[
+    @php
+        $columns = [
             'when' => ['label' => __('imports.list.when')],
             'file' => ['label' => __('imports.list.file'), 'card' => 'title'],
             'type' => ['label' => __('imports.list.type')],
             'by' => ['label' => __('imports.list.by'), 'priority' => 2],
             'result' => ['label' => __('imports.list.result')],
-        ]"
+        ];
+    @endphp
+
+    <div data-list-toolbar class="flex flex-wrap items-center justify-end gap-2 print:hidden">
+        <x-list-columns :columns="$columns" list="imports" />
+        <x-report.export-buttons exportable />
+    </div>
+
+    <x-data-table
+        :columns="$columns"
         :paginator="$jobs"
         :loading="! $rowsLoaded"
         :empty-title="__('imports.list.empty_title')"
@@ -53,7 +62,7 @@
                 <x-data-table.cell col="type" class="text-fg">{{ Imports::forCode($job->job_type)->title() }}</x-data-table.cell>
                 <x-data-table.cell col="by" class="text-fg"><bdi>{{ $job->creator->full_name }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="result">
-                    <span class="inline-flex rounded-md border px-2 py-0.5 text-small font-semibold {{ config('ui.statuses.'.$tone) }}">{{ $result }}</span>
+                    <x-badge :tone="$tone">{{ $result }}</x-badge>
                 </x-data-table.cell>
             </x-data-table.row>
         @endforeach

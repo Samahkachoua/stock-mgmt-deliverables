@@ -6,7 +6,5 @@
 @if ($classes === null)
     <span {{ $attributes->class(['whitespace-nowrap text-fg']) }}>{{ \App\Support\Drafts\DraftTypes::priorityLabel($code) }}</span>
 @else
-    <span {{ $attributes->class(['inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-md border px-2 text-small font-semibold', $classes]) }}>
-        {{ \App\Support\Drafts\DraftTypes::priorityLabel($code) }}
-    </span>
+    <x-badge :attributes="$attributes" :classes="$classes">{{ \App\Support\Drafts\DraftTypes::priorityLabel($code) }}</x-badge>
 @endif

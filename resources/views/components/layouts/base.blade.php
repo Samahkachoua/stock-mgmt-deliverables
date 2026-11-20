@@ -46,7 +46,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="min-h-screen bg-surface font-sans text-fg antialiased">
+<body class="min-h-screen bg-canvas font-sans text-fg antialiased">
     {{ $slot }}
 
     <x-toasts />

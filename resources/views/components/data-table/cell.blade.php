@@ -13,6 +13,7 @@
 
 <td
     @if (filled($column['label'] ?? null) && ! in_array($card, ['title', 'badge', 'hide'], true)) data-label="{{ $column['label'] }}" @endif
+    @if ($col !== null) data-col="{{ $col }}" @endif
     @if ($card) data-card="{{ $card }}" @endif
     @if (($column['priority'] ?? 1) > 1) data-priority="{{ $column['priority'] }}" @endif
     {{ $attributes->class(['px-cell py-cell-y first:ps-edge', 'text-end' => $align === 'end', 'text-start' => $align !== 'end']) }}

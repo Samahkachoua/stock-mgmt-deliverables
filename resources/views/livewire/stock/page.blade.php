@@ -1,16 +1,10 @@
 {{-- Stock (docs/design/stitch-exports/stock-inventory-balance-list). --}}
 @use('App\Support\Format')
 <div class="flex flex-col gap-section">
-    <x-page-header icon="inventory_2" :title="__('reports.stock_on_hand.title')" :subtitle="__('reports.stock_on_hand.description')">
-        <x-slot:actions>
-            <x-report.export-buttons :exportable="$exportable" />
-        </x-slot:actions>
-    </x-page-header>
+    <x-page-header icon="inventory_2" :title="__('reports.stock_on_hand.title')" :subtitle="__('reports.stock_on_hand.description')" />
 
-    <x-report.filters :definitions="$definition->filters()" :choices="$choices" :values="$filters" :defaults="$defaults" />
-
-    <x-data-table
-        :columns="[
+    @php
+        $columns = [
             'item' => ['label' => __('reports.columns.item'), 'card' => 'title'],
             'code' => ['label' => __('reports.columns.code')],
             'customer' => ['label' => __('reports.columns.customer'), 'priority' => 2],
@@ -20,7 +14,13 @@
             'available' => ['label' => __('reports.columns.available'), 'align' => 'end'],
             'expiry' => ['label' => __('reports.columns.nearest_expiry')],
             'storage' => ['label' => __('reports.columns.storage_status'), 'priority' => 2],
-        ]"
+        ];
+    @endphp
+
+    <x-report.filters :definitions="$definition->filters()" :choices="$choices" :values="$filters" :defaults="$defaults" :columns="$columns" list="stock" :exportable="$exportable" />
+
+    <x-data-table
+        :columns="$columns"
         :paginator="$rows"
         :footer="$totals === null ? null : [
             'label' => trans_choice('reports.stock_on_hand.footer_total', $totals['rows'], ['count' => Format::qty($totals['rows'])]),

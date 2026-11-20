@@ -16,14 +16,18 @@
             </x-master-data.editor>
         @endif
 
-        <x-filters-bar :search-placeholder="__('settings.units.search')" />
-
-        <x-data-table
-            :columns="[
+        @php
+            $columns = [
                 'name' => ['label' => __('settings.units.name_and_code'), 'card' => 'title'],
                 'used_by' => ['label' => __('settings.units.used_by'), 'align' => 'end'],
                 'delete' => ['label' => ''],
-            ]"
+            ];
+        @endphp
+
+        <x-filters-bar :search-placeholder="__('settings.units.search')" :columns="$columns" list="settings-units" exportable />
+
+        <x-data-table
+            :columns="$columns"
             :paginator="$rows"
             :loading="! $rowsLoaded"
             loading-target="search, resetFilters, gotoPage, nextPage, previousPage, loadRows, save"

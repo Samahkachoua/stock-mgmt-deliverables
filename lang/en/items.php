@@ -26,7 +26,6 @@ return [
         'name' => 'Name',
         'customer' => 'Customer',
         'base_unit' => 'Base unit',
-        'other_units' => 'Other units',
         'tracking' => 'Tracking',
         'expiry' => 'Expiry',
         'serial' => 'Serial no.',

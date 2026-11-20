@@ -11,6 +11,19 @@ it('shows the sign in page to guests', function () {
         ->assertSee(__('auth.submit'));
 });
 
+it('shows the photo beside the form on the sign in page only', function () {
+    $this->get(route('login'))
+        ->assertSee('auth-split', false)
+        ->assertSee(asset('images/brand/login-bg-cutout.webp'), false)
+        ->assertSee(asset('images/brand/login-bg.jpeg'), false);
+
+    // The 403 page shares the guest layout and keeps the plain layout.
+    $this->view('errors.403')->assertDontSee('auth-split', false);
+
+    expect(public_path('images/brand/login-bg-cutout.webp'))->toBeFile()
+        ->and(public_path('images/brand/login-bg.jpeg'))->toBeFile();
+});
+
 it('signs in an active user', function () {
     $user = userWithWarehouses();
 

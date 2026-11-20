@@ -4,12 +4,15 @@ return [
     'tagline' => 'نظام إدارة المستودعات',
     'logo_alt' => 'شركة ثقة النخبة للخدمات اللوجستية',
     'skip_to_content' => 'انتقل إلى المحتوى',
+    'breadcrumb' => 'مسار التنقل',
     'select_warehouse' => 'اختر المستودع',
     'language' => 'اللغة',
     'theme' => 'المظهر',
     'theme_light' => 'فاتح',
     'theme_dark' => 'داكن',
     'theme_system' => 'حسب النظام',
+    'theme_to_dark' => 'التبديل إلى المظهر الداكن',
+    'theme_to_light' => 'التبديل إلى المظهر الفاتح',
     'theme_invalid' => 'اختر فاتح أو داكن أو حسب النظام.',
     'user_menu' => 'قائمة الحساب',
     'sign_out' => 'تسجيل الخروج',
@@ -37,4 +40,7 @@ return [
         'server' => ['title' => 'حدث خطأ ما', 'body' => 'تم تسجيل المشكلة. حاول مجددًا بعد قليل، وإذا تكررت فأخبر المسؤول.'],
         'maintenance' => ['title' => 'سنعود خلال دقائق', 'body' => 'يجري تحديث النظام. يُرجى المحاولة بعد قليل.'],
     ],
+    // Lists: the Columns menu (x-list-columns) and exports of a list (App\Livewire\Concerns\ExportsList).
+    'columns' => ['button' => 'الأعمدة', 'title' => 'إظهار الأعمدة', 'always' => 'يظهر دائمًا'],
+    'export' => ['too_many' => 'أكثر من :max سطر للتصدير. ضيّق عوامل التصفية ثم حاول مجددًا.'],
 ];

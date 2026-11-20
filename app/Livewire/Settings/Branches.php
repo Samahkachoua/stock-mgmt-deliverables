@@ -114,7 +114,7 @@ class Branches extends MasterDataPage
             ->orderBy('customer.name')
             ->orderBy('customer_branch.name')
             ->select('customer_branch.*')
-            ->paginate(self::PER_PAGE);
+            ->paginate($this->perPage());
     }
 
     protected function formFrom(Model $record): array

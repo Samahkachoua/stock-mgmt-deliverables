@@ -32,10 +32,11 @@ final class Exporter
 
     /**
      * @param  array<string, string>  $filters  normalized
+     * @param  list<string>  $hidden  columns the viewer hid (Columns menu): left out
      */
-    public function xlsx(Report $report, array $filters, User $user): BinaryFileResponse
+    public function xlsx(Report $report, array $filters, User $user, array $hidden = []): BinaryFileResponse
     {
-        $columns = $report->columns();
+        $columns = $this->visible($report->columns(), $hidden);
         $rows = $report->rows($filters, $user)
             ->map(fn (array $cells) => array_map(fn (string $key) => $this->excelValue($cells[$key] ?? ''), array_keys($columns)))
             ->values()
@@ -48,37 +49,80 @@ final class Exporter
             $this->rtl(),
         );
 
-        return Excel::download($sheet, $this->filename($report, 'xlsx'));
+        return Excel::download($sheet, $this->filename($report->key(), 'xlsx'));
     }
 
     /**
      * @param  array<string, string>  $filters  normalized
+     * @param  list<string>  $hidden  columns the viewer hid (Columns menu): left out
      */
-    public function pdf(Report $report, array $filters, User $user): StreamedResponse
+    public function pdf(Report $report, array $filters, User $user, array $hidden = []): StreamedResponse
     {
-        $content = $this->pdfContent($report, $filters, $user);
-
-        return response()->streamDownload(function () use ($content) {
-            echo $content;
-        }, $this->filename($report, 'pdf'), ['Content-Type' => 'application/pdf']);
+        return $this->streamPdf($this->pdfContent($report, $filters, $user, $hidden), $report->key());
     }
 
     /**
      * The PDF file's bytes.
      *
      * @param  array<string, string>  $filters  normalized
+     * @param  list<string>  $hidden
      */
-    public function pdfContent(Report $report, array $filters, User $user): string
+    public function pdfContent(Report $report, array $filters, User $user, array $hidden = []): string
+    {
+        return $this->renderPdf(
+            $report->title(),
+            $this->visible($report->columns(), $hidden),
+            $report->rows($filters, $user),
+            $report->describeFilters($filters, $user),
+            $report->summary($filters, $user),
+            $user,
+        );
+    }
+
+    /**
+     * A list (ExportTable, read from the list's own table) as an Excel sheet.
+     */
+    public function tableXlsx(ExportTable $table): BinaryFileResponse
+    {
+        $keys = array_keys($table->columns);
+
+        $sheet = new ReportSheet(
+            $table->title,
+            array_column(array_values($table->columns), 'label'),
+            array_map(fn (array $cells) => array_map(fn (string $key) => $cells[$key] ?? '', $keys), $table->rows),
+            $this->rtl(),
+        );
+
+        return Excel::download($sheet, $this->filename($table->slug, 'xlsx'));
+    }
+
+    /**
+     * A list (ExportTable) as a PDF, laid out like a report's.
+     */
+    public function tablePdf(ExportTable $table, User $user): StreamedResponse
+    {
+        return $this->streamPdf(
+            $this->renderPdf($table->title, $table->columns, collect($table->rows), $table->filters, [], $user),
+            $table->slug,
+        );
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $columns  labels are translation keys or text
+     * @param  iterable<array<string, mixed>>  $rows
+     * @param  list<string>  $filters
+     * @param  list<array{label: string, value: string}>  $summary
+     */
+    private function renderPdf(string $title, array $columns, iterable $rows, array $filters, array $summary, User $user): string
     {
         $rtl = $this->rtl();
-        $columns = $report->columns();
 
         $html = view('exports.report-pdf', [
-            'report' => $report,
+            'title' => $title,
             'columns' => $columns,
-            'rows' => $report->rows($filters, $user),
-            'filters' => $report->describeFilters($filters, $user),
-            'summary' => $report->summary($filters, $user),
+            'rows' => collect($rows),
+            'filters' => $filters,
+            'summary' => $summary,
             'rtl' => $rtl,
             'generatedAt' => $this->now(),
             'by' => $user->full_name,
@@ -94,12 +138,34 @@ final class Exporter
             'margin_left' => 10,
             'margin_right' => 10,
         ]);
-        $mpdf->SetTitle($report->title());
+        $mpdf->SetTitle($title);
         $mpdf->SetDirectionality($rtl ? 'rtl' : 'ltr');
         $mpdf->SetFooter('{PAGENO} / {nbpg}');
         $mpdf->WriteHTML($html);
 
         return $mpdf->Output('', 'S');
+    }
+
+    private function streamPdf(string $content, string $slug): StreamedResponse
+    {
+        return response()->streamDownload(function () use ($content) {
+            echo $content;
+        }, $this->filename($slug, 'pdf'), ['Content-Type' => 'application/pdf']);
+    }
+
+    /**
+     * @template T
+     *
+     * @param  array<string, T>  $columns
+     * @param  list<string>  $hidden
+     * @return array<string, T>
+     */
+    private function visible(array $columns, array $hidden): array
+    {
+        $visible = array_diff_key($columns, array_flip($hidden));
+
+        // Never an empty file: with every column hidden, all of them.
+        return $visible === [] ? $columns : $visible;
     }
 
     /**
@@ -114,9 +180,9 @@ final class Exporter
         return array_key_exists('value', $cell) ? $cell['value'] : $cell['text'];
     }
 
-    private function filename(Report $report, string $extension): string
+    private function filename(string $slug, string $extension): string
     {
-        return Str::slug($report->key()).'-'.now()->format('Y-m-d-His').'.'.$extension;
+        return Str::slug($slug).'-'.now()->format('Y-m-d-His').'.'.$extension;
     }
 
     /**

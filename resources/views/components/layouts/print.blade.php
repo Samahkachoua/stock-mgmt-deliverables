@@ -39,17 +39,17 @@
         @media screen { .print-view .sheet { max-width: 210mm; margin: 0 auto; padding: 12mm; } }
     </style>
 </head>
-<body class="font-sans text-sm antialiased">
+<body class="font-sans text-body antialiased">
     <div class="sheet flex flex-col gap-5">
         <header class="flex items-start justify-between gap-6 border-b border-black pb-4">
             <div class="flex flex-col items-start gap-2">
                 <img src="{{ asset('images/brand/etl-logo-print.png') }}" alt="{{ __('app.logo_alt') }}" class="h-14 w-auto">
-                <span class="text-base font-semibold">{{ config('app.name') }}</span>
+                <span class="text-lead font-semibold">{{ config('app.name') }}</span>
             </div>
             <div class="flex flex-col items-end gap-1 text-end">
-                <h1 class="text-xl font-semibold">{{ $heading }}</h1>
+                <h1 class="text-h2 font-semibold">{{ $heading }}</h1>
                 @if ($reference)
-                    <span dir="ltr" class="tabular text-lg font-semibold">{{ $reference }}</span>
+                    <span dir="ltr" class="tabular text-h3 font-semibold">{{ $reference }}</span>
                 @endif
             </div>
         </header>
@@ -65,13 +65,13 @@
                 @else
                     @foreach (['print.prepared_by', 'print.received_by'] as $label)
                         <div class="flex flex-col gap-10">
-                            <span class="text-xs font-semibold uppercase tracking-wide">{{ __($label) }}</span>
-                            <span class="border-t border-black pt-1 text-xs">{{ __('print.signature') }}</span>
+                            <span class="text-small font-semibold uppercase tracking-wide">{{ __($label) }}</span>
+                            <span class="border-t border-black pt-1 text-small">{{ __('print.signature') }}</span>
                         </div>
                     @endforeach
                 @endisset
             </div>
-            <p class="text-xs">
+            <p class="text-small">
                 {{ __('print.printed_by', ['name' => $user?->full_name ?? '', 'date' => \App\Support\Format::dateTime(now())]) }}
             </p>
         </footer>

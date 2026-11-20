@@ -3,6 +3,7 @@
 namespace App\Livewire\Items;
 
 use App\Livewire\Concerns\DefersRows;
+use App\Livewire\Concerns\ExportsList;
 use App\Livewire\Concerns\RemembersListState;
 use App\Models\Customer;
 use App\Models\Product;
@@ -20,7 +21,7 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.app')]
 class ItemList extends Component
 {
-    use DefersRows, RemembersListState, WithoutUrlPagination, WithPagination;
+    use DefersRows, ExportsList, RemembersListState, WithoutUrlPagination, WithPagination;
 
     public const PER_PAGE = 10;
 
@@ -48,6 +49,16 @@ class ItemList extends Component
         $this->clearListState();
     }
 
+    protected function exportTitle(): string
+    {
+        return __('items.title');
+    }
+
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', Product::class);
+    }
+
     protected function listStateKey(): string
     {
         return 'items';
@@ -68,7 +79,7 @@ class ItemList extends Component
             ->when(in_array($this->status, ['active', 'inactive'], true), fn ($query) => $query->where('active', $this->status === 'active'))
             ->when(trim($this->search) !== '', fn ($query) => $query->search($this->search))
             ->orderBy('sku')
-            ->paginate(self::PER_PAGE)));
+            ->paginate($this->perPage())));
 
         return view('livewire.items.list', [
             'items' => $items,

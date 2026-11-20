@@ -3,6 +3,7 @@
 namespace App\Livewire\Drafts;
 
 use App\Livewire\Concerns\DefersRows;
+use App\Livewire\Concerns\ExportsList;
 use App\Livewire\Concerns\RemembersListState;
 use App\Models\Customer;
 use App\Models\CustomerBranch;
@@ -33,7 +34,7 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.app')]
 class DraftList extends Component
 {
-    use DefersRows, RemembersListState, WithoutUrlPagination, WithPagination;
+    use DefersRows, ExportsList, RemembersListState, WithoutUrlPagination, WithPagination;
 
     public const PER_PAGE = 8;
 
@@ -87,6 +88,16 @@ class DraftList extends Component
     public function resetFilters(): void
     {
         $this->clearListState();
+    }
+
+    protected function exportTitle(): string
+    {
+        return $this->kind()->label('title');
+    }
+
+    protected function authorizeExport(): void
+    {
+        Gate::authorize('drafts.'.strtolower($this->type).'.open');
     }
 
     protected function listStateKey(): string
@@ -156,7 +167,7 @@ class DraftList extends Component
 
         return $this->pageInRange(fn (int $page) => DraftDocuments::page($kind, $this->filters() + [
             'drafts_first' => $draftsFirst,
-        ], self::PER_PAGE, $page));
+        ], $this->perPage(), $page));
     }
 
     /**

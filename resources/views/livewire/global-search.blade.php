@@ -12,7 +12,7 @@
     "/" or Ctrl+K puts the cursor in it from anywhere.
 --}}
 <div
-    class="relative min-w-0 md:w-72 md:shrink xl:w-96"
+    class="relative min-w-0 md:w-72 md:shrink xl:w-[28rem]"
     x-data="{
         open: false,
         panel: false,
@@ -83,8 +83,16 @@
                 x-on:keydown.up.prevent="active = Math.max(active - 1, 0)"
                 x-on:keydown.enter.prevent="$refs['result-' + active]?.click()"
                 placeholder="{{ __('search.placeholder') }}"
-                class="h-control w-full rounded-lg border border-control bg-surface pe-3 ps-10 text-start text-body text-fg placeholder:text-subtle focus:border-brand focus:bg-card focus:outline-none focus:ring-2 focus:ring-brand/20 [&::-webkit-search-cancel-button]:hidden"
+                class="h-control w-full rounded-lg border border-control bg-surface pe-3 ps-10 text-start text-body text-fg transition-colors duration-200 placeholder:text-subtle focus:border-brand focus:bg-card focus:outline-none focus:ring-2 focus:ring-brand/20 xl:pe-16 [&::-webkit-search-cancel-button]:hidden"
             >
+            {{--
+                The shortcut that focuses the field ("/" works too): ⌘K on a Mac, Ctrl K elsewhere.
+                The chip follows the page's direction (end side); only its text is left-to-right.
+            --}}
+            <kbd
+                aria-hidden="true"
+                class="pointer-events-none absolute end-2 top-1/2 hidden h-6 -translate-y-1/2 items-center rounded-md bg-kbd px-1.5 font-sans text-small font-medium text-muted xl:flex"
+            ><span dir="ltr" x-data x-text="/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'">Ctrl K</span></kbd>
         </div>
 
         <div

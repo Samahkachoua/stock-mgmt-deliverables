@@ -37,6 +37,9 @@ class ReportPage extends Component
     /** @var array<string, string> filter name => value (normalized) */
     public array $filters = [];
 
+    /** @var list<string> column keys the viewer hid (Columns menu, x-list-columns): left out of exports */
+    public array $hiddenColumns = [];
+
     public function mount(string $report): void
     {
         $definition = Reports::get($report);
@@ -91,8 +94,8 @@ class ReportPage extends Component
         $exporter = app(Exporter::class);
 
         return $format === 'xlsx'
-            ? $exporter->xlsx($report, $filters, $user)
-            : $exporter->pdf($report, $filters, $user);
+            ? $exporter->xlsx($report, $filters, $user, $this->hiddenColumns)
+            : $exporter->pdf($report, $filters, $user, $this->hiddenColumns);
     }
 
     public function render(): View

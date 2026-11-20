@@ -4,12 +4,15 @@ return [
     'tagline' => 'WMS Core',
     'logo_alt' => 'Elite Trust for Logistics Services',
     'skip_to_content' => 'Aller au contenu',
+    'breadcrumb' => 'Fil d\'Ariane',
     'select_warehouse' => 'Choisir l’entrepôt',
     'language' => 'Langue',
     'theme' => 'Thème',
     'theme_light' => 'Clair',
     'theme_dark' => 'Sombre',
     'theme_system' => 'Système',
+    'theme_to_dark' => 'Passer au thème sombre',
+    'theme_to_light' => 'Passer au thème clair',
     'theme_invalid' => 'Choisissez Clair, Sombre ou Système.',
     'user_menu' => 'Menu du compte',
     'sign_out' => 'Se déconnecter',
@@ -37,4 +40,7 @@ return [
         'server' => ['title' => 'Un problème est survenu', 'body' => 'Le problème a été enregistré. Réessayez dans un instant ; si cela continue, prévenez votre administrateur.'],
         'maintenance' => ['title' => 'De retour dans quelques minutes', 'body' => 'Le système est en cours de mise à jour. Merci de réessayer bientôt.'],
     ],
+    // Lists: the Columns menu (x-list-columns) and exports of a list (App\Livewire\Concerns\ExportsList).
+    'columns' => ['button' => 'Colonnes', 'title' => 'Afficher les colonnes', 'always' => 'Toujours affichée'],
+    'export' => ['too_many' => 'Plus de :max lignes à exporter. Affinez les filtres et réessayez.'],
 ];

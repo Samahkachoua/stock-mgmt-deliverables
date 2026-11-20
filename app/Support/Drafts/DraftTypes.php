@@ -61,7 +61,7 @@ final class DraftTypes
      */
     public static function statusClasses(string $code): string
     {
-        return config('ui.statuses.'.(config('transactions.draft_statuses.'.$code.'.token') ?? 'cancelled'));
+        return config('ui.badges.'.(config('transactions.draft_statuses.'.$code.'.token') ?? 'cancelled'));
     }
 
     /**
@@ -93,7 +93,7 @@ final class DraftTypes
     {
         $token = config('transactions.draft_priorities.'.$code);
 
-        return $token === null ? null : config('ui.statuses.'.$token);
+        return $token === null ? null : config('ui.badges.'.$token);
     }
 
     /**

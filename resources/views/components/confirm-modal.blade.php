@@ -26,7 +26,7 @@
             aria-labelledby="confirm-title"
             aria-describedby="confirm-body"
             data-confirm-dialog
-            class="relative w-full rounded-t-xl border border-default bg-card p-card shadow-pop md:max-w-md md:rounded-xl md:p-5"
+            class="relative w-full rounded-t-xl border border-default bg-card p-card shadow-pop md:max-w-md md:rounded-xl md:p-dialog"
         >
             <div class="flex items-start gap-4">
                 <span class="grid size-control shrink-0 place-items-center rounded-full bg-danger-soft text-danger">

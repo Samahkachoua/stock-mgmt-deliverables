@@ -35,7 +35,7 @@
                 <div class="relative mt-4 overflow-x-auto rounded-lg border border-default">
                     <table data-form class="cards w-full text-table md:min-w-[560px]">
                         <thead>
-                            <tr class="h-thead bg-surface text-small font-semibold uppercase tracking-wide text-muted">
+                            <tr class="h-thead border-b border-default bg-card text-table font-semibold text-fg">
                                 <th scope="col" class="ps-edge text-start">{{ __('settings.limits.customer') }}</th>
                                 @foreach ($this->types as $type)
                                     <th scope="col" class="px-cell text-start">{{ __('settings.limits.label', ['type' => $type->label()]) }}</th>

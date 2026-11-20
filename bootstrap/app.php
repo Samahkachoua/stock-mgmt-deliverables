@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureHasWarehouse;
+use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use App\Http\TrustedProxies;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'warehouse' => EnsureHasWarehouse::class,
+            'password.changed' => EnsurePasswordChanged::class,
         ]);
 
         $middleware->redirectGuestsTo(fn () => route('login'));

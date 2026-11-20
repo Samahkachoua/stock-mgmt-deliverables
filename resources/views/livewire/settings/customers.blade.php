@@ -19,15 +19,19 @@
             </x-master-data.editor>
         @endif
 
-        <x-filters-bar :search-placeholder="__('settings.customers.search')" />
-
-        <x-data-table
-            :columns="[
+        @php
+            $columns = [
                 'name' => ['label' => __('settings.customers.name_and_code'), 'card' => 'title'],
                 'email' => ['label' => __('settings.customers.email'), 'priority' => 2],
                 'phone' => ['label' => __('settings.customers.phone')],
                 'status' => ['label' => __('settings.status'), 'card' => 'badge'],
-            ]"
+            ];
+        @endphp
+
+        <x-filters-bar :search-placeholder="__('settings.customers.search')" :columns="$columns" list="settings-customers" exportable />
+
+        <x-data-table
+            :columns="$columns"
             :paginator="$rows"
             :loading="! $rowsLoaded"
             loading-target="search, resetFilters, gotoPage, nextPage, previousPage, loadRows, save"

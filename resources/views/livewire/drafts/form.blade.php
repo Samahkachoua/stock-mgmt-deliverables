@@ -16,6 +16,8 @@
         :subtitle="$kind->label('form_subtitle')"
         :back="$reference === '' ? $kind->route() : $kind->route('show', $reference)"
         :back-label="$reference === '' ? $kind->label('title') : $reference"
+        :crumbs="$reference === '' ? null : [[$kind->label('title'), $kind->route()], [$reference, $kind->route('show', $reference)]]"
+        :crumb="$reference === '' ? null : __('drafts.actions.edit')"
     />
 
     <form wire:submit="save" class="flex flex-col gap-section" novalidate>
@@ -230,7 +232,7 @@
             <div class="flex flex-wrap items-center justify-between gap-3 px-edge py-card-y">
                 <div class="flex items-center gap-3">
                     <h2 id="lines-heading" class="text-h3 font-semibold text-fg">{{ __('drafts.form.lines_heading') }}</h2>
-                    <span class="inline-flex h-6 items-center rounded-md bg-card-hover px-2 text-small font-semibold text-fg">
+                    <span class="inline-flex h-badge items-center rounded-md bg-card-hover px-2 text-small font-semibold text-fg">
                         {{ trans_choice('transactions.form.filled_lines', $check['filled'], ['count' => Format::qty($check['filled'])]) }}
                     </span>
                 </div>
@@ -244,7 +246,7 @@
                 <div class="relative overflow-x-auto">
                     <table data-form class="cards w-full text-table md:min-w-[720px] xl:min-w-[960px]">
                         <thead>
-                            <tr class="h-thead bg-surface text-small font-semibold uppercase tracking-wide text-muted">
+                            <tr class="h-thead border-b border-default bg-card text-table font-semibold text-fg">
                                 <th scope="col" class="w-12 ps-edge text-start">#</th>
                                 <th scope="col" class="min-w-56 px-cell text-start xl:min-w-72">{{ __('transactions.lines.item') }}</th>
                                 <th scope="col" class="w-36 px-cell text-start">{{ __('transactions.lines.unit') }}</th>

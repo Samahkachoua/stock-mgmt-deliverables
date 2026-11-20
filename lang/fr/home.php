@@ -14,5 +14,20 @@ return [
     'recent' => [
         'title' => 'Reprendre là où vous en étiez',
         'empty' => 'Les opérations que vous créez ou traitez apparaîtront ici.',
+        'line' => ':customer · :event',
+        // Nouns ("your last action"), so no agreement with the operation's gender.
+        'events' => [
+            'created' => 'Votre dernière action : création',
+            'edited' => 'Votre dernière action : modification',
+            'sent_for_approval' => 'Votre dernière action : envoi pour approbation',
+            'approved' => 'Votre dernière action : approbation',
+            'rejected' => 'Votre dernière action : rejet',
+            'posted' => 'Votre dernière action : validation',
+            'confirmed' => 'Votre dernière action : confirmation',
+            'dispatched' => 'Votre dernière action : expédition',
+            'received' => 'Votre dernière action : réception',
+            'delivered' => 'Votre dernière action : livraison',
+            'cancelled' => 'Votre dernière action : annulation',
+        ],
     ],
 ];

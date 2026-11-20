@@ -16,9 +16,9 @@ return [
 
     // Language switcher: code => label shown in its own language (endonym).
     'locales' => [
-        'en' => 'EN',
-        'ar' => 'عربي',
-        'fr' => 'FR',
+        'en' => 'English',
+        'ar' => 'العربية',
+        'fr' => 'Français',
     ],
 
     'themes' => ['light', 'dark', 'system'],
@@ -49,31 +49,59 @@ return [
         'draft' => 'bg-status-draft-soft text-status-draft border-status-draft-line',
     ],
 
+    // Status labels (x-badge, x-status-badge...): a filled pill with white text.
+    // The soft `statuses` above stay for notices, toasts and repeated chips
+    // (reserved quantities, count differences, item tracking tags).
+    'badges' => [
+        'pending' => 'bg-status-pending-solid text-on-status',
+        'transit' => 'bg-status-transit-solid text-on-status',
+        'completed' => 'bg-status-completed-solid text-on-status',
+        'rejected' => 'bg-status-rejected-solid text-on-status',
+        'cancelled' => 'bg-status-cancelled-solid text-on-status',
+        'draft' => 'bg-status-draft-solid text-on-status',
+    ],
+
     // Sidebar. `permission` (a permission code or gate) is required to see the
     // item and open its page; `type` picks the colour from `types`; null = neutral item.
     // Document types and drafts use their page title as label, so the sidebar
     // and the page (and the Dashboard) always say the same name.
+    //
+    // Sections, in order: `label` is the small heading above them (null = none);
+    // a section the user can see nothing of is left out, heading included.
+    // A new area (e.g. Shipments, after Outbound) is one more section here + its
+    // `nav.sections.*` translation. Built by App\Support\Navigation\Sidebar.
     'nav' => [
-        ['route' => 'home', 'permission' => 'stock.view', 'label' => 'nav.home', 'icon' => 'home', 'type' => null],
-        // Figures for the owner (only ADMIN holds dashboard.view for now).
-        ['route' => 'dashboard', 'permission' => 'dashboard.view', 'label' => 'nav.dashboard', 'icon' => 'bar_chart', 'type' => null],
+        ['label' => null, 'items' => [
+            ['route' => 'home', 'permission' => 'stock.view', 'label' => 'nav.home', 'icon' => 'home', 'type' => null],
+            // Figures for the owner (only ADMIN holds dashboard.view for now).
+            ['route' => 'dashboard', 'permission' => 'dashboard.view', 'label' => 'nav.dashboard', 'icon' => 'bar_chart', 'type' => null],
+        ]],
         // Drafts sit above the document they become; open to anyone who may create or
         // confirm them (gates in AppServiceProvider).
-        ['route' => 'draft-receipts', 'permission' => 'drafts.in.open', 'label' => 'drafts.types.receipt.title', 'icon' => 'assignment_returned', 'type' => 'receive'],
-        ['route' => 'receive', 'permission' => 'documents.receive', 'label' => 'transactions.types.receive.title', 'icon' => 'move_to_inbox', 'type' => 'receive'],
-        ['route' => 'orders', 'permission' => 'drafts.out.open', 'label' => 'drafts.types.order.title', 'icon' => 'content_paste_go', 'type' => 'delivery'],
-        ['route' => 'delivery-note', 'permission' => 'documents.delivery-note', 'label' => 'transactions.types.delivery_note.title', 'icon' => 'outbox', 'type' => 'delivery'],
-        ['route' => 'transfer', 'permission' => 'documents.transfer', 'label' => 'transactions.types.transfer.title', 'icon' => 'swap_horiz', 'type' => 'transfer'],
-        ['route' => 'adjustment', 'permission' => 'documents.adjustment', 'label' => 'transactions.types.adjustment.title', 'icon' => 'tune', 'type' => 'adjustment'],
-        ['route' => 'damage', 'permission' => 'documents.damage', 'label' => 'transactions.types.damage.title', 'icon' => 'report', 'type' => 'damage'],
-        ['route' => 'opening-balance', 'permission' => 'documents.opening-balance', 'label' => 'transactions.types.opening.title', 'icon' => 'account_balance_wallet', 'type' => 'opening'],
-        ['divider' => true],
-        ['route' => 'stock', 'permission' => 'stock.view', 'label' => 'nav.stock', 'icon' => 'inventory_2', 'type' => null],
-        ['route' => 'stock-by-expiry', 'permission' => 'report.stock_by_expiry.view', 'label' => 'nav.stock_by_expiry', 'icon' => 'calendar_today', 'type' => null],
-        ['route' => 'reports', 'permission' => 'reports.open', 'label' => 'nav.reports', 'icon' => 'description', 'type' => null],
-        ['route' => 'items', 'permission' => 'product.manage', 'label' => 'nav.items', 'icon' => 'category', 'type' => null],
-        ['route' => 'imports', 'permission' => 'product.import', 'label' => 'nav.imports', 'icon' => 'upload', 'type' => null],
-        ['route' => 'settings', 'permission' => 'settings.open', 'label' => 'nav.settings', 'icon' => 'settings', 'type' => null],
+        ['label' => 'nav.sections.inbound', 'items' => [
+            ['route' => 'draft-receipts', 'permission' => 'drafts.in.open', 'label' => 'drafts.types.receipt.title', 'icon' => 'assignment_returned', 'type' => 'receive'],
+            ['route' => 'receive', 'permission' => 'documents.receive', 'label' => 'transactions.types.receive.title', 'icon' => 'move_to_inbox', 'type' => 'receive'],
+        ]],
+        ['label' => 'nav.sections.outbound', 'items' => [
+            ['route' => 'orders', 'permission' => 'drafts.out.open', 'label' => 'drafts.types.order.title', 'icon' => 'content_paste_go', 'type' => 'delivery'],
+            ['route' => 'delivery-note', 'permission' => 'documents.delivery-note', 'label' => 'transactions.types.delivery_note.title', 'icon' => 'outbox', 'type' => 'delivery'],
+        ]],
+        ['label' => 'nav.sections.inventory', 'items' => [
+            ['route' => 'stock', 'permission' => 'stock.view', 'label' => 'nav.stock', 'icon' => 'inventory_2', 'type' => null],
+            ['route' => 'stock-by-expiry', 'permission' => 'report.stock_by_expiry.view', 'label' => 'nav.stock_by_expiry', 'icon' => 'calendar_today', 'type' => null],
+            ['route' => 'transfer', 'permission' => 'documents.transfer', 'label' => 'transactions.types.transfer.title', 'icon' => 'swap_horiz', 'type' => 'transfer'],
+            ['route' => 'adjustment', 'permission' => 'documents.adjustment', 'label' => 'transactions.types.adjustment.title', 'icon' => 'tune', 'type' => 'adjustment'],
+            ['route' => 'damage', 'permission' => 'documents.damage', 'label' => 'transactions.types.damage.title', 'icon' => 'report', 'type' => 'damage'],
+            ['route' => 'opening-balance', 'permission' => 'documents.opening-balance', 'label' => 'transactions.types.opening.title', 'icon' => 'account_balance_wallet', 'type' => 'opening'],
+        ]],
+        ['label' => null, 'items' => [
+            ['route' => 'reports', 'permission' => 'reports.open', 'label' => 'nav.reports', 'icon' => 'description', 'type' => null],
+        ]],
+        ['label' => 'nav.sections.setup', 'items' => [
+            ['route' => 'items', 'permission' => 'product.manage', 'label' => 'nav.items', 'icon' => 'category', 'type' => null],
+            ['route' => 'imports', 'permission' => 'product.import', 'label' => 'nav.imports', 'icon' => 'upload', 'type' => null],
+            ['route' => 'settings', 'permission' => 'settings.open', 'label' => 'nav.settings', 'icon' => 'settings', 'type' => null],
+        ]],
     ],
 
     // Seconds a success or warning toast stays on screen (errors stay until closed).

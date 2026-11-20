@@ -58,11 +58,11 @@ function moveStock(Catalog $catalog, Product $product): void
 
 // List
 
-it('lists items with their units and tracking, and searches and filters them', function () {
+it('lists items with their base unit and tracking, and searches and filters them', function () {
     $list = Livewire::actingAs(userWithRole('DATA_ENTRY'))->test(ItemList::class)->set('search', 'cb-400');
 
     $list->assertSee('Canned Beans 400g')
-        ->assertSee('1 Box = 12 Piece')
+        ->assertDontSee('1 Box = 12 Piece')
         ->assertDontSee('Olive Oil 1L');
 
     $list->set('search', '')->set('customer', $this->catalog->cedar->id)

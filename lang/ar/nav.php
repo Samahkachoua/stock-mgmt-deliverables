@@ -15,4 +15,10 @@ return [
     'items' => 'الأصناف',
     'settings' => 'الإعدادات',
     'pending_count' => ':count بانتظار موافقتك',
+    'sections' => [
+        'inbound' => 'الوارد',
+        'outbound' => 'الصادر',
+        'inventory' => 'المخزون',
+        'setup' => 'الإعداد',
+    ],
 ];

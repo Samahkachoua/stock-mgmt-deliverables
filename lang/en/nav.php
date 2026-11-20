@@ -15,4 +15,10 @@ return [
     'items' => 'Items',
     'settings' => 'Settings',
     'pending_count' => ':count waiting for your approval',
+    'sections' => [
+        'inbound' => 'Inbound',
+        'outbound' => 'Outbound',
+        'inventory' => 'Inventory',
+        'setup' => 'Setup',
+    ],
 ];

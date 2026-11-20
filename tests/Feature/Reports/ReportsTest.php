@@ -404,7 +404,7 @@ it('makes PDFs light whatever the user’s theme', function () {
     $d->admin->update(['preferred_theme' => 'dark']);
 
     $html = view('exports.report-pdf', [
-        'report' => Reports::get('damage'), 'columns' => Reports::get('damage')->columns(), 'rows' => collect(),
+        'title' => Reports::get('damage')->title(), 'columns' => Reports::get('damage')->columns(), 'rows' => collect(),
         'filters' => [], 'summary' => [], 'rtl' => false, 'generatedAt' => now(), 'by' => 'x',
     ])->render();
 

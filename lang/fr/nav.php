@@ -15,4 +15,10 @@ return [
     'items' => 'Articles',
     'settings' => 'Paramètres',
     'pending_count' => ':count en attente de votre approbation',
+    'sections' => [
+        'inbound' => 'Entrées',
+        'outbound' => 'Sorties',
+        'inventory' => 'Stock',
+        'setup' => 'Configuration',
+    ],
 ];

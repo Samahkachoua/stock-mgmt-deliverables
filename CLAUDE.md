@@ -257,6 +257,9 @@ them so users get a clear, translated message instead of a raw DB error.
 - A screen is not done until it has been checked in Arabic.
 
 ## Screen patterns (from the approved Stitch designs)
+Every page title has a breadcrumb above it (`x-breadcrumbs`, built by
+`x-page-header` from `back` / `crumbs`; Home has none): Home › list › record. On a
+phone a page with a parent shows only the back link instead.
 Designs: `docs/design/stitch-exports/`. Every transaction type (Receive,
 Delivery note, Transfer, Adjustment, Damage, Opening Balance) uses the SAME three
 pages, built from shared Blade/Livewire components — never a one-off layout
@@ -297,7 +300,7 @@ per type. Only the colour, title and the type-specific columns differ.
    - Adjustment/Damage above the approval threshold: a one-line notice
      above the footer and the button becomes "Send for approval".
    Changing the customer after lines exist clears the lines (warn inline first).
-3. **Details page** (read-only) — back link, reference + status badge,
+3. **Details page** (read-only) — breadcrumb (back link on phone), reference + status badge,
    summary card, lines table (Transfer: Sent | Received, editable only for
    the destination warehouse while In transit, with a reason dropdown when
    they differ), status-dependent actions (Approve/Reject for managers on
@@ -329,6 +332,13 @@ components — never per page.
   tooltips). Phone: sidebar hidden, opened as a drawer from a menu button
   in the top bar (closes on navigation / outside tap; slides from the
   correct side in Arabic).
+- Sidebar entries come in sections (config/ui.php `nav`: Inbound, Outbound,
+  Inventory, Setup; built by `App\Support\Navigation\Sidebar`); a
+  section with nothing the user may open is left out. Headings are plain labels
+  (never collapsible). Reports opens the Reports page (each report goes back to
+  it) and Settings its first tab; their sub-pages are never listed in the
+  sidebar. The only open/close control is the top bar's burger. A new area
+  (e.g. Shipments) is one more section in the config, not new layout code.
 - Phone top bar: menu button, page title, search button, user menu; theme
   and language move into the user menu. No warehouse selector (see rule 7).
 - Top bar search (`App\Support\Search\GlobalSearch`, `livewire:global-search`):
@@ -337,14 +347,25 @@ components — never per page.
   page it opens, always through the scoped models. "/" or Ctrl+K focuses it;
   a phone opens it as a full-screen panel. Nothing else goes in it.
 
-**Filters bar**
-- The search input keeps its current size and position.
-- All other filters (Customer, Status, Date from, Date to, …) have EQUAL
-  width in a grid: desktop 4 per row, tablet 2 per row; they wrap, never
-  shrink unevenly.
-- Phone: search stays visible; the other filters move behind a
-  "Filters" button showing the active count ("Filters · 2"), opening a
-  panel with them stacked full width plus "Apply" and "Clear filters".
+**Filters bar** (`x-filters-bar`, `x-report.filters`; straight on the page, no card)
+- All filters but the search (Customer, Status, Date from, Date to, …) come
+  first, with EQUAL width in a grid: desktop 4 per row, tablet 2 per row;
+  they wrap, never shrink unevenly.
+- Then the toolbar, right above the table, in every list: search and
+  "Clear filters" at the start; "Columns" (`x-list-columns`), Excel and PDF
+  at the end. Pass the list's `columns`, a `list` key and `exportable`.
+- Columns: a checkbox per column (the first is always shown); hiding is CSS
+  on the cells' `data-col`, remembered per browser (localStorage
+  `list-columns.<list>`) and sent as `hiddenColumns`, so exports leave those
+  columns out.
+- Excel / PDF of a list: `App\Livewire\Concerns\ExportsList` renders the
+  list's own table with every matching row (`perPage()`, at most
+  `EXPORT_MAX`) and reads it back (`ExportTable::fromHtml`) — the file says
+  what the screen says. Reports keep `Exporter` with their typed rows.
+- Column headings: dark text (`text-fg`), normal case, on the card colour.
+- Phone: search stays visible with the "Filters" button showing the active
+  count ("Filters · 2"), opening a panel with the filters stacked full width
+  plus "Apply" and "Clear filters"; Columns / Excel / PDF share a row below.
 
 **Lists and reports**
 - Desktop: full table. Tablet: table with low-priority columns hidden
@@ -531,8 +552,10 @@ never ad-hoc spinners per page.
   the operator pages (Home's "Pick up where you left off" list of the user's
   last 8 documents/drafts, `App\Support\Home\RecentActivity`, is links, not a
   widget: number, status and date per row; an empty state when there is
-  nothing yet). From 1024px it sits beside "Start something new"; those tiles
-  and the rows size by container queries (`@container`). Max 1280px wide,
+  nothing yet). Home is three full-width blocks: "Waiting for you" figure
+  cards (icon box, `text-stat` number, label; one balanced row of up to 4),
+  compact "Start something new" tiles (one row of up to 7 on desktop), then
+  the recent list (rows size by container queries, `@container`). Max 1280px wide,
   checked by `tests/Browser/HomeLayoutTest.php` from 320 to 1920px. Figures and charts live only on the owner dashboard
   (`/dashboard`, permission `dashboard.view`, ADMIN by default; built from
   `App\Reports\Dashboard`, each figure = the row count of the report it
@@ -543,7 +566,9 @@ never ad-hoc spinners per page.
   inline validation while typing; Save disabled until the form is valid.
 - Same colour per transaction type everywhere (one shared colour map):
   Receive green, Delivery note orange, Transfer blue, Adjustment purple,
-  Damage red, Opening Balance slate. Status badges: Pending approval amber,
+  Damage red, Opening Balance slate. Status badges are filled pills with white
+  text (`x-badge`, `config('ui.badges')`; soft `ui.statuses` only for notices,
+  toasts and repeated chips like reserved quantities): Pending approval amber,
   In transit blue, Completed green, Rejected red, Cancelled grey.
 - Normal saves never ask for confirmation (except a final Adjustment/Damage
   and an Opening Balance).
@@ -561,7 +586,9 @@ never ad-hoc spinners per page.
 - All colours are CSS variables defined once (surface, text, border, brand,
   one per transaction type and status) with light and dark values; views use
   the tokens, never hard-coded hex values or per-component `dark:` colour pairs.
-- Contrast: text ≥ 4.5:1, icons/borders ≥ 3:1 in both themes — check red
+- Contrast: text ≥ 4.5:1, icons/borders ≥ 3:1 in both themes (one chosen
+  exception: in light mode inputs, selects and outline buttons on white use the
+  soft `--border-control` #d1d5db, a step darker than `--border`) — check red
   errors and amber warnings in dark mode especially.
 - Excel/PDF exports and printouts are always light.
 - A screen is done only when checked in light, dark, and Arabic.

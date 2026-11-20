@@ -4,6 +4,7 @@ namespace App\Livewire\Settings;
 
 use App\Livewire\Concerns\ConfirmsActions;
 use App\Livewire\Concerns\DefersRows;
+use App\Livewire\Concerns\ExportsList;
 use App\Livewire\Concerns\RemembersListState;
 use App\Support\Audit;
 use App\Support\Format;
@@ -33,7 +34,7 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.app')]
 abstract class MasterDataPage extends Component
 {
-    use ConfirmsActions, DefersRows, RemembersListState, WithoutUrlPagination, WithPagination;
+    use ConfirmsActions, DefersRows, ExportsList, RemembersListState, WithoutUrlPagination, WithPagination;
 
     public const PER_PAGE = 10;
 
@@ -207,6 +208,16 @@ abstract class MasterDataPage extends Component
         Notify::success(__($this->langPrefix().($isNew ? '.added' : '.updated'), ['name' => $this->displayName($record)]), on: $this);
     }
 
+    protected function exportTitle(): string
+    {
+        return $this->pageTitle();
+    }
+
+    protected function authorizeExport(): void
+    {
+        $this->authorize('viewAny', $this->model());
+    }
+
     public function render(): View
     {
         $model = $this->model();
@@ -227,7 +238,7 @@ abstract class MasterDataPage extends Component
      */
     protected function paginateRows(Builder $query): LengthAwarePaginator
     {
-        return $query->orderBy('name')->paginate(self::PER_PAGE);
+        return $query->orderBy('name')->paginate($this->perPage());
     }
 
     /**

@@ -223,7 +223,7 @@ return [
     ],
 
     // Priority of an order (stock_draft.priority, checked by the database too) => badge colour
-    // token in config('ui.statuses'); null = plain text. Labels: lang/<locale>/drafts.php `priority`.
+    // token in config('ui.badges'); null = plain text. Labels: lang/<locale>/drafts.php `priority`.
     'draft_priorities' => [
         'URGENT' => 'rejected',
         'NORMAL' => null,
@@ -239,7 +239,7 @@ return [
     ],
 
     /*
-    | Status shown in the UI per transaction_status.code: token in config('ui.statuses')
+    | Status shown in the UI per transaction_status.code: token in config('ui.badges')
     | and label key in lang/<locale>/transactions.php `status`. The UI has no Draft:
     | codes not listed here are never offered as a filter, and a document in such a
     | status shows its database name in a neutral badge.

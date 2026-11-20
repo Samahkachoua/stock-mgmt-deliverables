@@ -15,9 +15,7 @@
 @elseif (isset($cell['type']))
     <x-type-badge :code="$cell['type']" />
 @elseif (isset($cell['tone']))
-    <span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-0.5 text-small font-semibold {{ config('ui.statuses.'.$cell['tone']) }}">
-        @if ($cell['ltr'] ?? false)<span dir="ltr">{{ $text }}</span>@else{{ $text }}@endif
-    </span>
+    <x-badge :tone="$cell['tone']">@if ($cell['ltr'] ?? false)<span dir="ltr">{{ $text }}</span>@else{{ $text }}@endif</x-badge>
 @elseif ($cell['ltr'] ?? false)
     {{-- Codes and references never break across lines. --}}
     <span dir="ltr" @class(['tabular whitespace-nowrap', 'font-semibold text-fg' => $cell['strong'] ?? false, 'text-muted' => ! ($cell['strong'] ?? false)])>{{ $text }}</span>

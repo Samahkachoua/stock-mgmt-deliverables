@@ -14,6 +14,8 @@
         : app()->getLocale();
     app()->setLocale($locale);
     $rtl = $locale === 'ar';
+    // Colour tokens as CSS custom properties ("--surface: <hex>; ...").
+    $vars = fn (array $tokens) => collect($tokens)->map(fn ($hex, $name) => "--{$name}: {$hex};")->implode(' ');
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $locale }}" dir="{{ $rtl ? 'rtl' : 'ltr' }}">
@@ -24,15 +26,15 @@
     <title>{{ __("app.errors.$key.title") }} · {{ config('app.name') }}</title>
     <x-favicons />
     <style>
-        /* Same values as resources/css/app.css (this page loads no build). */
-        :root { --bg: #f7f9fb; --card: #ffffff; --fg: #1f2933; --muted: #5f6e84; --line: #e5e9ef; --brand: #0074b5; --brand-hover: #00669f; --on-brand: #ffffff; }
+        /* The app.css tokens (this page loads no build): App\Support\Palette. */
+        :root { {{ $vars(\App\Support\Palette::light()) }} }
         @media (prefers-color-scheme: dark) {
-            :root { --bg: #0b1120; --card: #131c2e; --fg: #e2e8f0; --muted: #94a3b8; --line: #26324a; --brand: #0679b9; --brand-hover: #00669f; --on-brand: #ffffff; }
+            :root { {{ $vars(\App\Support\Palette::dark()) }} }
         }
         * { box-sizing: border-box; }
         body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px;
-               background: var(--bg); color: var(--fg); font-family: "IBM Plex Sans Arabic", Inter, system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif; }
-        main { width: 100%; max-width: 28rem; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 32px; text-align: center; }
+               background: var(--surface); color: var(--fg); font-family: "IBM Plex Sans Arabic", Inter, system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif; }
+        main { width: 100%; max-width: 28rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 32px; text-align: center; }
         .logo { display: block; width: 160px; height: auto; margin: 0 auto 20px; }
         .code { font-size: 14px; font-weight: 600; color: var(--muted); letter-spacing: .05em; }
         h1 { margin: 8px 0 0; font-size: 20px; }
@@ -42,7 +44,7 @@
         a:focus-visible, button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
         .primary { background: var(--brand); color: var(--on-brand); border: 0; }
         .primary:hover { background: var(--brand-hover); }
-        .secondary { background: var(--card); color: var(--fg); border: 1px solid var(--line); }
+        .secondary { background: var(--card); color: var(--fg); border: 1px solid var(--border); }
         .secondary:hover { border-color: var(--muted); }
     </style>
 </head>

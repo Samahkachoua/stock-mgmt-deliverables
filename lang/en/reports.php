@@ -35,7 +35,7 @@ return [
         'customer' => 'Customer',
         'branch' => 'Branch',
         'warehouse' => 'Warehouse',
-        'qty_base' => 'Quantity', //'Quantity (base unit)',
+        'qty_base' => 'Quantity',
         'reserved' => 'Reserved',
         'available' => 'Available',
         'qty_larger' => 'Quantity (larger units)',

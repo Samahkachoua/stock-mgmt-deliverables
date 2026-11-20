@@ -27,7 +27,7 @@
                 <a
                     href="{{ $kind->route('create') }}"
                     wire:navigate
-                    class="flex h-control items-center gap-2 rounded-lg px-4 text-body font-semibold text-on-brand shadow-card hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:ring-offset-2 focus:ring-offset-surface {{ $kind->colours()['strong'] }}"
+                    class="flex h-control items-center gap-2 rounded-lg bg-brand px-4 text-body font-semibold text-on-brand shadow-card hover:bg-brand-add-hover focus:outline-none focus:ring-2 focus:ring-brand/40 focus:ring-offset-2 focus:ring-offset-surface"
                 >
                     <x-icon name="add" />
                     {{ $kind->label('new') }}
@@ -45,6 +45,9 @@
         dates
         :date-error="$dateError"
         :search-placeholder="__('drafts.filters.search_placeholder')"
+        :columns="$columns"
+        :list="$kind->slug()"
+        exportable
     />
 
     <x-data-table

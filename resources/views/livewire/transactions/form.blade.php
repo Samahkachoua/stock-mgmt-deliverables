@@ -227,7 +227,7 @@
             <div class="flex flex-wrap items-center justify-between gap-3 px-edge py-card-y">
                 <div class="flex items-center gap-3">
                     <h2 id="lines-heading" class="text-h3 font-semibold text-fg">{{ $ui->label('items_heading') }}</h2>
-                    <span class="inline-flex h-6 items-center rounded-md bg-card-hover px-2 text-small font-semibold text-fg">
+                    <span class="inline-flex h-badge items-center rounded-md bg-card-hover px-2 text-small font-semibold text-fg">
                         {{ trans_choice('transactions.form.filled_lines', $check['filled'], ['count' => Format::qty($check['filled'])]) }}
                     </span>
                 </div>
@@ -249,7 +249,7 @@
                     {{-- A table on desktop and tablet; on a phone every line is a card (the `cards` rules in app.css). --}}
                     <table data-form class="cards w-full text-table md:min-w-[672px] xl:min-w-[880px]">
                         <thead>
-                            <tr class="h-thead bg-surface text-small font-semibold uppercase tracking-wide text-muted">
+                            <tr class="h-thead border-b border-default bg-card text-table font-semibold text-fg">
                                 <th scope="col" class="w-12 ps-edge text-start">#</th>
                                 <th scope="col" class="min-w-56 px-cell text-start xl:min-w-72">{{ __('transactions.lines.item') }}</th>
                                 <th scope="col" class="w-36 px-cell text-start">{{ __('transactions.lines.unit') }}</th>

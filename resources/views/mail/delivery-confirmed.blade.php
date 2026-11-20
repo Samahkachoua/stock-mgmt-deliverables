@@ -1,4 +1,5 @@
 {{-- Emails are always light (like printouts and exports); mail clients ignore the app's CSS variables. --}}
+@php($c = \App\Support\Palette::light())
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
 <head>
@@ -6,8 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $note['subject'] }}</title>
 </head>
-<body style="margin:0;padding:24px 16px;background:#f7f9fb;color:#1f2933;font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:15px;line-height:1.5;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e9ef;border-radius:12px;">
+<body style="margin:0;padding:24px 16px;background:{{ $c["surface"] }};color:{{ $c["fg"] }};font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:15px;line-height:1.5;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;background:{{ $c["card"] }};border:1px solid {{ $c["border"] }};border-radius:12px;">
         <tr>
             <td style="padding:24px;text-align:start;">
                 {{-- Embedded when sent (shows without loading remote images); a plain URL when only rendered. --}}
@@ -19,40 +20,40 @@
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border-collapse:collapse;">
                     @foreach ($note['facts'] as $label => $value)
                         <tr>
-                            <td style="padding:6px 0;border-top:1px solid #e5e7eb;color:#4b5563;width:40%;vertical-align:top;text-align:start;">{{ $label }}</td>
-                            <td style="padding:6px 0;border-top:1px solid #e5e7eb;font-weight:600;text-align:start;">{{ $value }}</td>
+                            <td style="padding:6px 0;border-top:1px solid {{ $c["border"] }};color:{{ $c["muted"] }};width:40%;vertical-align:top;text-align:start;">{{ $label }}</td>
+                            <td style="padding:6px 0;border-top:1px solid {{ $c["border"] }};font-weight:600;text-align:start;">{{ $value }}</td>
                         </tr>
                     @endforeach
                 </table>
 
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border-collapse:collapse;font-size:14px;">
                     <thead>
-                        <tr style="background:#f3f4f6;">
-                            <th scope="col" style="padding:8px;border:1px solid #e5e7eb;text-align:start;">{{ __('deliveries.mail.item') }}</th>
-                            <th scope="col" style="padding:8px;border:1px solid #e5e7eb;text-align:end;">{{ __('deliveries.mail.ordered') }}</th>
-                            <th scope="col" style="padding:8px;border:1px solid #e5e7eb;text-align:end;">{{ __('deliveries.mail.delivered') }}</th>
+                        <tr style="background:{{ $c["card-hover"] }};">
+                            <th scope="col" style="padding:8px;border:1px solid {{ $c["border"] }};text-align:start;">{{ __('deliveries.mail.item') }}</th>
+                            <th scope="col" style="padding:8px;border:1px solid {{ $c["border"] }};text-align:end;">{{ __('deliveries.mail.ordered') }}</th>
+                            <th scope="col" style="padding:8px;border:1px solid {{ $c["border"] }};text-align:end;">{{ __('deliveries.mail.delivered') }}</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($note['lines'] as $line)
                             <tr>
-                                <td style="padding:8px;border:1px solid #e5e7eb;text-align:start;vertical-align:top;">
-                                    <strong>{{ $line['item'] }}</strong> <span dir="ltr" style="color:#4b5563;">{{ $line['code'] }}</span>
+                                <td style="padding:8px;border:1px solid {{ $c["border"] }};text-align:start;vertical-align:top;">
+                                    <strong>{{ $line['item'] }}</strong> <span dir="ltr" style="color:{{ $c["muted"] }};">{{ $line['code'] }}</span>
                                     @if ($line['lot'] !== '')
-                                        <br><span style="color:#4b5563;font-size:13px;">{{ $line['lot'] }}</span>
+                                        <br><span style="color:{{ $c["muted"] }};font-size:13px;">{{ $line['lot'] }}</span>
                                     @endif
                                     @if ($line['note'] !== '')
-                                        <br><span style="color:#b45309;font-size:13px;font-weight:600;">{{ $line['note'] }}</span>
+                                        <br><span style="color:{{ $c["status-pending"] }};font-size:13px;font-weight:600;">{{ $line['note'] }}</span>
                                     @endif
                                 </td>
-                                <td style="padding:8px;border:1px solid #e5e7eb;text-align:end;vertical-align:top;white-space:nowrap;">{{ $line['ordered'] }}</td>
-                                <td style="padding:8px;border:1px solid #e5e7eb;text-align:end;vertical-align:top;white-space:nowrap;font-weight:600;">{{ $line['delivered'] }}</td>
+                                <td style="padding:8px;border:1px solid {{ $c["border"] }};text-align:end;vertical-align:top;white-space:nowrap;">{{ $line['ordered'] }}</td>
+                                <td style="padding:8px;border:1px solid {{ $c["border"] }};text-align:end;vertical-align:top;white-space:nowrap;font-weight:600;">{{ $line['delivered'] }}</td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
 
-                <p style="margin:0;color:#4b5563;font-size:13px;">{{ $note['why'] }}</p>
+                <p style="margin:0;color:{{ $c["muted"] }};font-size:13px;">{{ $note['why'] }}</p>
             </td>
         </tr>
     </table>

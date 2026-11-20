@@ -80,6 +80,9 @@ CREATE TABLE app_user (
     notify_new_orders BOOLEAN NOT NULL DEFAULT TRUE,
     -- The same for draft receipts (only with their confirm permission); "Email about draft receipts".
     notify_draft_receipts BOOLEAN NOT NULL DEFAULT TRUE,
+    -- Set when an administrator types the password (Settings › Users): the user must
+    -- choose their own at the next sign-in. Cleared by Change password or a reset.
+    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     active          BOOLEAN NOT NULL DEFAULT TRUE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()

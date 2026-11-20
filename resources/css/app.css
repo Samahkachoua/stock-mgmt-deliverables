@@ -18,6 +18,9 @@
 /* Desktop sidebar closed to its icons (`sidebar-collapsed` on <html>, set by the head script). Used as xl:collapsed:... */
 @custom-variant collapsed (&:where(.sidebar-collapsed, .sidebar-collapsed *));
 
+/* Tablet sidebar opened in full from the top bar's burger (`sidebar-expanded` on the app frame). Used as md:max-xl:expanded:... */
+@custom-variant expanded (&:where(.sidebar-expanded, .sidebar-expanded *));
+
 /*
  * Colour tokens. This file is the ONLY place colour values live; views use the
  * utilities generated below (bg-surface, text-muted, bg-type-delivery, ...).
@@ -28,18 +31,30 @@
  * Contrast (text >= 4.5:1, icons/control borders >= 3:1) is checked by tests/Unit/ThemeContrastTest.php.
  */
 :root {
-    --surface: #f7f9fb;
+    /* Neutrals (Zenith greys): white page and cards, a light grey sidebar and table headers. */
+    --canvas: #ffffff; /* the page behind the cards, and the top bar */
+    --surface: #fafafa; /* table headers, disabled fields, inner panels, the search field */
     --card: #ffffff;
-    --card-hover: #f2f5f8;
-    --fg: #1f2933;
-    --muted: #5f6e84; /* Slate 500 (#64748b) nudged darker: it was 4.35:1 on card-hover, below 4.5 */
-    --subtle: #94a3b8; /* placeholders and decorative only, never body text */
-    --border: #e5e9ef; /* decorative dividers and card edges */
-    --border-control: #8491a5; /* input / control boundaries */
+    --card-hover: #f3f4f6; /* hover on rows, menu entries and ghost buttons */
+    --fg: #18181b;
+    --muted: #5f6571; /* Zenith's #6b7280 nudged darker: it is 4.4:1 on card-hover, below 4.5 */
+    --subtle: #a1a1aa; /* placeholders and decorative only, never body text */
+    --border: #e5e7eb; /* decorative dividers and card edges */
+    --border-control: #d1d5db; /* input / select / outline button boundaries: soft grey, a step darker than --border (by choice, below 3:1 on white; focus ring marks the active field) */
+
+    --sidebar-bg: #fafafa;
+    --nav-text: #374151; /* sidebar entries */
+    --nav-icon: #4b5563;
+    --nav-active: #f4f4f5; /* the current page's entry (its text is the brand colour) */
+    --kbd: #e5e7eb; /* keyboard shortcut chip (Ctrl K in the search field) */
+    --segmented: #f4f4f5; /* segmented control track */
+    --segmented-active: #ffffff; /* its chosen segment */
 
     --brand: #0074b5; /* primary-500: white text 5.0:1 */
     --brand-hover: #00669f; /* primary-600 */
     --brand-active: #00578a; /* primary-700, pressed */
+    /* "New …" / "Add …" buttons: hover goes lighter (less contrast), not darker. Follows --brand in both themes. */
+    --brand-add-hover: color-mix(in srgb, var(--brand) 82%, #ffffff);
     --brand-soft: #edf5fa; /* primary-50: active nav item, selected row, ghost hover */
     --on-brand: #ffffff;
     --link: #0074b5; /* link text and active tab icons */
@@ -89,9 +104,18 @@
     --status-draft: #4338ca;
     --status-draft-soft: #eef2ff;
     --status-draft-line: #c7d2fe;
+    /* Solid badges (status labels): white text on a filled pill, >= 4.5:1. */
+    --on-status: #ffffff;
+    --status-pending-solid: #b45309;
+    --status-transit-solid: #1d4ed8;
+    --status-completed-solid: #047857;
+    --status-rejected-solid: #dc2626;
+    --status-cancelled-solid: #27272a;
+    --status-draft-solid: #4338ca;
+    --elev-badge: 0 1px 2px 0 rgb(0 0 0 / 0.14);
 
     /* Borders do the work; shadows stay barely there (cards) or soft (menus, dialogs). */
-    --elev-1: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+    --elev-1: 0 1px 3px 0 rgb(0 0 0 / 0.08);
     --elev-2: 0 8px 24px -6px rgb(15 23 42 / 0.12), 0 2px 6px -2px rgb(15 23 42 / 0.06);
 
     /* wire:navigate's progress bar at the top of the page takes the brand colour of the current theme. */
@@ -101,14 +125,24 @@
 }
 
 .dark {
-    --surface: #0b1120;
-    --card: #131c2e;
-    --card-hover: #1c2740;
-    --fg: #e2e8f0;
-    --muted: #94a3b8;
-    --subtle: #64748b;
-    --border: #26324a;
-    --border-control: #66758e;
+    /* Neutrals (Zenith zinc): near-black page, cards a step lighter, borders instead of shadows. */
+    --canvas: #09090b;
+    --surface: #18181b;
+    --card: #0f0f11;
+    --card-hover: #1c1c1f;
+    --fg: #f4f4f5;
+    --muted: #a1a1aa;
+    --subtle: #71717a;
+    --border: #27272a;
+    --border-control: #6b6b74;
+
+    --sidebar-bg: #0c0c0e;
+    --nav-text: #d4d4d8;
+    --nav-icon: #a1a1aa;
+    --nav-active: #27272a;
+    --kbd: #27272a;
+    --segmented: #1c1c1f;
+    --segmented-active: #3f3f46;
 
     --brand: #0679b9; /* a touch lighter than the logo blue: 3.6:1 against the card, white text 4.7:1 */
     --brand-hover: #00669f;
@@ -160,8 +194,16 @@
     --status-draft: #a5b4fc;
     --status-draft-soft: #1e1b4b;
     --status-draft-line: #3730a3;
+    --on-status: #ffffff;
+    --status-pending-solid: #b45309;
+    --status-transit-solid: #2563eb;
+    --status-completed-solid: #047857;
+    --status-rejected-solid: #dc2626;
+    --status-cancelled-solid: #52525b;
+    --status-draft-solid: #4f46e5;
+    --elev-badge: 0 1px 2px 0 rgb(0 0 0 / 0.5);
 
-    --elev-1: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+    --elev-1: 0 0 0 0 rgb(0 0 0 / 0); /* dark cards: border only */
     --elev-2: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
 
     color-scheme: dark;
@@ -185,7 +227,12 @@
  *   px-cell / py-cell-y   table cell padding (12px / 8px), px-edge the first and
  *                last cell, lined up with the card's padding
  *   p-card       12px card padding (py-card-y 10px: header strips, summary)
- *   gap-section  12px between sections
+ *   gap-section  12px between sections (gap-section-lg 24px: between page blocks on Home)
+ *   p-dialog     20px padding of dialogs and the sign-in card from tablet up
+ *   h-badge      24px status / type / tag badges
+ *   py-empty     48px above and below an empty state
+ *   text-stat    26px  the figure on Home's "Waiting for you" cards (Arabic 28px)
+ *   min-h-tile / size-tile-icon   Home's compact "Start something new" tiles (56px) and their icon box (32px)
  *   p-page       page padding (12px, 20px on desktop)
  *   h-topbar, w-sidebar, w-rail   the app frame
  *
@@ -194,13 +241,15 @@
  * Never shrink the UI with zoom, transforms or a smaller root font size.
  */
 :root {
-    --fs-small: 0.75rem;
+    --fs-small: 0.7rem;
+    --fs-label: 0.75rem; /* field labels (filters) */
     --fs-table: 0.8125rem;
     --fs-body: 0.8125rem;
     --fs-lead: 0.9375rem;
     --fs-h3: 1rem;
     --fs-h2: 1.125rem;
     --fs-h1: 1.3125rem;
+    --fs-stat: 1.625rem;
     --lh-small: 1.4;
     --lh-table: 1.45;
     --lh-body: 1.45;
@@ -218,6 +267,11 @@
     --pad-card: 0.75rem;
     --pad-card-y: 0.625rem;
     --section: 0.75rem;
+    --pad-dialog: 1.25rem;
+    --badge: 1.5rem;
+    --empty: 3rem;
+    --tile: 3.5rem;
+    --tile-icon: 2rem;
     --page: 0.75rem;
     --topbar: 2.75rem;
     --sidebar: 14rem;
@@ -226,12 +280,14 @@
 
 html[lang='ar'] {
     --fs-small: 0.8125rem;
+    --fs-label: 0.8125rem;
     --fs-table: 0.875rem;
     --fs-body: 0.875rem;
     --fs-lead: 1rem;
     --fs-h3: 1.0625rem;
     --fs-h2: 1.1875rem;
     --fs-h1: 1.375rem;
+    --fs-stat: 1.75rem;
 }
 
 /* Fingers, and phones whatever the pointer: 44px targets. */
@@ -253,6 +309,7 @@ html[lang='ar'] {
 html.print-view,
 html.print-view[lang='ar'] {
     --fs-small: 0.75rem;
+    --fs-label: 0.75rem;
     --fs-table: 0.875rem;
     --fs-body: 0.875rem;
     --fs-lead: 1rem;
@@ -308,6 +365,13 @@ html.print-view tfoot > tr {
     --font-sans: 'Inter Variable', 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;
 
     /*
+     * Corners (Zenith): rounded-lg = 12px for controls, menu entries and icon boxes;
+     * rounded-xl = 20px for cards, dialogs and panels. Smaller radii stay Tailwind's.
+     */
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+
+    /*
      * The bar sliding along the top of a table that is reloading (x-table-loading):
      * from the start edge to the end edge, so it runs right-to-left in Arabic.
      */
@@ -325,6 +389,14 @@ html.print-view tfoot > tr {
 }
 
 @theme inline {
+    --color-canvas: var(--canvas);
+    --color-sidebar: var(--sidebar-bg);
+    --color-nav: var(--nav-text);
+    --color-nav-icon: var(--nav-icon);
+    --color-nav-active: var(--nav-active);
+    --color-kbd: var(--kbd);
+    --color-segmented: var(--segmented);
+    --color-segmented-active: var(--segmented-active);
     --color-surface: var(--surface);
     --color-card: var(--card);
     --color-card-hover: var(--card-hover);
@@ -336,9 +408,11 @@ html.print-view tfoot > tr {
     --color-brand: var(--brand);
     --color-brand-hover: var(--brand-hover);
     --color-brand-active: var(--brand-active);
+    --color-brand-add-hover: var(--brand-add-hover);
     --color-brand-soft: var(--brand-soft);
     --color-on-brand: var(--on-brand);
     --color-link: var(--link);
+    --color-print-head: var(--print-head);
     --color-danger: var(--danger);
     --color-danger-strong: var(--danger-strong);
     --color-danger-hover: var(--danger-hover);
@@ -382,12 +456,22 @@ html.print-view tfoot > tr {
     --color-status-draft: var(--status-draft);
     --color-status-draft-soft: var(--status-draft-soft);
     --color-status-draft-line: var(--status-draft-line);
+    --color-on-status: var(--on-status);
+    --color-status-pending-solid: var(--status-pending-solid);
+    --color-status-transit-solid: var(--status-transit-solid);
+    --color-status-completed-solid: var(--status-completed-solid);
+    --color-status-rejected-solid: var(--status-rejected-solid);
+    --color-status-cancelled-solid: var(--status-cancelled-solid);
+    --color-status-draft-solid: var(--status-draft-solid);
+    --shadow-badge: var(--elev-badge);
 
     --shadow-card: var(--elev-1);
     --shadow-pop: var(--elev-2);
 
     --text-small: var(--fs-small);
     --text-small--line-height: var(--lh-small);
+    --text-label: var(--fs-label);
+    --text-label--line-height: var(--lh-small);
     --text-table: var(--fs-table);
     --text-table--line-height: var(--lh-table);
     --text-body: var(--fs-body);
@@ -400,6 +484,8 @@ html.print-view tfoot > tr {
     --text-h2--line-height: var(--lh-h2);
     --text-h1: var(--fs-h1);
     --text-h1--line-height: var(--lh-h1);
+    --text-stat: var(--fs-stat);
+    --text-stat--line-height: 1.1;
 
     --spacing-control: var(--control);
     --spacing-row: var(--row);
@@ -410,6 +496,12 @@ html.print-view tfoot > tr {
     --spacing-card: var(--pad-card);
     --spacing-card-y: var(--pad-card-y);
     --spacing-section: var(--section);
+    --spacing-section-lg: calc(var(--section) * 2);
+    --spacing-dialog: var(--pad-dialog);
+    --spacing-badge: var(--badge);
+    --spacing-empty: var(--empty);
+    --spacing-tile: var(--tile);
+    --spacing-tile-icon: var(--tile-icon);
     --spacing-page: var(--page);
     --spacing-topbar: var(--topbar);
     --spacing-sidebar: var(--sidebar);
@@ -421,6 +513,12 @@ html[lang='ar'] {
     --font-sans: 'IBM Plex Sans Arabic', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
 }
 
+/* A thin grey scrollbar (the sidebar's own scroll). */
+@utility scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--subtle) transparent;
+}
+
 /* Tabular figures + slashed zero for SKUs, references and quantities. */
 @utility tabular {
     font-variant-numeric: tabular-nums slashed-zero;
@@ -428,7 +526,13 @@ html[lang='ar'] {
 
 @layer base {
     html {
-        background-color: var(--surface);
+        background-color: var(--canvas);
+    }
+
+    /* The page changes colour smoothly when the theme switches. */
+    body {
+        transition-property: background-color, color;
+        transition-duration: 200ms;
     }
 
     /* Base text 14px (15px in Arabic); the root font size stays 16px. */
@@ -472,6 +576,45 @@ html[lang='ar'] {
     [dir='rtl'] #nprogress .bar {
         scale: -1 1;
     }
+}
+
+/*
+ * Sign-in page (layouts.guest :photo): the form on the card colour, the ETLS photo beside it on
+ * desktop (end side, so it moves to the left in Arabic), above the form on a tablet, hidden on a
+ * phone, and on a tablet whenever photo and form don't both fit on the screen (data-crowded, set by
+ * the layout's script). The photo is always shown whole (never cropped). login-bg-cutout.webp has
+ * a transparent sky, so the drawing keeps its own colours (the logo's red) on the light and the dark
+ * panel; its top and bottom edges fade out. The panel colour shows while it loads or if it fails.
+ */
+.auth-split {
+    display: grid;
+    grid-template-areas: "bar" "photo" "form";
+    grid-template-rows: auto auto 1fr;
+}
+
+@media (width >= 80rem) {
+    .auth-split {
+        grid-template-columns: 2fr 3fr;
+        grid-template-areas: "bar photo" "form photo";
+        grid-template-rows: auto 1fr;
+    }
+}
+
+.auth-panel {
+    grid-area: photo;
+    background-color: var(--surface);
+}
+
+.dark .auth-panel {
+    background-color: var(--brand-soft);
+}
+
+.auth-photo {
+    mask-image: linear-gradient(transparent, #000 12%, #000 78%, transparent);
+}
+
+.auth-panel[data-crowded] {
+    display: none;
 }
 
 /*

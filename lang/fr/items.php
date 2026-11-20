@@ -26,7 +26,6 @@ return [
         'name' => 'Nom',
         'customer' => 'Client',
         'base_unit' => 'Unité de base',
-        'other_units' => 'Autres unités',
         'tracking' => 'Suivi',
         'expiry' => 'Péremption',
         'serial' => 'N° de série',

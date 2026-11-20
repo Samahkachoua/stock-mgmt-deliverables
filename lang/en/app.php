@@ -4,12 +4,15 @@ return [
     'tagline' => 'WMS Core',
     'logo_alt' => 'Elite Trust for Logistics Services',
     'skip_to_content' => 'Skip to content',
+    'breadcrumb' => 'Breadcrumb',
     'select_warehouse' => 'Select warehouse',
     'language' => 'Language',
     'theme' => 'Theme',
     'theme_light' => 'Light',
     'theme_dark' => 'Dark',
     'theme_system' => 'System',
+    'theme_to_dark' => 'Switch to dark theme',
+    'theme_to_light' => 'Switch to light theme',
     'theme_invalid' => 'Choose Light, Dark or System.',
     'user_menu' => 'Account menu',
     'sign_out' => 'Sign out',
@@ -37,4 +40,7 @@ return [
         'server' => ['title' => 'Something went wrong', 'body' => 'The problem has been recorded. Try again in a moment; if it keeps happening, tell your administrator.'],
         'maintenance' => ['title' => 'Back in a few minutes', 'body' => 'The system is being updated. Please try again shortly.'],
     ],
+    // Lists: the Columns menu (x-list-columns) and exports of a list (App\Livewire\Concerns\ExportsList).
+    'columns' => ['button' => 'Columns', 'title' => 'Show columns', 'always' => 'Always shown'],
+    'export' => ['too_many' => 'More than :max rows to export. Narrow the filters and try again.'],
 ];

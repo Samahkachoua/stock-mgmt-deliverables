@@ -8,11 +8,14 @@ use App\Http\Controllers\ListPresetController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\LogoutController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\PasswordResetLinkController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TransactionController;
 use App\Livewire\Account\ChangePassword;
+use App\Livewire\Auth\ForgotPassword;
 use App\Livewire\Auth\Login;
+use App\Livewire\Auth\ResetPassword;
 use App\Livewire\Dashboard;
 use App\Livewire\Drafts\DraftForm;
 use App\Livewire\Drafts\DraftList;
@@ -28,18 +31,27 @@ use App\Livewire\Stock\StockByExpiryPage;
 use App\Livewire\Stock\StockPage;
 use App\Livewire\Transactions\TransactionForm;
 use App\Livewire\Transactions\TransactionList;
+use App\Support\Navigation\Sidebar;
 use Illuminate\Support\Facades\Route;
 
 // No self-registration: accounts are created by an administrator.
 Route::middleware('guest')->group(function () {
     Route::get('/login', Login::class)->name('login');
+
+    // "Forgot password?": an emailed link (App\Support\Auth\PasswordReset). The link's
+    // token moves into the session at once, so the form's URL carries no token.
+    Route::get('/forgot-password', ForgotPassword::class)->name('password.request');
+    Route::get('/reset-password/{token}', PasswordResetLinkController::class)
+        ->name('password.reset')
+        ->middleware('throttle:20,15');
+    Route::get('/reset-password', ResetPassword::class)->name('password.reset.form');
 });
 
 Route::post('/locale/{locale}', LocaleController::class)->name('locale.update');
 
 Route::post('/logout', LogoutController::class)->middleware('auth')->name('logout');
 
-Route::middleware(['auth', 'warehouse'])->group(function () {
+Route::middleware(['auth', 'password.changed', 'warehouse'])->group(function () {
     // Home: large links to what the user can do; no dashboard widgets by design.
     Route::get('/', HomeController::class)->name('home');
 
@@ -173,7 +185,7 @@ Route::middleware(['auth', 'warehouse'])->group(function () {
     // Placeholders until each screen is built.
     $built = ['home', 'dashboard', 'settings', 'items', 'imports', 'stock', 'stock-by-expiry', 'reports', ...array_column(config('transactions.types'), 'slug'), ...array_column(config('transactions.drafts'), 'slug')];
 
-    foreach (config('ui.nav') as $item) {
+    foreach (Sidebar::flatItems() as $item) {
         if (isset($item['route']) && ! in_array($item['route'], $built, true)) {
             Route::get('/'.$item['route'], PageController::class)
                 ->name($item['route'])

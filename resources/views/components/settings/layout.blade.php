@@ -1,12 +1,21 @@
 {{-- Shared shell for every settings tab: page header + tab bar. Tabs the user may not open are hidden. --}}
 <div>
+    @php
+        // The open tab, by the page's address: a Livewire update (rows loading, a save) runs
+        // on its own route, so request()->routeIs() would lose it after the first paint.
+        $path = trim(\Livewire\Livewire::originalPath(), '/');
+        $isOpen = fn (array $item) => trim(parse_url(route($item['route']), PHP_URL_PATH) ?? '', '/') === $path;
+        // Home › Settings › the open tab.
+        $currentTab = collect(config('ui.settings_tabs'))->first($isOpen);
+    @endphp
+    @if ($currentTab !== null)
+        <x-breadcrumbs class="mb-2" :items="[[__('settings.title'), route('settings')]]" :current="__($currentTab['label'])" />
+    @endif
+
     <div class="flex items-center gap-3">
-        <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-card-hover">
-            <x-icon name="settings" class="size-6 text-muted" />
-        </div>
         <div>
             <h1 class="text-h1 font-semibold tracking-tight text-fg">{{ __('settings.title') }}</h1>
-            <p class="text-body text-muted">{{ __('settings.subtitle') }}</p>
+            <p class="mt-1 text-body text-muted">{{ __('settings.subtitle') }}</p>
         </div>
     </div>
 
@@ -14,7 +23,7 @@
         <ul class="flex gap-1">
             @foreach (config('ui.settings_tabs') as $tab)
                 @can($tab['permission'])
-                    @php($active = request()->routeIs($tab['route']))
+                    @php($active = $isOpen($tab))
                     <li>
                         {{-- Active tab in the brand blue (text-link stays readable on the dark card). --}}
                         <a

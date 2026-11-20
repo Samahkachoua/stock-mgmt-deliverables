@@ -1,16 +1,10 @@
 {{-- Stock by expiry: the Stock page (livewire/stock/page) with one row per lot (batch + expiry date). --}}
 @use('App\Support\Format')
 <div class="flex flex-col gap-section">
-    <x-page-header icon="calendar_today" :title="__('reports.stock_by_expiry.title')" :subtitle="__('reports.stock_by_expiry.description')">
-        <x-slot:actions>
-            <x-report.export-buttons :exportable="$exportable" />
-        </x-slot:actions>
-    </x-page-header>
+    <x-page-header icon="calendar_today" :title="__('reports.stock_by_expiry.title')" :subtitle="__('reports.stock_by_expiry.description')" />
 
-    <x-report.filters :definitions="$definition->filters()" :choices="$choices" :values="$filters" :defaults="$defaults" />
-
-    <x-data-table
-        :columns="[
+    @php
+        $columns = [
             'item' => ['label' => __('reports.columns.item'), 'card' => 'title'],
             'code' => ['label' => __('reports.columns.code')],
             'customer' => ['label' => __('reports.columns.customer'), 'priority' => 2],
@@ -20,7 +14,13 @@
             'qty' => ['label' => __('reports.columns.qty_base'), 'align' => 'end'],
             'reserved' => ['label' => __('reports.columns.reserved'), 'align' => 'end'],
             'available' => ['label' => __('reports.columns.available'), 'align' => 'end'],
-        ]"
+        ];
+    @endphp
+
+    <x-report.filters :definitions="$definition->filters()" :choices="$choices" :values="$filters" :defaults="$defaults" :columns="$columns" list="stock-by-expiry" :exportable="$exportable" />
+
+    <x-data-table
+        :columns="$columns"
         :paginator="$rows"
         :footer="$totals === null ? null : [
             'label' => trans_choice('reports.stock_on_hand.footer_total', $totals['rows'], ['count' => Format::qty($totals['rows'])]),

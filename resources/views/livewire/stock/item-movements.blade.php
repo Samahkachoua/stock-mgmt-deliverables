@@ -25,7 +25,7 @@
             <div class="relative overflow-x-auto">
                 <table class="cards w-full text-table xl:min-w-[760px]">
                     <thead>
-                        <tr class="h-thead bg-surface text-small font-semibold uppercase tracking-wide text-muted">
+                        <tr class="h-thead border-b border-default bg-card text-table font-semibold text-fg">
                             <th scope="col" class="ps-edge text-start">{{ __('reports.columns.date') }}</th>
                             <th scope="col" class="px-cell text-start">{{ __('reports.columns.type') }}</th>
                             <th scope="col" class="px-cell text-start">{{ __('reports.columns.reference') }}</th>
