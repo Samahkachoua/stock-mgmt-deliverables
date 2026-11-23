@@ -71,7 +71,7 @@ return [
         'did_you_mean' => 'Did you mean “:value”?',
         'too_long' => ':column is too long (at most :max characters).',
         'customer_inactive' => 'Customer :value is not in use.',
-        'code_format' => 'Item code “:value” may only use letters, digits and . _ / - (no spaces).',
+        'code_format' => 'Item code “:value” may only use letters, digits, . _ / - and single spaces.',
         'code_twice_in_file' => 'Item code :value is also on row :rows of this file.',
         'code_exists' => 'Item :value already exists for customer :customer.',
         'flag' => ':column must be Y or N (found “:value”).',

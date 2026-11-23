@@ -71,7 +71,7 @@ return [
         'did_you_mean' => 'Vouliez-vous dire « :value » ?',
         'too_long' => ':column est trop long (:max caractères au plus).',
         'customer_inactive' => 'Le client :value n’est pas en service.',
-        'code_format' => 'Le code article « :value » n’accepte que lettres, chiffres et . _ / - (sans espaces).',
+        'code_format' => 'Le code article « :value » n’accepte que lettres, chiffres, . _ / - et espaces simples.',
         'code_twice_in_file' => 'Le code article :value figure aussi à la ligne :rows de ce fichier.',
         'code_exists' => 'L’article :value existe déjà pour le client :customer.',
         'flag' => ':column doit valoir Y ou N (trouvé « :value »).',

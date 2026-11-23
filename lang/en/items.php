@@ -78,7 +78,7 @@ return [
         'service_untracked' => 'A service has no stock, so it can’t have an expiry date or serial numbers.',
         'customer_required' => 'Choose the customer who owns this item.',
         'code_required' => 'Enter a code.',
-        'code_format' => 'Use capital letters, digits and . _ - / only, without spaces.',
+        'code_format' => 'Use capital letters, digits, . _ - / and single spaces only.',
         'code_taken' => 'This customer already has an item with this code.',
         'name_required' => 'Enter the English name.',
         'base_unit_required' => 'Choose the base unit.',

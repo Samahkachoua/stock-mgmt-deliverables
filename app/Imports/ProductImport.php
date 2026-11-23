@@ -21,8 +21,6 @@ final class ProductImport extends ImportType
     /** Alternate unit columns: Alternate unit 1 / Factor 1 … */
     public const ALTERNATE_UNITS = 3;
 
-    private const CODE_FORMAT = '/^[A-Z0-9][A-Z0-9._\/-]*$/';
-
     public function code(): string
     {
         return 'PRODUCT';
@@ -110,7 +108,7 @@ final class ProductImport extends ImportType
             if ($this->required($check, 'item_code', $sku)) {
                 $this->maxLength($check, 'item_code', $sku, 50);
 
-                if (! preg_match(self::CODE_FORMAT, $sku)) {
+                if (! preg_match(Product::CODE_FORMAT, $sku)) {
                     $check->error('imports.errors.code_format', ['value' => $v['item_code']]);
                 }
 

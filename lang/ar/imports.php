@@ -71,7 +71,7 @@ return [
         'did_you_mean' => 'هل تقصد «:value»؟',
         'too_long' => ':column طويل جدًا (:max حرفًا كحد أقصى).',
         'customer_inactive' => 'العميل :value غير نشط.',
-        'code_format' => 'رمز الصنف «:value» يقبل الأحرف اللاتينية والأرقام و . _ / - فقط (دون مسافات).',
+        'code_format' => 'رمز الصنف «:value» يقبل الأحرف اللاتينية والأرقام و . _ / - ومسافات مفردة فقط.',
         'code_twice_in_file' => 'رمز الصنف :value موجود أيضًا في السطر :rows من هذا الملف.',
         'code_exists' => 'الصنف :value موجود مسبقًا للعميل :customer.',
         'flag' => 'يجب أن يكون :column إما Y أو N (القيمة «:value»).',

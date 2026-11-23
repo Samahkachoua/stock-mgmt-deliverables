@@ -181,6 +181,13 @@ it('refuses the same unit twice', function () {
     $form->call('save')->assertHasErrors("units.$second.unit_id")->assertSee(__('items.errors.unit_twice'));
 });
 
+it('accepts single spaces in a code, but not double spaces', function () {
+    newItem($this->catalog, 'fmea  bsl03')->call('save')->assertHasErrors(['sku' => 'regex']);
+    newItem($this->catalog, ' fmea bsl03 ')->call('save')->assertHasNoErrors();
+
+    expect(Product::where('sku', 'FMEA BSL03')->exists())->toBeTrue();
+});
+
 it('keeps codes unique per customer, but not across customers', function () {
     newItem($this->catalog, 'cb-400')->call('save')->assertHasErrors('sku')->assertSee(__('items.errors.code_taken'));
 

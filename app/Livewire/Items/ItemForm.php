@@ -378,7 +378,7 @@ class ItemForm extends Component
     {
         return [
             'customerId' => ['required', 'integer', Rule::exists('customer', 'id')],
-            'sku' => ['required', 'string', 'max:50', 'regex:/^[A-Z0-9][A-Z0-9._\/-]*$/', $this->uniqueCode(...)],
+            'sku' => ['required', 'string', 'max:50', 'regex:'.Product::CODE_FORMAT, $this->uniqueCode(...)],
             'nameEn' => ['required', 'string', 'max:200'],
             'nameAr' => ['nullable', 'string', 'max:200'],
             'nameFr' => ['nullable', 'string', 'max:200'],

@@ -40,6 +40,12 @@ class Product extends Model
     protected $table = 'product';
 
     /**
+     * An item code (stored upper case and trimmed): letters, digits, . _ / -
+     * and single spaces between them ("FMEA BSL03").
+     */
+    public const CODE_FORMAT = '/^[A-Z0-9](?:[A-Z0-9._\/-]| (?! ))*$/';
+
+    /**
      * The column's default, so a model created without it says so too.
      *
      * @var array<string, mixed>

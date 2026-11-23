@@ -129,7 +129,8 @@ it('catches every kind of mistake with a plain message', function (array $values
     'serial and expiry together' => [['tracks_serial' => 'Y', 'tracks_expiry' => 'Y'], 'An item can’t have both serial numbers and an expiry date yet.'],
     'service with an expiry date' => [['is_service' => 'Y', 'tracks_expiry' => 'Y'], 'A service has no stock, so it can’t have an expiry date or serial numbers.'],
     'alternate units on a service' => [['is_service' => 'Y', 'alternate_unit_1' => 'BOX', 'factor_1' => '12'], 'Services use only their base unit'],
-    'code with spaces' => [['item_code' => 'RICE 5K'], 'may only use letters, digits'],
+    'code with a double space' => [['item_code' => 'RICE  5K'], 'may only use letters, digits'],
+    'code with a comma' => [['item_code' => 'RICE,5K'], 'may only use letters, digits'],
     'negative approval limit' => [['approval_limit' => '-3'], 'Approval limit must be a number of 0 or more'],
     'unknown storage status, with a suggestion' => [['storage_status' => 'CHILLD'], 'Storage status “CHILLD” was not found. Did you mean “CHILLED”?'],
 ]);
@@ -144,6 +145,15 @@ it('finds the same item code twice in a file', function () {
     expect(rowResults($job)[2]['message'])->toContain('Item code RICE-5K is also on row 4 of this file.')
         ->and(rowResults($job)[4]['message'])->toContain('also on row 2')
         ->and(rowResults($job)[3]['status'])->toBe('VALID');
+});
+
+it('imports an item code with a space in it', function () {
+    $job = uploadItems($this->user, Spreadsheets::upload(itemHeaders(), [itemRow(['item_code' => 'fmea bsl03'])]));
+
+    expect(rowResults($job)[2]['status'])->not->toBe('ERROR');
+
+    app(ImportEngine::class)->confirm($job, $this->user);
+    expect(Product::where('sku', 'FMEA BSL03')->exists())->toBeTrue();
 });
 
 it('warns about missing translations but still imports the row', function () {

@@ -78,7 +78,7 @@ return [
         'service_untracked' => 'Un service n’a pas de stock : il ne peut pas avoir de date de péremption ni de numéros de série.',
         'customer_required' => 'Choisissez le client propriétaire de cet article.',
         'code_required' => 'Saisissez un code.',
-        'code_format' => 'Utilisez uniquement des majuscules, des chiffres et . _ - /, sans espace.',
+        'code_format' => 'Utilisez uniquement des majuscules, des chiffres, . _ - / et des espaces simples.',
         'code_taken' => 'Ce client a déjà un article avec ce code.',
         'name_required' => 'Saisissez le nom en anglais.',
         'base_unit_required' => 'Choisissez l’unité de base.',
