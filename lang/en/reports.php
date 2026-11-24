@@ -32,13 +32,14 @@ return [
     'columns' => [
         'item' => 'Item',
         'code' => 'Code',
+        'sku' => 'SKU',
+        'unit' => 'Unit',
         'customer' => 'Customer',
         'branch' => 'Branch',
         'warehouse' => 'Warehouse',
         'qty_base' => 'Quantity',
         'reserved' => 'Reserved',
         'available' => 'Available',
-        'qty_larger' => 'Quantity (larger units)',
         'in_transit' => 'In transit (arriving)',
         'nearest_expiry' => 'Nearest expiry',
         'storage_status' => 'Storage status',
@@ -65,6 +66,16 @@ return [
         'quantity_change' => 'Quantity (+/−)',
         'last_moved' => 'Last movement',
         'days_idle' => 'Not moved for',
+        'qty_entered' => 'Quantity (as entered)',
+        'delivered' => 'Delivered',
+        'order' => 'Order',
+        'delivery_note' => 'Delivery note',
+        'draft_receipt' => 'Draft receipt',
+        'receipt' => 'Receipt',
+        'driver' => 'Driver',
+        'truck' => 'Truck',
+        'delivered_at' => 'Delivered on',
+        'delivery_date' => 'Delivery date',
     ],
 
     'expiry_badge' => [
@@ -77,6 +88,9 @@ return [
         'excel' => 'Excel',
         'pdf' => 'PDF',
         'generated' => 'Generated :date by :name',
+        // Excel, grouped exports (Stock by expiry): the Total row of a group, and of the sheet.
+        'group_total' => ':value Total',
+        'grand_total' => 'Grand total',
     ],
 
     'page' => [
@@ -149,6 +163,36 @@ return [
     'transfer_shortages' => [
         'title' => 'Transfer shortages',
         'description' => 'Transfer lines that arrived with less than was sent, and why.',
+    ],
+
+    // Operation details (App\Reports\OperationLinesReport / DraftLinesReport).
+    'operation_lines' => [
+        'operations' => 'Operations',
+    ],
+
+    'order_lines' => [
+        'title' => 'Order details',
+        'description' => 'Every item of every order, with its delivery date, priority and delivery note.',
+    ],
+
+    'delivery_note_lines' => [
+        'title' => 'Delivery note details',
+        'description' => 'Every item of every delivery note: ordered, delivered, driver and delivery date.',
+    ],
+
+    'draft_receipt_lines' => [
+        'title' => 'Draft receipt details',
+        'description' => 'Every item of every draft receipt, and the receipt it became.',
+    ],
+
+    'receipt_lines' => [
+        'title' => 'Receipt details',
+        'description' => 'Every item received, with its batch and expiry date.',
+    ],
+
+    'opening_balance_lines' => [
+        'title' => 'Opening balance details',
+        'description' => 'Every item entered as an opening balance, with its batch and expiry date.',
     ],
 
     'delivery_differences' => [

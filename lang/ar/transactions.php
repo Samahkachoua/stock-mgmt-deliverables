@@ -123,6 +123,7 @@ return [
         'reference' => 'المرجع',
         'date' => 'التاريخ',
         'customer' => 'العميل',
+        'branch' => 'الفرع',
         'route' => 'من ← إلى',
         'warehouse' => 'المستودع',
         'items' => 'الأصناف',

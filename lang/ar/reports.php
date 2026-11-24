@@ -32,13 +32,14 @@ return [
     'columns' => [
         'item' => 'الصنف',
         'code' => 'الرمز',
+        'sku' => 'رمز الصنف',
+        'unit' => 'الوحدة',
         'customer' => 'العميل',
         'branch' => 'الفرع',
         'warehouse' => 'المستودع',
         'qty_base' => 'الكمية (الوحدة الأساسية)',
         'reserved' => 'محجوز',
         'available' => 'متاح',
-        'qty_larger' => 'الكمية (الوحدات الأكبر)',
         'in_transit' => 'قيد النقل (قادم)',
         'nearest_expiry' => 'أقرب انتهاء صلاحية',
         'storage_status' => 'حالة التخزين',
@@ -65,6 +66,16 @@ return [
         'quantity_change' => 'الكمية (+/−)',
         'last_moved' => 'آخر حركة',
         'days_idle' => 'بلا حركة منذ',
+        'qty_entered' => 'الكمية (كما أُدخلت)',
+        'delivered' => 'المُسلَّم',
+        'order' => 'الطلبية',
+        'delivery_note' => 'إذن التسليم',
+        'draft_receipt' => 'مسودة الاستلام',
+        'receipt' => 'الاستلام',
+        'driver' => 'السائق',
+        'truck' => 'الشاحنة',
+        'delivered_at' => 'تاريخ التسليم الفعلي',
+        'delivery_date' => 'تاريخ التسليم',
     ],
 
     'expiry_badge' => [
@@ -77,6 +88,9 @@ return [
         'excel' => 'Excel',
         'pdf' => 'PDF',
         'generated' => 'أُنشئ في :date بواسطة :name',
+        // Excel, grouped exports (Stock by expiry): the Total row of a group, and of the sheet.
+        'group_total' => 'إجمالي :value',
+        'grand_total' => 'الإجمالي العام',
     ],
 
     'page' => [
@@ -149,6 +163,36 @@ return [
     'transfer_shortages' => [
         'title' => 'نواقص التحويلات',
         'description' => 'أسطر التحويل التي وصلت بأقل مما أُرسل، وسبب ذلك.',
+    ],
+
+    // تفاصيل العمليات (App\Reports\OperationLinesReport / DraftLinesReport).
+    'operation_lines' => [
+        'operations' => 'العمليات',
+    ],
+
+    'order_lines' => [
+        'title' => 'تفاصيل الطلبيات',
+        'description' => 'كل صنف في كل طلبية، مع تاريخ التسليم والأولوية وإذن التسليم.',
+    ],
+
+    'delivery_note_lines' => [
+        'title' => 'تفاصيل أذونات التسليم',
+        'description' => 'كل صنف في كل إذن تسليم: المطلوب والمُسلَّم والسائق وتاريخ التسليم.',
+    ],
+
+    'draft_receipt_lines' => [
+        'title' => 'تفاصيل مسودات الاستلام',
+        'description' => 'كل صنف في كل مسودة استلام، والاستلام الذي نتج عنها.',
+    ],
+
+    'receipt_lines' => [
+        'title' => 'تفاصيل الاستلامات',
+        'description' => 'كل صنف تم استلامه، مع رقم الدفعة وتاريخ الانتهاء.',
+    ],
+
+    'opening_balance_lines' => [
+        'title' => 'تفاصيل الأرصدة الافتتاحية',
+        'description' => 'كل صنف أُدخل كرصيد افتتاحي، مع رقم الدفعة وتاريخ الانتهاء.',
     ],
 
     'delivery_differences' => [

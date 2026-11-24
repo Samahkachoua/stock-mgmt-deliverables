@@ -75,6 +75,7 @@ return [
         'edit_title' => 'تعديل :reference',
         'choose_branch' => 'اختر فرعًا',
         'no_branches' => 'لا توجد فروع لهذا العميل بعد. أضفها من الإعدادات › الفروع.',
+        'branch_warehouse' => 'يُخدَم :branch من :warehouse.',
         'lines_heading' => 'الأصناف',
         'choose_warehouse' => 'اختر…',
         'notice_in' => 'الحفظ لا يغيّر المخزون. عند التأكيد تصبح استلامًا.',

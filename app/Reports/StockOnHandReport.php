@@ -4,6 +4,7 @@ namespace App\Reports;
 
 use App\Models\StockBalance;
 use App\Models\User;
+use App\Support\Format;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -51,15 +52,18 @@ final class StockOnHandReport extends Report
     public function columns(): array
     {
         return [
+            // The item code (SKU) first, then its name.
+            'code' => ['label' => 'reports.columns.sku'],
             'item' => ['label' => 'reports.columns.item', 'card' => 'title'],
-            'code' => ['label' => 'reports.columns.code', 'priority' => 2],
             'customer' => ['label' => 'reports.columns.customer', 'priority' => 2],
             'warehouse' => ['label' => 'reports.columns.warehouse', 'priority' => 2],
+            'storage' => ['label' => 'reports.columns.storage_status', 'priority' => 2],
+            // One Unit column (the base unit); the quantities after it are plain numbers.
+            'unit' => ['label' => 'reports.columns.unit'],
             'qty' => ['label' => 'reports.columns.qty_base', 'align' => 'end'],
             'reserved' => ['label' => 'reports.columns.reserved', 'align' => 'end'],
             'available' => ['label' => 'reports.columns.available', 'align' => 'end'],
             'expiry' => ['label' => 'reports.columns.nearest_expiry'],
-            'storage' => ['label' => 'reports.columns.storage_status', 'priority' => 2],
         ];
     }
 
@@ -135,15 +139,16 @@ final class StockOnHandReport extends Report
         $product = $this->product($row->product_id);
 
         return [
-            'item' => ['text' => $product->name(), 'strong' => true],
             'code' => ['text' => $product->sku, 'ltr' => true],
+            'item' => ['text' => $product->name(), 'strong' => true],
             'customer' => (string) $row->customer_name,
             'warehouse' => (string) $row->warehouse_name,
-            'qty' => $this->qtyCell($row->qty, $row->product_id) + ['strong' => true],
-            'reserved' => (float) $row->reserved > 0 ? $this->qtyCell($row->reserved, $row->product_id) : ['text' => '', 'value' => 0],
-            'available' => $this->qtyCell((float) $row->qty - (float) $row->reserved, $row->product_id) + ['strong' => true],
-            'expiry' => $this->expiryDateCell($row->nearest_expiry),
             'storage' => $this->storageCell($product->storage_status),
+            'unit' => Format::unit($this->converter($row->product_id)->base()),
+            'qty' => $this->numberCell($row->qty) + ['strong' => true],
+            'reserved' => (float) $row->reserved > 0 ? $this->numberCell($row->reserved) : ['text' => '', 'value' => 0],
+            'available' => $this->numberCell((float) $row->qty - (float) $row->reserved) + ['strong' => true],
+            'expiry' => $this->expiryDateCell($row->nearest_expiry),
         ];
     }
 

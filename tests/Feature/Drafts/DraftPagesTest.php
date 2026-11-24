@@ -412,6 +412,7 @@ it('adds branches in Settings, each code once per customer', function () {
         ->set('form.name', 'Harbour')
         ->set('form.code', 'hb')
         ->set('form.manager_email', 'hb@acme.test')
+        ->set('form.warehouse_id', $this->stock->warehouse->id)
         ->call('save')
         ->assertHasNoErrors()
         ->call('add')
@@ -421,6 +422,7 @@ it('adds branches in Settings, each code once per customer', function () {
         ->set('form.customer_id', $other->id)
         ->set('form.name', 'Downtown')
         ->set('form.manager_email', 'dt@other.test')
+        ->set('form.warehouse_id', $this->depot->id)
         ->call('save')
         ->assertHasNoErrors();
 
@@ -496,6 +498,67 @@ it('shows on the list the draft each document came from, and finds it by that nu
     'delivery note: its order' => ['OUT', 'drafts.types.order.singular'],
     'receipt: its draft receipt' => ['IN', 'drafts.types.receipt.singular'],
 ]);
+
+it('shows the branch of its order on the delivery note list, and finds it by that branch', function () {
+    $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);
+    $draft = savedDraft($this, 'OUT', [4]);
+
+    Livewire::actingAs($this->stock->user)
+        ->test(DraftPage::class, ['type' => 'OUT', 'reference' => $draft->doc_no])
+        ->call('confirmDraft')
+        ->assertHasNoErrors();
+
+    $fromOrder = DB::table('stock_transaction')->where('draft_id', $draft->id)->value('doc_no');
+    // A delivery note without an order has no branch.
+    $direct = $this->stock->post('OUT', [$this->stock->line('BEANS', 1)]);
+
+    $list = Livewire::actingAs($this->stock->user)->test(TransactionList::class, ['type' => 'OUT'])->call('loadRows')
+        ->assertSeeHtml('data-col="branch"')
+        ->assertSee(__('transactions.list.branch'))
+        ->assertSee('Downtown')
+        ->assertSee($direct->doc_no);
+
+    $list->set('search', 'downt')
+        ->assertSee($fromOrder)
+        ->assertDontSee($direct->doc_no);
+
+    // Other lists have no such column.
+    Livewire::actingAs($this->stock->user)->test(TransactionList::class, ['type' => 'DAMAGE'])->call('loadRows')
+        ->assertDontSeeHtml('data-col="branch"');
+});
+
+it('filters the delivery note list by the branch of the order', function () {
+    $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);
+    $uptown = CustomerBranch::create(['customer_id' => $this->stock->customer->id, 'code' => 'UP', 'name' => 'Uptown']);
+    $other = Customer::factory()->create();
+    CustomerBranch::create(['customer_id' => $other->id, 'code' => 'FA', 'name' => 'Faraway']);
+
+    $notes = [];
+    foreach ([$this->branch, $uptown] as $branch) {
+        $this->branch = $branch;
+        $draft = savedDraft($this, 'OUT', [2]);
+        Livewire::actingAs($this->stock->user)->test(DraftPage::class, ['type' => 'OUT', 'reference' => $draft->doc_no])->call('confirmDraft');
+        $notes[$branch->name] = DB::table('stock_transaction')->where('draft_id', $draft->id)->value('doc_no');
+    }
+
+    $list = Livewire::actingAs($this->stock->user)->test(TransactionList::class, ['type' => 'OUT'])->call('loadRows')
+        ->assertSeeHtml('id="filter-branch"')
+        ->set('branch', $uptown->id)
+        ->assertSee($notes['Uptown'])
+        ->assertDontSee($notes['Downtown']);
+
+    // Remembered with the other filters; another customer clears it and lists only its branches.
+    expect(session('list_state.delivery-note.properties.branch'))->toBe($uptown->id);
+
+    $list->set('customer', $this->stock->customer->id)
+        ->assertSet('branch', '')
+        ->assertSee($notes['Downtown'])
+        ->assertDontSee('Faraway');
+
+    // Other lists have no branch filter.
+    Livewire::actingAs($this->stock->user)->test(TransactionList::class, ['type' => 'DAMAGE'])
+        ->assertDontSeeHtml('id="filter-branch"');
+});
 
 it('asks an order for a delivery date and a priority, and shows them on the list and details', function () {
     $this->stock->post('IN', [$this->stock->line('BEANS', 10)]);

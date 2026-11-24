@@ -52,7 +52,6 @@ final class ExpiryReport extends Report
             'batch' => ['label' => 'reports.columns.batch', 'priority' => 2],
             'days_left' => ['label' => 'reports.columns.days_left', 'align' => 'end'],
             'qty' => ['label' => 'reports.columns.qty_base', 'align' => 'end'],
-            'breakdown' => ['label' => 'reports.columns.qty_larger', 'priority' => 2, 'card' => 'hide'],
             'status' => ['label' => 'reports.columns.status', 'card' => 'badge'],
         ];
     }
@@ -98,7 +97,6 @@ final class ExpiryReport extends Report
             'batch' => ['text' => (string) $row->batch_no, 'ltr' => true],
             'days_left' => ['text' => Format::qty($left), 'value' => $left, 'tone' => $left < 0 ? 'rejected' : 'pending'],
             'qty' => $this->qtyCell($row->qty_base, $row->product_id) + ['strong' => true],
-            'breakdown' => $this->breakdown($row->qty_base, $row->product_id),
             'status' => $this->expiryCell($row->expiry_date, (int) $filters['days']),
         ];
     }

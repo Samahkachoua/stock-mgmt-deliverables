@@ -111,6 +111,20 @@ abstract class Report
     }
 
     /**
+     * How the Excel export groups rows like a pivot table (App\Reports\Export\GroupedRows),
+     * or null for one plain row per report row: `group` the columns shown
+     * once per group (consecutive rows with the same values), `sum` the
+     * columns added up in each group's Total row, `unit` the column naming
+     * their unit (totals only when it is the same).
+     *
+     * @return array{group: list<string>, sum: list<string>, unit?: string}|null
+     */
+    public function excelGrouping(): ?array
+    {
+        return null;
+    }
+
+    /**
      * Figures shown above the table and on the export (opening balance, totals...).
      *
      * @param  array<string, string>  $filters
@@ -311,15 +325,6 @@ abstract class Report
     }
 
     /**
-     * The same quantity in larger units: "5 Box + 4 Piece".
-     */
-    protected function breakdown(float|string|null $qty, string $productId): array
-    {
-        // "5 Box + 4 Piece" reads as one quantity: never split across lines.
-        return ['text' => $this->converter($productId)->breakdown((float) $qty), 'nowrap' => true];
-    }
-
-    /**
      * Expiry status badge, without the date (that has its own column,
      * expiryDateCell): Expired (red), within $days days (amber, with days
      * left), or OK (green); empty when the item has no expiry date.
@@ -339,6 +344,17 @@ abstract class Report
             $left <= $days => ['text' => __('reports.expiry_badge.soon', ['days' => Format::qty($days), 'left' => Format::qty($left)]), 'tone' => 'pending'],
             default => ['text' => __('reports.expiry_badge.ok'), 'tone' => 'completed'],
         };
+    }
+
+    /**
+     * A quantity without its unit, for pages with their own Unit column
+     * (Stock, Stock by expiry); Excel gets the number.
+     *
+     * @return array{text: string, value: float}
+     */
+    protected function numberCell(float|string|null $qty): array
+    {
+        return ['text' => Format::qty($qty), 'value' => (float) $qty];
     }
 
     /**

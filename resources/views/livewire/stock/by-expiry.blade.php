@@ -4,13 +4,17 @@
     <x-page-header icon="calendar_today" :title="__('reports.stock_by_expiry.title')" :subtitle="__('reports.stock_by_expiry.description')" />
 
     @php
+        // Footer: the unit once (when every row shares one), the quantities as plain numbers.
+        $oneUnit = $totals !== null && count($totals['units']) === 1;
+        $total = fn (float $qty) => $oneUnit ? Format::qty($qty) : Format::quantityTotal($qty, $totals['units']);
         $columns = [
+            'code' => ['label' => __('reports.columns.sku')],
             'item' => ['label' => __('reports.columns.item'), 'card' => 'title'],
-            'code' => ['label' => __('reports.columns.code')],
             'customer' => ['label' => __('reports.columns.customer'), 'priority' => 2],
             'warehouse' => ['label' => __('reports.columns.warehouse'), 'priority' => 2],
-            'expiry' => ['label' => __('reports.columns.expiry_date')],
             'storage' => ['label' => __('reports.columns.storage_status'), 'priority' => 2],
+            'expiry' => ['label' => __('reports.columns.expiry_date')],
+            'unit' => ['label' => __('reports.columns.unit')],
             'qty' => ['label' => __('reports.columns.qty_base'), 'align' => 'end'],
             'reserved' => ['label' => __('reports.columns.reserved'), 'align' => 'end'],
             'available' => ['label' => __('reports.columns.available'), 'align' => 'end'],
@@ -25,9 +29,10 @@
         :footer="$totals === null ? null : [
             'label' => trans_choice('reports.stock_on_hand.footer_total', $totals['rows'], ['count' => Format::qty($totals['rows'])]),
             'cells' => [
-                'qty' => Format::quantityTotal($totals['qty'], $totals['units']),
-                'reserved' => Format::quantityTotal($totals['reserved'], $totals['units']),
-                'available' => Format::quantityTotal($totals['available'], $totals['units']),
+                'unit' => $oneUnit ? Format::unit($totals['units'][0]) : '',
+                'qty' => $total($totals['qty']),
+                'reserved' => $total($totals['reserved']),
+                'available' => $total($totals['available']),
             ],
         ]"
         :loading="! $rowsLoaded"
@@ -49,12 +54,13 @@
                 $cells = $row['cells'];
             @endphp
             <x-data-table.row wire:key="stock-by-expiry-{{ $rows->firstItem() + $loop->index }}" :href="$row['link']" :label="__('reports.stock_on_hand.open', ['item' => $cells['item']['text']])">
-                <x-data-table.cell col="item" class="font-semibold text-fg xl:min-w-48"><bdi>{{ $cells['item']['text'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="code" class="whitespace-nowrap"><span dir="ltr" class="tabular text-muted">{{ $cells['code']['text'] }}</span></x-data-table.cell>
+                <x-data-table.cell col="item" class="font-semibold text-fg xl:min-w-48"><bdi>{{ $cells['item']['text'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="customer" class="text-fg xl:min-w-32"><bdi>{{ $cells['customer'] }}</bdi></x-data-table.cell>
                 <x-data-table.cell col="warehouse" class="text-fg"><bdi>{{ $cells['warehouse'] }}</bdi></x-data-table.cell>
-                <x-data-table.cell col="expiry" class="whitespace-nowrap"><x-report.cell :cell="$cells['expiry']" /></x-data-table.cell>
                 <x-data-table.cell col="storage" class="whitespace-nowrap text-fg"><x-report.cell :cell="$cells['storage']" /></x-data-table.cell>
+                <x-data-table.cell col="expiry" class="whitespace-nowrap"><x-report.cell :cell="$cells['expiry']" /></x-data-table.cell>
+                <x-data-table.cell col="unit" class="whitespace-nowrap text-fg">{{ $cells['unit'] }}</x-data-table.cell>
                 <x-data-table.cell col="qty" align="end" class="whitespace-nowrap"><x-report.cell :cell="$cells['qty']" /></x-data-table.cell>
                 <x-data-table.cell col="reserved" align="end" class="whitespace-nowrap">
                     @if ($cells['reserved']['text'] !== '')

@@ -4,6 +4,7 @@ namespace App\Livewire\Settings;
 
 use App\Models\Customer;
 use App\Models\CustomerBranch;
+use App\Models\Warehouse;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,7 +13,8 @@ use Illuminate\Validation\Rule;
 
 /**
  * Settings › Branches: a customer's branches (shops, sites), named on draft
- * receipts and orders. Taken out of use, never deleted; a branch stays with the
+ * receipts and orders, each served by one warehouse (where an Order / Draft
+ * receipt for it starts). Taken out of use, never deleted; a branch stays with the
  * customer it was created for (drafts and documents point at both).
  *
  * @extends MasterDataPage<CustomerBranch>
@@ -31,7 +33,7 @@ class Branches extends MasterDataPage
 
     protected function blank(): array
     {
-        return ['customer_id' => '', 'code' => '', 'manager_email' => '', 'name' => '', 'address' => '', 'active' => true];
+        return ['customer_id' => '', 'code' => '', 'manager_email' => '', 'name' => '', 'address' => '', 'warehouse_id' => '', 'active' => true];
     }
 
     protected function rules(): array
@@ -47,6 +49,7 @@ class Branches extends MasterDataPage
                 ->ignore($this->editing ?: null)],
             'form.name' => ['required', 'string', 'max:150'],
             'form.address' => ['nullable', 'string', 'max:500'],
+            'form.warehouse_id' => ['required', 'integer', Rule::exists('warehouse', 'id')->where('active', true)],
             'form.active' => ['boolean'],
         ];
     }
@@ -67,6 +70,9 @@ class Branches extends MasterDataPage
             'form.name.required' => __('settings.branches.errors.name_required'),
             'form.name.max' => __('settings.errors.too_long', ['max' => 150]),
             'form.address.max' => __('settings.errors.too_long', ['max' => 500]),
+            'form.warehouse_id.required' => __('settings.branches.errors.warehouse_required'),
+            'form.warehouse_id.integer' => __('settings.branches.errors.warehouse_required'),
+            'form.warehouse_id.exists' => __('settings.branches.errors.warehouse_required'),
         ];
     }
 
@@ -109,7 +115,7 @@ class Branches extends MasterDataPage
 
     protected function paginateRows(Builder $query): LengthAwarePaginator
     {
-        return $query->with('customer')
+        return $query->with(['customer', 'warehouse'])
             ->join('customer', 'customer.id', '=', 'customer_branch.customer_id')
             ->orderBy('customer.name')
             ->orderBy('customer_branch.name')
@@ -119,12 +125,15 @@ class Branches extends MasterDataPage
 
     protected function formFrom(Model $record): array
     {
-        return ['customer_id' => (string) $record->getAttribute('customer_id')] + parent::formFrom($record);
+        return ['customer_id' => (string) $record->getAttribute('customer_id'), 'warehouse_id' => (string) $record->getAttribute('warehouse_id')]
+            + parent::formFrom($record);
     }
 
     public function render(): View
     {
-        return parent::render()->with('customers', Customer::orderBy('name')->pluck('name', 'id')->all());
+        return parent::render()
+            ->with('customers', Customer::orderBy('name')->pluck('name', 'id')->all())
+            ->with('warehouses', Warehouse::where('active', true)->orderBy('name')->pluck('name', 'id')->all());
     }
 
     protected function viewName(): string

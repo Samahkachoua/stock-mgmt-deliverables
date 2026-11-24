@@ -5,6 +5,7 @@ namespace Tests\Support;
 use Illuminate\Testing\TestResponse;
 use Livewire\Features\SupportTesting\Testable;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
@@ -52,6 +53,22 @@ final class Exports
 
         try {
             return self::xlsxFile($path);
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    /**
+     * The first worksheet of an .xlsx, for what xlsxContent() leaves out
+     * (outline levels, fonts, filters).
+     */
+    public static function xlsxSheet(string $content): Worksheet
+    {
+        $path = tempnam(sys_get_temp_dir(), 'xlsx');
+        file_put_contents($path, $content);
+
+        try {
+            return IOFactory::load($path)->getActiveSheet();
         } finally {
             @unlink($path);
         }

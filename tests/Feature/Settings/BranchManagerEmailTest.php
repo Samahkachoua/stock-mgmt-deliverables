@@ -3,6 +3,7 @@
 use App\Livewire\Settings\Branches;
 use App\Models\Customer;
 use App\Models\CustomerBranch;
+use App\Models\Warehouse;
 use App\Support\Format;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -18,12 +19,14 @@ use Livewire\Livewire;
 beforeEach(function () {
     $this->customer = Customer::factory()->create(['name' => 'Acme Foods']);
     $this->manager = userWithRole('MANAGER');
+    $this->warehouse = Warehouse::factory()->create();
 });
 
 function newBranch(object $test, array $values): Testable
 {
     $form = Livewire::actingAs($test->manager)->test(Branches::class)->call('add')
-        ->set('form.customer_id', $test->customer->id);
+        ->set('form.customer_id', $test->customer->id)
+        ->set('form.warehouse_id', $test->warehouse->id);
 
     foreach ($values as $field => $value) {
         $form->set('form.'.$field, $value);
@@ -46,7 +49,7 @@ it('saves the manager email trimmed and lower case, and records it', function ()
 });
 
 it('edits the manager email after saving, and records the change', function () {
-    $branch = CustomerBranch::create(['customer_id' => $this->customer->id, 'code' => 'HB', 'name' => 'Harbour', 'manager_email' => 'old@acme.test']);
+    $branch = CustomerBranch::create(['customer_id' => $this->customer->id, 'code' => 'HB', 'name' => 'Harbour', 'manager_email' => 'old@acme.test', 'warehouse_id' => $this->warehouse->id]);
 
     Livewire::actingAs($this->manager)->test(Branches::class)
         ->call('edit', $branch->id)
@@ -89,7 +92,7 @@ it('keeps a manager email to one branch per customer, in the app and the databas
 
     // Another customer: allowed.
     Livewire::actingAs($this->manager)->test(Branches::class)->call('add')
-        ->set('form.customer_id', $other->id)->set('form.name', 'Downtown')->set('form.code', 'DT')->set('form.manager_email', 'rana@acme.test')
+        ->set('form.customer_id', $other->id)->set('form.warehouse_id', $this->warehouse->id)->set('form.name', 'Downtown')->set('form.code', 'DT')->set('form.manager_email', 'rana@acme.test')
         ->call('save')
         ->assertHasNoErrors();
 

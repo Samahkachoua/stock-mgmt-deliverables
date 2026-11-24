@@ -1,7 +1,7 @@
 {{--
-    Search plus optional Warehouse / Customer / Branch / Status / Date from + Date to / Direction filters
+    Search plus optional Warehouse / Customer / Branch / Status / Storage / Date from + Date to / Direction filters
     for a Livewire list. Binds to the component's `search`, `warehouse`, `customer`, `branch`, `status`,
-    `dateFrom`, `dateTo` and `direction` properties and calls `resetFilters()`.
+    `storage`, `dateFrom`, `dateTo` and `direction` properties and calls `resetFilters()`.
     Leave a filter's prop out to hide it.
     <x-filters-bar :customers="[id => name]" :statuses="[code => label]" dates :date-error="$dateError" :search-placeholder="..." />
     `dates` shows the two date pickers (x-date-range); `date-error` outlines them in red.
@@ -18,6 +18,8 @@
     'customers' => null,
     'branches' => null,
     'statuses' => null,
+    // Item storage status (`storage`): code => label, App\Reports\Filter::NO_STORAGE for "Not set".
+    'storages' => null,
     'dates' => false,
     'dateError' => false,
     'directions' => null,
@@ -38,6 +40,7 @@
         $customers === null ? null : $select('customer', 'keyboard_arrow_down', __('transactions.filters.customer'), ['' => __('transactions.filters.all_customers')] + $customers),
         $branches === null ? null : $select('branch', 'keyboard_arrow_down', __('drafts.filters.branch'), ['' => __('drafts.filters.all_branches')] + $branches),
         $statuses === null ? null : $select('status', 'keyboard_arrow_down', __('transactions.filters.status'), ['' => $allStatuses ?? __('transactions.filters.all_statuses')] + $statuses),
+        $storages === null ? null : $select('storage', 'keyboard_arrow_down', __('reports.filters.storage_status'), ['' => __('reports.filters.all_storage')] + $storages),
     ]);
     $after = array_filter([
         $directions === null ? null : $select('direction', 'swap_horiz', __('transfers.direction.label'), $directions),

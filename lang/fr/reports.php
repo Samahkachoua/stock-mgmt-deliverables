@@ -32,13 +32,14 @@ return [
     'columns' => [
         'item' => 'Article',
         'code' => 'Code',
+        'sku' => 'SKU',
+        'unit' => 'Unité',
         'customer' => 'Client',
         'branch' => 'Agence',
         'warehouse' => 'Entrepôt',
         'qty_base' => 'Quantité (unité de base)',
         'reserved' => 'Réservé',
         'available' => 'Disponible',
-        'qty_larger' => 'Quantité (unités supérieures)',
         'in_transit' => 'En transit (à l’arrivée)',
         'nearest_expiry' => 'Péremption la plus proche',
         'storage_status' => 'Conditions de stockage',
@@ -65,6 +66,16 @@ return [
         'quantity_change' => 'Quantité (+/−)',
         'last_moved' => 'Dernier mouvement',
         'days_idle' => 'Sans mouvement depuis',
+        'qty_entered' => 'Quantité (telle que saisie)',
+        'delivered' => 'Livré',
+        'order' => 'Commande',
+        'delivery_note' => 'Bon de livraison',
+        'draft_receipt' => 'Brouillon de réception',
+        'receipt' => 'Réception',
+        'driver' => 'Chauffeur',
+        'truck' => 'Camion',
+        'delivered_at' => 'Livré le',
+        'delivery_date' => 'Date de livraison',
     ],
 
     'expiry_badge' => [
@@ -77,6 +88,9 @@ return [
         'excel' => 'Excel',
         'pdf' => 'PDF',
         'generated' => 'Généré le :date par :name',
+        // Excel, grouped exports (Stock by expiry): the Total row of a group, and of the sheet.
+        'group_total' => 'Total :value',
+        'grand_total' => 'Total général',
     ],
 
     'page' => [
@@ -149,6 +163,36 @@ return [
     'transfer_shortages' => [
         'title' => 'Manques de transfert',
         'description' => 'Les lignes de transfert arrivées avec moins que l’envoi, et pourquoi.',
+    ],
+
+    // Détails des opérations (App\Reports\OperationLinesReport / DraftLinesReport).
+    'operation_lines' => [
+        'operations' => 'Opérations',
+    ],
+
+    'order_lines' => [
+        'title' => 'Détail des commandes',
+        'description' => 'Chaque article de chaque commande, avec sa date de livraison, sa priorité et son bon de livraison.',
+    ],
+
+    'delivery_note_lines' => [
+        'title' => 'Détail des bons de livraison',
+        'description' => 'Chaque article de chaque bon de livraison : commandé, livré, chauffeur et date de livraison.',
+    ],
+
+    'draft_receipt_lines' => [
+        'title' => 'Détail des brouillons de réception',
+        'description' => 'Chaque article de chaque brouillon de réception, et la réception qui en est issue.',
+    ],
+
+    'receipt_lines' => [
+        'title' => 'Détail des réceptions',
+        'description' => 'Chaque article reçu, avec son lot et sa date d’expiration.',
+    ],
+
+    'opening_balance_lines' => [
+        'title' => 'Détail des stocks initiaux',
+        'description' => 'Chaque article saisi en stock initial, avec son lot et sa date d’expiration.',
     ],
 
     'delivery_differences' => [

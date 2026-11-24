@@ -24,6 +24,12 @@ final class Reports
         TransfersInTransitReport::class,
         TransferShortagesReport::class,
         DeliveryDifferencesReport::class,
+        // Operation details: every line of each kind of operation.
+        OrderLinesReport::class,
+        DeliveryNoteLinesReport::class,
+        DraftReceiptLinesReport::class,
+        ReceiptLinesReport::class,
+        OpeningBalanceLinesReport::class,
         AuditLogReport::class,
         LoginHistoryReport::class,
     ];

@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\DB;
  * Reads go through StockTransaction, so the warehouse scope (user_warehouse)
  * and the customer scope (customer portal users) always apply.
  *
- * @phpstan-type ListRow array{id: string, reference: string, date: CarbonImmutable, customer_id: string|null, customer: string, status: string, created_by: string, items: int, short: bool, reason: string|null, draft: string|null, total: string|null, from: string, to_warehouse: string|null, incoming: bool}
+ * @phpstan-type ListRow array{id: string, reference: string, date: CarbonImmutable, customer_id: string|null, customer: string, status: string, created_by: string, items: int, short: bool, reason: string|null, draft: string|null, branch: string|null, total: string|null, from: string, to_warehouse: string|null, incoming: bool}
  */
 final class Documents
 {
@@ -36,7 +36,7 @@ final class Documents
      * Approvers see documents waiting for approval first (`pending_first`).
      *
      * @param  list<string>  $warehouseIds  the warehouse filter: one, or all of the user's
-     * @param  array{search?: string, customer?: string, status?: string, dates?: DateRange, direction?: string, pending_first?: bool}  $filters
+     * @param  array{search?: string, customer?: string, branch?: string, status?: string, dates?: DateRange, direction?: string, pending_first?: bool}  $filters
      * @return LengthAwarePaginator<int, ListRow>
      */
     public static function page(TypeUi $type, array $warehouseIds, array $filters, int $perPage, int $page): LengthAwarePaginator
@@ -50,6 +50,7 @@ final class Documents
                 'to_warehouse.name as to_name',
             ])
             ->when($type->hasListColumn('draft'), fn ($query) => $query->addSelect('draft.doc_no as draft_reference'))
+            ->when($type->hasListColumn('branch'), fn ($query) => $query->addSelect('branch.name as branch_name'))
             ->selectSub(DB::table('stock_transaction_line')->selectRaw('count(*)')->whereColumn('transaction_id', 'stock_transaction.id'), 'line_count')
             ->when($type->hasListColumn('total'), fn ($query) => $query->selectSub(
                 QuantityTotals::perDocument('stock_transaction_line', 'transaction_id', 'stock_transaction.id', QuantityTotals::DELIVERED_OR_ORDERED),
@@ -73,6 +74,8 @@ final class Documents
             // Only for types whose list shows the column.
             'reason' => $type->hasListColumn('reason') ? $row->reason_code : null,
             'draft' => $type->hasListColumn('draft') && $row->getAttribute('draft_reference') !== null ? (string) $row->getAttribute('draft_reference') : null,
+            // The customer branch of the draft it was confirmed from; null for older documents.
+            'branch' => $type->hasListColumn('branch') && $row->getAttribute('branch_name') !== null ? (string) $row->getAttribute('branch_name') : null,
             'total' => QuantityTotals::format($row->getAttribute('qty_total')),
             'from' => (string) $row->getAttribute('from_name'),
             // Only transfers have a destination.
@@ -88,7 +91,7 @@ final class Documents
      * column or nothing matches.
      *
      * @param  list<string>  $warehouseIds
-     * @param  array{search?: string, customer?: string, status?: string, dates?: DateRange, direction?: string}  $filters
+     * @param  array{search?: string, customer?: string, branch?: string, status?: string, dates?: DateRange, direction?: string}  $filters
      */
     public static function total(TypeUi $type, array $warehouseIds, array $filters): ?string
     {
@@ -106,7 +109,7 @@ final class Documents
      * search, customer, status and dates. Shared by the page and its total.
      *
      * @param  list<string>  $warehouseIds
-     * @param  array{search?: string, customer?: string, status?: string, dates?: DateRange, direction?: string}  $filters
+     * @param  array{search?: string, customer?: string, branch?: string, status?: string, dates?: DateRange, direction?: string}  $filters
      * @return Builder<StockTransaction>
      */
     private static function filtered(TypeUi $type, array $warehouseIds, array $filters): Builder
@@ -120,6 +123,7 @@ final class Documents
             ->join('warehouse as from_warehouse', 'from_warehouse.id', '=', 'stock_transaction.warehouse_id')
             ->leftJoin('warehouse as to_warehouse', 'to_warehouse.id', '=', 'stock_transaction.to_warehouse_id')
             ->when($type->hasListColumn('draft'), fn ($query) => $query->leftJoin('stock_draft as draft', 'draft.id', '=', 'stock_transaction.draft_id'))
+            ->when($type->hasListColumn('branch'), fn ($query) => $query->leftJoin('customer_branch as branch', 'branch.id', '=', 'stock_transaction.customer_branch_id'))
             ->where('stock_transaction.transaction_type', $type->code)
             ->where(fn ($query) => match ($type->dispatchReceive() ? ($filters['direction'] ?? '') : 'outgoing') {
                 'incoming' => $query->whereIn('stock_transaction.to_warehouse_id', $warehouseIds),
@@ -129,8 +133,10 @@ final class Documents
             ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query
                 ->whereRaw('lower(stock_transaction.doc_no) like ?', [$like])
                 ->orWhereRaw('lower(customer.name) like ?', [$like])
-                ->when($type->hasListColumn('draft'), fn ($query) => $query->orWhereRaw('lower(draft.doc_no) like ?', [$like]))))
+                ->when($type->hasListColumn('draft'), fn ($query) => $query->orWhereRaw('lower(draft.doc_no) like ?', [$like]))
+                ->when($type->hasListColumn('branch'), fn ($query) => $query->orWhereRaw('lower(branch.name) like ?', [$like]))))
             ->when($filters['customer'] ?? '', fn ($query, string $customer) => $query->where('stock_transaction.customer_id', $customer))
+            ->when($filters['branch'] ?? '', fn ($query, string $branch) => $query->where('stock_transaction.customer_branch_id', $branch))
             ->when($filters['status'] ?? '', fn ($query, string $status) => $query->where('stock_transaction.status', $status))
             // The document's own date (the Date column), both days included.
             ->when($filters['dates'] ?? null, fn ($query, DateRange $dates) => $dates->whereDay($query, 'stock_transaction.document_date'));

@@ -1,6 +1,6 @@
 @use('App\Support\Format')
 
-@php $filtered = $search !== '' || $customer !== '' || $status !== ''; @endphp
+@php $filtered = $search !== '' || $customer !== '' || $status !== '' || $storage !== ''; @endphp
 
 <div class="flex flex-col gap-section">
     <x-page-header icon="category" :title="__('items.title')" :subtitle="__('items.subtitle')">
@@ -31,11 +31,12 @@
             'customer' => ['label' => __('items.list.customer')],
             'base_unit' => ['label' => __('items.list.base_unit'), 'priority' => 2],
             'tracking' => ['label' => __('items.list.tracking'), 'priority' => 2],
+            'storage' => ['label' => __('reports.columns.storage_status'), 'priority' => 2],
             'status' => ['label' => __('settings.status'), 'card' => 'badge'],
         ];
     @endphp
 
-    <x-filters-bar :customers="$customers" :statuses="$statuses" :search-placeholder="__('items.search')" :columns="$columns" list="items" exportable />
+    <x-filters-bar :customers="$customers" :statuses="$statuses" :storages="$storages" :search-placeholder="__('items.search')" :columns="$columns" list="items" exportable />
 
     <x-data-table
         :columns="$columns"
@@ -82,6 +83,7 @@
                         @endif
                     </div>
                 </x-data-table.cell>
+                <x-data-table.cell col="storage" class="whitespace-nowrap text-fg">{{ \App\Support\StorageStatuses::name($item->storage_status) }}</x-data-table.cell>
                 <x-data-table.cell col="status"><x-master-data.active-badge :active="$item->active" /></x-data-table.cell>
             </x-data-table.row>
         @endforeach

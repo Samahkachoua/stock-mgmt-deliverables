@@ -37,17 +37,25 @@ final class Exporter
     public function xlsx(Report $report, array $filters, User $user, array $hidden = []): BinaryFileResponse
     {
         $columns = $this->visible($report->columns(), $hidden);
+        $headings = array_map(fn (array $column) => __($column['label']), array_values($columns));
+        $grouping = $report->excelGrouping();
+
+        if ($grouping !== null) {
+            // Every column's value (hidden ones too: they still tell groups apart).
+            $values = $report->rows($filters, $user)
+                ->map(fn (array $cells) => array_map(fn (string|array $cell) => $this->excelValue($cell), $cells));
+            $grouped = GroupedRows::build(array_keys($columns), $values, $grouping);
+            $sheet = new ReportSheet($report->title(), $headings, $grouped->rows, $this->rtl(), $grouped);
+
+            return Excel::download($sheet, $this->filename($report->key(), 'xlsx'));
+        }
+
         $rows = $report->rows($filters, $user)
             ->map(fn (array $cells) => array_map(fn (string $key) => $this->excelValue($cells[$key] ?? ''), array_keys($columns)))
             ->values()
             ->all();
 
-        $sheet = new ReportSheet(
-            $report->title(),
-            array_map(fn (array $column) => __($column['label']), array_values($columns)),
-            $rows,
-            $this->rtl(),
-        );
+        $sheet = new ReportSheet($report->title(), $headings, $rows, $this->rtl());
 
         return Excel::download($sheet, $this->filename($report->key(), 'xlsx'));
     }

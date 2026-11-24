@@ -5,6 +5,7 @@ namespace App\Reports;
 use App\Models\Product;
 use App\Models\StockBalance;
 use App\Models\User;
+use App\Support\Format;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -41,12 +42,15 @@ final class StockByExpiryReport extends Report
     public function columns(): array
     {
         return [
+            // The item code (SKU) first, then its name.
+            'code' => ['label' => 'reports.columns.sku'],
             'item' => ['label' => 'reports.columns.item', 'card' => 'title'],
-            'code' => ['label' => 'reports.columns.code', 'priority' => 2],
             'customer' => ['label' => 'reports.columns.customer', 'priority' => 2],
             'warehouse' => ['label' => 'reports.columns.warehouse', 'priority' => 2],
-            'expiry' => ['label' => 'reports.columns.expiry_date'],
             'storage' => ['label' => 'reports.columns.storage_status', 'priority' => 2],
+            'expiry' => ['label' => 'reports.columns.expiry_date'],
+            // One Unit column (the base unit); the quantities after it are plain numbers.
+            'unit' => ['label' => 'reports.columns.unit'],
             'qty' => ['label' => 'reports.columns.qty_base', 'align' => 'end'],
             'reserved' => ['label' => 'reports.columns.reserved', 'align' => 'end'],
             'available' => ['label' => 'reports.columns.available', 'align' => 'end'],
@@ -120,15 +124,31 @@ final class StockByExpiryReport extends Report
         $product = $this->product($row->product_id);
 
         return [
-            'item' => ['text' => $product->name(), 'strong' => true],
             'code' => ['text' => $product->sku, 'ltr' => true],
+            'item' => ['text' => $product->name(), 'strong' => true],
             'customer' => (string) $row->customer_name,
             'warehouse' => (string) $row->warehouse_name,
-            'expiry' => $this->expiryDateCell($row->expiry_date),
             'storage' => $this->storageCell($product->storage_status),
-            'qty' => $this->qtyCell($row->qty, $row->product_id) + ['strong' => true],
-            'reserved' => (float) $row->reserved > 0 ? $this->qtyCell($row->reserved, $row->product_id) : ['text' => '', 'value' => 0],
-            'available' => $this->qtyCell((float) $row->qty - (float) $row->reserved, $row->product_id) + ['strong' => true],
+            'expiry' => $this->expiryDateCell($row->expiry_date),
+            'unit' => Format::unit($this->converter($row->product_id)->base()),
+            'qty' => $this->numberCell($row->qty) + ['strong' => true],
+            'reserved' => (float) $row->reserved > 0 ? $this->numberCell($row->reserved) : ['text' => '', 'value' => 0],
+            'available' => $this->numberCell((float) $row->qty - (float) $row->reserved) + ['strong' => true],
+        ];
+    }
+
+    /**
+     * Excel: one group per item in a warehouse (its lots below it), with a
+     * Total row of the item's quantities, collapsible.
+     *
+     * @return array{group: list<string>, sum: list<string>, unit: string}
+     */
+    public function excelGrouping(): array
+    {
+        return [
+            'group' => ['code', 'item', 'customer', 'warehouse', 'storage'],
+            'sum' => ['qty', 'reserved', 'available'],
+            'unit' => 'unit',
         ];
     }
 

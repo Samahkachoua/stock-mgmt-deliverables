@@ -38,7 +38,8 @@
 |                  counted (In system | Counted | Difference instead of Quantity)
 |   list_columns   optional list page columns: reason (the document's reason),
 |                  draft (the draft it was confirmed from, e.g. the Order of a
-|                  Delivery note), total (the quantity of all stock lines in
+|                  Delivery note), branch (the customer branch of that draft),
+|                  total (the quantity of all stock lines in
 |                  base units, "212 Piece"; what was delivered once delivered);
 |                  default none
 |   hint           available = "Available: N" and quantity may not exceed it;
@@ -88,8 +89,8 @@ return [
             'new' => false,
             'status_labels' => ['DISPATCHED' => 'dispatched', 'POSTED' => 'delivered'],
             'header_fields' => [],
-            // The Order it was confirmed from, if any; the total quantity.
-            'list_columns' => ['draft', 'total'],
+            // The Order it was confirmed from, if any, and its branch; the total quantity.
+            'list_columns' => ['draft', 'branch', 'total'],
             'line_columns' => ['expiry_pick'],
             'hint' => 'available',
             'line_key' => ['unit', 'expiry'],

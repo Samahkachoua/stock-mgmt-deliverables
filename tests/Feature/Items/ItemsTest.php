@@ -93,6 +93,31 @@ it('filters items by status, keeping inactive ones out of the active list', func
     $list->call('resetFilters')->assertSet('status', '')->assertSee('Canned Beans 400g');
 });
 
+it('shows the storage status and filters items by it', function () {
+    Product::whereKey($this->catalog->id('OO-1L'))->update(['storage_status' => 'CHILLED']);
+
+    $list = Livewire::actingAs(userWithRole('DATA_ENTRY'))->test(ItemList::class)->call('loadRows')
+        ->set('customer', $this->catalog->acme->id);
+
+    // The column shows the name only; the filter's option also has the range.
+    $list->set('search', 'oo-1l')
+        ->assertSeeHtml('data-col="storage"')
+        ->assertSee(StorageStatuses::name('CHILLED'))
+        ->set('search', '');
+
+    $list->set('storage', 'CHILLED')
+        ->assertSee('Olive Oil 1L')
+        ->assertDontSee('Canned Beans 400g');
+
+    $list->set('storage', 'none')
+        ->assertSee('Canned Beans 400g')
+        ->assertDontSee('Olive Oil 1L');
+
+    $list->call('resetFilters')->assertSet('storage', '')
+        ->set('search', 'oo-1l')->assertSee('Olive Oil 1L')
+        ->set('search', 'cb-400')->assertSee('Canned Beans 400g');
+});
+
 it('shows item names in the user’s language', function () {
     $user = userWithRole('DATA_ENTRY');
     $user->update(['preferred_lang' => 'ar']);

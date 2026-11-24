@@ -6,6 +6,7 @@ use App\Livewire\Concerns\DefersRows;
 use App\Livewire\Concerns\ExportsList;
 use App\Livewire\Concerns\RemembersListState;
 use App\Models\Customer;
+use App\Models\CustomerBranch;
 use App\Models\User;
 use App\Support\DateRange;
 use App\Support\Ids;
@@ -48,6 +49,9 @@ class TransactionList extends Component
 
     public string $customer = '';
 
+    /** Lists with a Branch column (Delivery notes): the branch of the Order; '' = all. */
+    public string $branch = '';
+
     /** "Date from" / "Date to" on the document's own date; empty = no date filter. */
     public string $dateFrom = '';
 
@@ -73,7 +77,7 @@ class TransactionList extends Component
 
     public function updating(string $property): void
     {
-        if (in_array($property, ['search', 'customer', 'dateFrom', 'dateTo', 'status', 'direction', 'warehouse'], true)) {
+        if (in_array($property, ['search', 'customer', 'branch', 'dateFrom', 'dateTo', 'status', 'direction', 'warehouse'], true)) {
             $this->resetPage();
         }
     }
@@ -82,6 +86,11 @@ class TransactionList extends Component
     {
         if ($property === 'warehouse') {
             $this->warehouse = $this->validWarehouse($this->warehouse);
+        }
+
+        // Branches belong to a customer: another customer, another list of branches.
+        if ($property === 'customer') {
+            $this->branch = '';
         }
 
         if (! in_array($property, ['dateFrom', 'dateTo'], true)) {
@@ -119,7 +128,7 @@ class TransactionList extends Component
 
     protected function listStateProperties(): array
     {
-        return ['search', 'customer', 'dateFrom', 'dateTo', 'status', 'direction', 'warehouse'];
+        return ['search', 'customer', 'branch', 'dateFrom', 'dateTo', 'status', 'direction', 'warehouse'];
     }
 
     protected function restoredListState(): void
@@ -144,6 +153,7 @@ class TransactionList extends Component
             'rows' => $rows = $this->rowsOnceLoaded(fn () => $this->documents($type, $pendingFirst && $this->status === '')),
             'total' => $rows->isEmpty() ? null : $this->total($type),
             'customers' => Customer::orderBy('name')->pluck('name', 'id')->all(),
+            'branches' => $type->hasListColumn('branch') ? $this->branchOptions() : null,
             'statuses' => Statuses::options($type),
             'pendingFirst' => $pendingFirst,
             'dateError' => $this->dates()->invalid(),
@@ -197,17 +207,37 @@ class TransactionList extends Component
     }
 
     /**
-     * @return array{search: string, customer: string, status: string, dates: DateRange, direction: string}
+     * @return array{search: string, customer: string, branch: string, status: string, dates: DateRange, direction: string}
      */
     private function filters(): array
     {
         return [
             'search' => $this->search,
             'customer' => Ids::valid($this->customer) ? $this->customer : '',
+            'branch' => $this->typeUi()->hasListColumn('branch') && Ids::valid($this->branch) ? $this->branch : '',
             'status' => $this->status,
             'dates' => $this->dates(),
             'direction' => in_array($this->direction, ['incoming', 'outgoing'], true) ? $this->direction : '',
         ];
+    }
+
+    /**
+     * Branches to filter on: of the chosen customer, or every customer's
+     * (CustomerBranch is customer-scoped: a customer user sees only theirs),
+     * limited to the user's own branches when they have some.
+     *
+     * @return array<string, string>
+     */
+    private function branchOptions(): array
+    {
+        $user = Auth::user();
+
+        return CustomerBranch::query()
+            ->when(Ids::valid($this->customer), fn ($query) => $query->where('customer_id', $this->customer))
+            ->when($user instanceof User && $user->branchIds() !== [], fn ($query) => $query->whereIn('id', $user->branchIds()))
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
     }
 
     private function dates(): DateRange

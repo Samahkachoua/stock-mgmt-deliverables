@@ -37,7 +37,8 @@ const STOCK_PAGES = ['stock.view', 'stock.item.view', 'report.stock_by_expiry.vi
 const REPORT_VIEWS = [
     'report.stock_card.view', 'report.expiry.view', 'report.dormant_stock.view', 'report.damage.view',
     'report.adjustments.view', 'report.transfers_in_transit.view', 'report.transfer_shortages.view',
-    'report.delivery_differences.view',
+    'report.delivery_differences.view', 'report.order_lines.view', 'report.delivery_note_lines.view',
+    'report.draft_receipt_lines.view', 'report.receipt_lines.view', 'report.opening_balance_lines.view',
 ];
 
 it('grants the default permissions to each role', function (string $role, array $expected) {

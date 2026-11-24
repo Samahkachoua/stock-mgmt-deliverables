@@ -123,6 +123,7 @@ return [
         'reference' => 'Référence',
         'date' => 'Date',
         'customer' => 'Client',
+        'branch' => 'Agence',
         'route' => 'De → Vers',
         'warehouse' => 'Entrepôt',
         'items' => 'Articles',

@@ -186,9 +186,15 @@ CREATE TABLE customer_branch (
     active      BOOLEAN NOT NULL DEFAULT TRUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- The warehouse that serves the branch: an Order / Draft receipt for it
+    -- starts there (the user may switch to another of theirs). Required in the
+    -- form; NULL only on branches created before it existed.
+    warehouse_id BIGINT REFERENCES warehouse(id),
     UNIQUE (customer_id, code),
     UNIQUE (id, customer_id)          -- target of the (branch, customer) foreign keys below
 );
+
+CREATE INDEX ix_customer_branch_warehouse ON customer_branch (warehouse_id);
 
 -- One branch per customer per manager email (any case).
 CREATE UNIQUE INDEX uq_customer_branch_manager_email
@@ -1248,6 +1254,11 @@ INSERT INTO permission (code, description, module) VALUES
     ('report.transfers_in_transit.view', 'View the transfers in transit report', 'REPORT'),
     ('report.transfer_shortages.view', 'View the transfer shortages report', 'REPORT'),
     ('report.delivery_differences.view', 'View the delivery discrepancies report', 'REPORT'),
+    ('report.order_lines.view', 'View the order details report', 'REPORT'),
+    ('report.delivery_note_lines.view', 'View the delivery note details report', 'REPORT'),
+    ('report.draft_receipt_lines.view', 'View the draft receipt details report', 'REPORT'),
+    ('report.receipt_lines.view', 'View the receipt details report', 'REPORT'),
+    ('report.opening_balance_lines.view', 'View the opening balance details report', 'REPORT'),
     ('audit.view', 'View audit log', 'REPORT'),
     -- Not in the "every report" grant below: ADMIN and AUDITOR only.
     ('report.login_history.view', 'View the login history', 'REPORT'),

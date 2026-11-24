@@ -93,6 +93,9 @@
                         @if (! $locked && $branches === [])
                             {{-- Branches are added in Settings › Branches. --}}
                             <p class="mt-1 text-small text-muted">{{ __('drafts.form.no_branches') }}</p>
+                        @elseif ($branchWarehouse !== null)
+                            {{-- The draft is in another warehouse than the one that serves this branch. --}}
+                            <p data-branch-warehouse class="mt-1 text-small text-muted">{{ __('drafts.form.branch_warehouse', ['branch' => $branches[$branchId] ?? '', 'warehouse' => $branchWarehouse]) }}</p>
                         @else
                             <p class="mt-1 text-small text-muted">{{ $kind->label('branch_hint') }}</p>
                         @endif

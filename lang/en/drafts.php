@@ -75,6 +75,7 @@ return [
         'edit_title' => 'Edit :reference',
         'choose_branch' => 'Choose a branch',
         'no_branches' => 'This customer has no branches yet. Add them in Settings › Branches.',
+        'branch_warehouse' => ':branch is served by :warehouse.',
         'lines_heading' => 'Items',
         'choose_warehouse' => 'Choose…',
         'notice_in' => 'Saving changes no stock. When confirmed, this becomes a receipt.',

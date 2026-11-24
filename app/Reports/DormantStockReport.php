@@ -47,7 +47,6 @@ final class DormantStockReport extends Report
             'customer' => ['label' => 'reports.columns.customer'],
             'warehouse' => ['label' => 'reports.columns.warehouse', 'priority' => 2],
             'qty' => ['label' => 'reports.columns.qty_base', 'align' => 'end'],
-            'breakdown' => ['label' => 'reports.columns.qty_larger', 'priority' => 2, 'card' => 'hide'],
             'last_moved' => ['label' => 'reports.columns.last_moved'],
             'days_idle' => ['label' => 'reports.columns.days_idle', 'align' => 'end', 'card' => 'badge'],
         ];
@@ -97,7 +96,6 @@ final class DormantStockReport extends Report
             'customer' => (string) $row->customer_name,
             'warehouse' => (string) $row->warehouse_name,
             'qty' => $this->qtyCell($row->qty_base, $row->product_id) + ['strong' => true],
-            'breakdown' => $this->breakdown($row->qty_base, $row->product_id),
             'last_moved' => Format::date($moved),
             'days_idle' => ['text' => __('reports.dormant_stock.idle', ['days' => Format::qty($idle)]), 'value' => $idle, 'tone' => 'pending'],
         ];

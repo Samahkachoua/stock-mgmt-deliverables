@@ -75,6 +75,7 @@ return [
         'edit_title' => 'Modifier :reference',
         'choose_branch' => 'Choisir une agence',
         'no_branches' => 'Ce client n’a pas encore d’agence. Ajoutez-les dans Paramètres › Agences.',
+        'branch_warehouse' => ':branch est desservie par :warehouse.',
         'lines_heading' => 'Articles',
         'choose_warehouse' => 'Choisir…',
         'notice_in' => 'Enregistrer ne change pas le stock. Une fois confirmé, ce sera une réception.',

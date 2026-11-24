@@ -387,7 +387,8 @@ it('exports Arabic right to left, with Arabic letters joined in the PDF', functi
     $download = Exports::fromDownload(reportPage($d->admin->fresh(), $d->beirut, 'stock-on-hand')->call('export', 'xlsx'));
     [$header, , $rtl] = Exports::xlsxContent($download['content']);
     expect($rtl)->toBeTrue()
-        ->and($header[0])->toBe(__('reports.columns.item', [], 'ar'));
+        ->and($header[0])->toBe(__('reports.columns.sku', [], 'ar'))
+        ->and($header[1])->toBe(__('reports.columns.item', [], 'ar'));
 
     $text = exportedPdf($d->admin, $d->beirut, 'stock-on-hand');
 

@@ -124,6 +124,7 @@ return [
         'reference' => 'Reference',
         'date' => 'Date',
         'customer' => 'Customer',
+        'branch' => 'Branch',
         'route' => 'From → To',
         'warehouse' => 'Warehouse',
         'items' => 'Items',

@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $name
  * @property string|null $address
  * @property bool $active
+ * @property string|null $warehouse_id where an Order / Draft receipt for the branch starts; required in the form, null on branches from before it existed
  */
 class CustomerBranch extends Model
 {
@@ -35,6 +36,7 @@ class CustomerBranch extends Model
         'manager_email',
         'name',
         'address',
+        'warehouse_id',
         'active',
     ];
 
@@ -54,5 +56,13 @@ class CustomerBranch extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class, 'customer_id');
+    }
+
+    /**
+     * @return BelongsTo<Warehouse, $this>
+     */
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class, 'warehouse_id');
     }
 }

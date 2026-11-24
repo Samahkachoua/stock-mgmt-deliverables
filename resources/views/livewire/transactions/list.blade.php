@@ -6,6 +6,8 @@
         'reference' => ['label' => __('transactions.list.reference'), 'card' => 'title'],
         'date' => ['label' => __('transactions.list.date')],
         'customer' => ['label' => __('transactions.list.customer'), 'card' => 'lead'],
+        // The customer branch of the Order (Delivery note).
+        ...($ui->hasListColumn('branch') ? ['branch' => ['label' => __('transactions.list.branch')]] : []),
         ...($ui->requiresDestination() ? ['route' => ['label' => __('transactions.list.route')]] : []),
         // Users of several warehouses: where each document is (transfers show From → To instead).
         ...($warehouses !== null && ! $ui->requiresDestination() ? ['warehouse' => ['label' => __('transactions.list.warehouse'), 'priority' => 2]] : []),
@@ -17,7 +19,7 @@
         'status' => ['label' => __('transactions.list.status'), 'card' => 'badge'],
         'created_by' => ['label' => __('transactions.list.created_by'), 'priority' => 2, 'card' => 'hide'],
     ];
-    $filtered = $search !== '' || $customer !== '' || $status !== '' || $dateFrom !== '' || $dateTo !== '' || $direction !== '';
+    $filtered = $search !== '' || $customer !== '' || $branch !== '' || $status !== '' || $dateFrom !== '' || $dateTo !== '' || $direction !== '';
 @endphp
 
 <div class="flex flex-col gap-section">
@@ -59,7 +61,7 @@
         @endif
     </x-page-header>
 
-    <x-filters-bar :warehouses="$warehouses" :customers="$customers" :statuses="$statuses" :directions="$directions" :all-statuses="$pendingFirst ? __('transactions.filters.pending_first') : null" dates :date-error="$dateError" :search-placeholder="__('transactions.filters.search_placeholder')" :columns="$columns" :list="$ui->slug()" exportable />
+    <x-filters-bar :warehouses="$warehouses" :customers="$customers" :branches="$branches" :statuses="$statuses" :directions="$directions" :all-statuses="$pendingFirst ? __('transactions.filters.pending_first') : null" dates :date-error="$dateError" :search-placeholder="__('transactions.filters.search_placeholder')" :columns="$columns" :list="$ui->slug()" exportable />
 
     <x-data-table
         :columns="$columns"
@@ -83,6 +85,15 @@
                 <x-data-table.cell col="reference" class="whitespace-nowrap"><span dir="ltr" class="tabular font-semibold text-fg">{{ $row['reference'] }}</span></x-data-table.cell>
                 <x-data-table.cell col="date" class="whitespace-nowrap text-fg">{{ Format::date($row['date']) }}</x-data-table.cell>
                 <x-data-table.cell col="customer" class="font-semibold text-fg"><bdi>{{ $row['customer'] }}</bdi></x-data-table.cell>
+                @if ($ui->hasListColumn('branch'))
+                    <x-data-table.cell col="branch" class="text-fg">
+                        @if ($row['branch'])
+                            <bdi>{{ $row['branch'] }}</bdi>
+                        @else
+                            <span aria-hidden="true">&mdash;</span>
+                        @endif
+                    </x-data-table.cell>
+                @endif
                 @if ($warehouses !== null && ! $ui->requiresDestination())
                     <x-data-table.cell col="warehouse" class="whitespace-nowrap text-fg"><bdi>{{ $row['from'] }}</bdi></x-data-table.cell>
                 @endif

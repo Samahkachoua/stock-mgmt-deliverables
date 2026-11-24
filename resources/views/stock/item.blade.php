@@ -96,7 +96,6 @@
                                     <th scope="col" class="ps-edge text-start">{{ __('reports.columns.expiry_date') }}</th>
                                     <th scope="col" class="px-cell text-start">{{ __('reports.columns.batch') }}</th>
                                     <th scope="col" class="px-cell text-end">{{ __('reports.columns.qty_base') }}</th>
-                                    <th scope="col" class="px-cell text-end">{{ __('reports.columns.qty_larger') }}</th>
                                     <th scope="col" class="pe-edge text-end">{{ __('reports.columns.status') }}</th>
                                 </tr>
                             </thead>
@@ -109,7 +108,6 @@
                                         <td data-card="title" class="ps-edge font-semibold text-fg">{{ $lot['expiry'] ? Format::date($lot['expiry']) : '—' }}</td>
                                         <td data-label="{{ __('reports.columns.batch') }}" class="px-cell text-fg"><span dir="ltr" class="tabular">{{ $lot['batch'] ?? __('stock.batch.none') }}</span></td>
                                         <td data-label="{{ __('reports.columns.qty_base') }}" class="px-cell text-end font-semibold text-fg tabular">{{ Format::qtyUnit($lot['qty'], $base) }}</td>
-                                        <td data-label="{{ __('reports.columns.qty_larger') }}" class="px-cell text-end text-fg">{{ $converter->breakdown($lot['qty']) }}</td>
                                         <td data-card="badge" class="pe-edge text-end">
                                             @if ($status)
                                                 <x-badge :tone="$status['tone']">{{ $status['text'] }}</x-badge>
@@ -120,9 +118,8 @@
                             </tbody>
                             <tfoot>
                                 <tr class="h-row bg-surface font-semibold text-fg">
-                                    <th scope="row" class="ps-edge text-start">{{ __('reports.item.total') }}</th>
+                                    <th scope="row" colspan="2" class="ps-edge text-start">{{ __('reports.item.total') }}</th>
                                     <td class="px-cell text-end tabular">{{ Format::qtyUnit($total, $base) }}</td>
-                                    <td class="px-cell text-end">{{ $converter->breakdown($total) }}</td>
                                     <td class="pe-edge"></td>
                                 </tr>
                             </tfoot>

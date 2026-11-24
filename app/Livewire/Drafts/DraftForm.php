@@ -174,6 +174,7 @@ class DraftForm extends Component
             if ($user->isCustomerUser()) {
                 $this->customerId = (string) $user->customer_id;
                 $this->suggestBranch();
+                $this->followBranch();
             }
         }
 
@@ -212,6 +213,16 @@ class DraftForm extends Component
     {
         $this->pendingCustomer = null;
         $this->customerVersion++;
+    }
+
+    /**
+     * Another branch: the draft moves to the warehouse that serves it, when
+     * that is one of the user's (asking first when lines exist, as for any
+     * warehouse change). The user may still switch to another of theirs.
+     */
+    public function updatedBranchId(): void
+    {
+        $this->followBranch();
     }
 
     // Warehouse
@@ -482,6 +493,9 @@ class DraftForm extends Component
             'customers' => $this->customerOptions(),
             'branches' => $this->branchOptions(),
             'warehouses' => $this->warehouseOptions(),
+            // The chosen branch's own warehouse, when the draft is in another one.
+            'branchWarehouse' => ($branchWarehouse = $this->branchWarehouse()) !== null && $branchWarehouse['id'] !== $this->warehouseId
+                ? $branchWarehouse['name'] : null,
             // One warehouse: nothing to choose (unless the draft's isn't one of the user's).
             'showWarehouse' => count($this->warehouseOptions()) > 1 || ! $this->warehouseOk(),
             'customerUser' => $this->user()->isCustomerUser(),
@@ -946,6 +960,37 @@ class DraftForm extends Component
         $this->suggestBranch();
         $this->lines = [];
         $this->addBlankLine();
+        $this->followBranch();
+    }
+
+    /**
+     * The warehouse that serves the chosen branch (Settings › Branches):
+     * id and name, or null when no branch is chosen or it has none yet.
+     *
+     * @return array{id: string, name: string}|null
+     */
+    private function branchWarehouse(): ?array
+    {
+        if ($this->branchId === '' || ! array_key_exists($this->branchId, $this->branchOptions())) {
+            return null;
+        }
+
+        $warehouse = CustomerBranch::with('warehouse')->find($this->branchId)?->warehouse;
+
+        return $warehouse === null ? null : ['id' => (string) $warehouse->id, 'name' => $warehouse->name];
+    }
+
+    /**
+     * Moves to the chosen branch's warehouse when the user works there;
+     * otherwise the warehouse stays as it is (the hint names the branch's).
+     */
+    private function followBranch(): void
+    {
+        $warehouse = $this->branchWarehouse();
+
+        if ($warehouse !== null && array_key_exists($warehouse['id'], $this->warehouseOptions())) {
+            $this->chooseWarehouse($warehouse['id']);
+        }
     }
 
     // Rows
