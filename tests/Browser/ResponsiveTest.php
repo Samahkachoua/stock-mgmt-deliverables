@@ -229,7 +229,7 @@ class ResponsiveTest extends DuskTestCase
                     $this->assertLessThanOrEqual(1, $result['overflow'], "Login at $size ($language)");
                     $this->assertSame([], $result['culprits'], "Login at $size ($language)");
 
-                    // The photo loads (WebP, not a 404): beside the form on desktop (end side), above it
+                    // The photo loads (login-bg.jpeg, not a 404): beside the form on desktop (end side), above it
                     // on a tablet, hidden on a phone; the form is fully on screen.
                     [$photo] = $browser->script(<<<'JS'
                         const img = document.querySelector('.auth-photo');
@@ -245,7 +245,7 @@ class ResponsiveTest extends DuskTestCase
                             : photo.bottom <= form.top ? 'above'
                             : (rtl ? photo.right <= form.left : photo.left >= form.right) ? 'beside' : 'overlapping';
                         return img.decode().then(
-                            () => ({ loaded: img.currentSrc.endsWith('.webp'), layout, fit, filter: getComputedStyle(img).filter, formInView: form.left >= 0 && form.right <= innerWidth }),
+                            () => ({ loaded: img.currentSrc.endsWith('/images/brand/login-bg.jpeg'), layout, fit, filter: getComputedStyle(img).filter, formInView: form.left >= 0 && form.right <= innerWidth }),
                             () => ({ loaded: false, layout }),
                         );
                     JS);

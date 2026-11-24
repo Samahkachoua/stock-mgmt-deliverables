@@ -10,16 +10,13 @@
             </div>
 
             <div class="auth-panel flex items-center justify-center overflow-hidden max-md:hidden" aria-hidden="true">
-                <picture class="w-full">
-                    <source srcset="{{ asset('images/brand/login-bg-cutout.webp') }}" type="image/webp">
-                    <img
-                        src="{{ asset('images/brand/login-bg.jpeg') }}"
-                        width="1600" height="640"
-                        alt=""
-                        decoding="async"
-                        class="auth-photo block h-auto w-full"
-                    >
-                </picture>
+                <img
+                    src="{{ asset('images/brand/login-bg.jpeg') }}"
+                    width="1600" height="900"
+                    alt=""
+                    decoding="async"
+                    class="auth-photo block h-auto w-full"
+                >
             </div>
 
             <main class="flex items-center justify-center px-4 pb-16 [grid-area:form] md:pt-6 xl:pt-0">
@@ -38,8 +35,8 @@
                 var stacked = window.matchMedia('(width >= 48rem) and (width < 80rem)');
                 var fit = function () {
                     var pad = parseFloat(getComputedStyle(main).paddingTop) + parseFloat(getComputedStyle(main).paddingBottom);
-                    // The photo's height comes from the width (1600 x 640), not from the page, so hiding it never loops.
-                    var needed = bar.offsetHeight + split.clientWidth * 640 / 1600 + form.offsetHeight + pad;
+                    // The photo's height comes from the width (1600 x 900), not from the page, so hiding it never loops.
+                    var needed = bar.offsetHeight + split.clientWidth * 900 / 1600 + form.offsetHeight + pad;
                     panel.toggleAttribute('data-crowded', stacked.matches && needed > window.innerHeight);
                 };
                 fit();

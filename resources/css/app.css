@@ -582,9 +582,8 @@ html[lang='ar'] {
  * Sign-in page (layouts.guest :photo): the form on the card colour, the ETLS photo beside it on
  * desktop (end side, so it moves to the left in Arabic), above the form on a tablet, hidden on a
  * phone, and on a tablet whenever photo and form don't both fit on the screen (data-crowded, set by
- * the layout's script). The photo is always shown whole (never cropped). login-bg-cutout.webp has
- * a transparent sky, so the drawing keeps its own colours (the logo's red) on the light and the dark
- * panel; its top and bottom edges fade out. The panel colour shows while it loads or if it fails.
+ * the layout's script). The photo (login-bg.jpeg, 1600 x 900) is always shown whole (never
+ * cropped); its top and bottom edges fade out. The panel colour shows while it loads or if it fails.
  */
 .auth-split {
     display: grid;

@@ -14,14 +14,15 @@ it('shows the sign in page to guests', function () {
 it('shows the photo beside the form on the sign in page only', function () {
     $this->get(route('login'))
         ->assertSee('auth-split', false)
-        ->assertSee(asset('images/brand/login-bg-cutout.webp'), false)
-        ->assertSee(asset('images/brand/login-bg.jpeg'), false);
+        ->assertSee(asset('images/brand/login-bg.jpeg'), false)
+        // Only that photo: no source pointing at a file that is gone.
+        ->assertDontSee('<source', false);
 
     // The 403 page shares the guest layout and keeps the plain layout.
     $this->view('errors.403')->assertDontSee('auth-split', false);
 
-    expect(public_path('images/brand/login-bg-cutout.webp'))->toBeFile()
-        ->and(public_path('images/brand/login-bg.jpeg'))->toBeFile();
+    expect(public_path('images/brand/login-bg.jpeg'))->toBeFile()
+        ->and(array_slice(getimagesize(public_path('images/brand/login-bg.jpeg')), 0, 2))->toBe([1600, 900]);
 });
 
 it('signs in an active user', function () {
