@@ -10,13 +10,17 @@
             </div>
 
             <div class="auth-panel flex items-center justify-center overflow-hidden max-md:hidden" aria-hidden="true">
-                <img
-                    src="{{ asset('images/brand/login-bg.jpeg') }}"
-                    width="1600" height="900"
-                    alt=""
-                    decoding="async"
-                    class="auth-photo block h-auto w-full"
-                >
+                {{-- WebP (≈370 KB) first; the JPEG (≈620 KB) for browsers without it. --}}
+                <picture class="w-full">
+                    <source srcset="{{ asset('images/brand/login-bg.webp') }}" type="image/webp">
+                    <img
+                        src="{{ asset('images/brand/login-bg.jpeg') }}"
+                        width="1600" height="900"
+                        alt=""
+                        decoding="async"
+                        class="auth-photo block h-auto w-full"
+                    >
+                </picture>
             </div>
 
             <main class="flex items-center justify-center px-4 pb-16 [grid-area:form] md:pt-6 xl:pt-0">
