@@ -609,7 +609,8 @@ html[lang='ar'] {
 }
 
 .auth-photo {
-    mask-image: linear-gradient(transparent, #000 12%, #000 78%, transparent);
+    /* Only a thin fade at the top and bottom edges (was 12% / 22%). */
+    mask-image: linear-gradient(transparent, #000 4%, #000 96%, transparent);
 }
 
 .auth-panel[data-crowded] {
