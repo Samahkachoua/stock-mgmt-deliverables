@@ -139,6 +139,7 @@ return [
         'previous' => 'السابق',
         'next' => 'التالي',
         'page_of' => 'الصفحة :page من :pages',
+        'rows_per_page' => 'عدد الصفوف في الصفحة',
         'no_matches_title' => 'لا شيء يطابق عوامل التصفية هذه',
         'no_matches_body' => 'جرّب بحثًا آخر أو امسح عوامل التصفية.',
     ],

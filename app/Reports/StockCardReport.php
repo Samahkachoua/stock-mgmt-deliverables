@@ -31,7 +31,7 @@ final class StockCardReport extends Report
 
     public function icon(): string
     {
-        return 'history';
+        return 'inventory';
     }
 
     public function filters(): array

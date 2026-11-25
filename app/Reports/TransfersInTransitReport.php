@@ -26,6 +26,11 @@ final class TransfersInTransitReport extends Report
         return 'local_shipping';
     }
 
+    public function group(): string
+    {
+        return 'exceptions';
+    }
+
     public function filters(): array
     {
         return [

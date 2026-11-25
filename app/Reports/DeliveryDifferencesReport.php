@@ -23,6 +23,16 @@ final class DeliveryDifferencesReport extends Report
         return 'delivery-differences';
     }
 
+    public function icon(): string
+    {
+        return 'warning';
+    }
+
+    public function group(): string
+    {
+        return 'exceptions';
+    }
+
     public function filters(): array
     {
         $reasons = ['' => 'reports.filters.all_reasons'];

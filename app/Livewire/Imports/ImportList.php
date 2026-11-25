@@ -7,6 +7,7 @@ use App\Imports\Imports;
 use App\Livewire\Concerns\DefersRows;
 use App\Livewire\Concerns\ExportsList;
 use App\Livewire\Concerns\RemembersListState;
+use App\Livewire\Concerns\WithPerPage;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -22,7 +23,7 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.app')]
 class ImportList extends Component
 {
-    use DefersRows, ExportsList, RemembersListState, WithoutUrlPagination, WithPagination;
+    use DefersRows, ExportsList, RemembersListState, WithoutUrlPagination, WithPagination, WithPerPage;
 
     public const PER_PAGE = 15;
 
@@ -44,6 +45,7 @@ class ImportList extends Component
                     'rows as imported_rows' => fn ($query) => $query->where('status', 'IMPORTED'),
                 ])
                 ->orderByDesc('created_at')
+                ->orderByDesc('id')
                 ->paginate($this->perPage()))),
         ])->title(__('imports.title'));
     }

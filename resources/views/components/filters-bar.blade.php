@@ -9,7 +9,8 @@
 
     Layout (CLAUDE.md "Responsive layout"): the filters first, with equal widths,
     4 per row on desktop and 2 on tablet; then the toolbar right above the table:
-    search and "Clear filters" at the start, Columns, Excel and PDF at the end
+    "Rows per page" (x-per-page), search and "Clear filters" at the start,
+    Columns, Excel and PDF at the end
     (`columns` + `list`, `exportable`). On a phone the filters sit behind a
     "Filters · 2" button next to the search, in a panel with "Apply" and "Clear filters".
 --}}
@@ -134,6 +135,8 @@
 
     {{-- Toolbar, right above the table: search and "Clear filters" | Columns, Excel, PDF. --}}
     <div data-list-toolbar class="flex flex-wrap items-center gap-3">
+        <x-per-page />
+
         <div class="relative min-w-0 flex-1 basis-48 md:max-w-sm">
             <x-input-spinner target="search" />
             <label for="filter-search" class="sr-only">{{ __('transactions.filters.search') }}</label>
@@ -149,7 +152,7 @@
         @endif
 
         {{-- Clears the filters this list remembers for the user (session), back to the first page. --}}
-        <button type="button" wire:click="resetFilters" @class([$clear, 'max-md:hidden' => $models !== []])>
+        <button type="button" wire:click="resetFilters" data-clear-filters @class([$clear, 'max-md:hidden' => $models !== []])>
             <x-icon name="filter_alt_off" />
             <span @class(['max-md:sr-only' => $models === []])>{{ __('transactions.filters.reset') }}</span>
         </button>

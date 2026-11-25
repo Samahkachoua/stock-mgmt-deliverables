@@ -5,6 +5,7 @@ namespace App\Livewire\Transactions;
 use App\Livewire\Concerns\DefersRows;
 use App\Livewire\Concerns\ExportsList;
 use App\Livewire\Concerns\RemembersListState;
+use App\Livewire\Concerns\WithPerPage;
 use App\Models\Customer;
 use App\Models\CustomerBranch;
 use App\Models\User;
@@ -37,7 +38,7 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.app')]
 class TransactionList extends Component
 {
-    use DefersRows, ExportsList, RemembersListState, WithoutUrlPagination, WithPagination;
+    use DefersRows, ExportsList, RemembersListState, WithoutUrlPagination, WithPagination, WithPerPage;
 
     public const PER_PAGE = 8;
 
@@ -178,7 +179,7 @@ class TransactionList extends Component
     {
         // "Date from" after "Date to": no query; the page shows the error.
         if ($this->dates()->invalid()) {
-            return new LengthAwarePaginator([], 0, self::PER_PAGE, 1);
+            return new LengthAwarePaginator([], 0, $this->rowsPerPage(), 1);
         }
 
         return $this->pageInRange(fn (int $page) => Documents::page($type, $this->warehouseIds(), $this->filters() + [

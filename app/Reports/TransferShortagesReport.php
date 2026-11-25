@@ -22,6 +22,16 @@ final class TransferShortagesReport extends Report
         return 'transfer-shortages';
     }
 
+    public function icon(): string
+    {
+        return 'swap_horiz';
+    }
+
+    public function group(): string
+    {
+        return 'exceptions';
+    }
+
     public function filters(): array
     {
         $reasons = ['' => 'reports.filters.all_reasons'];

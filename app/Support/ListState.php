@@ -50,6 +50,26 @@ final class ListState
         session()->forget(self::sessionKey($key));
     }
 
+    /**
+     * The "Rows per page" the user chose on this list, or null. Kept apart from
+     * the filters: "Clear filters" leaves it as it is.
+     */
+    public static function perPage(string $key): ?int
+    {
+        $state = session('list_per_page.'.$key);
+
+        if (! is_array($state) || (string) ($state['user'] ?? '') !== (string) auth()->id()) {
+            return null;
+        }
+
+        return is_int($state['size'] ?? null) ? $state['size'] : null;
+    }
+
+    public static function putPerPage(string $key, int $size): void
+    {
+        session()->put('list_per_page.'.$key, ['user' => auth()->id(), 'size' => $size]);
+    }
+
     private static function sessionKey(string $key): string
     {
         return 'list_state.'.$key;

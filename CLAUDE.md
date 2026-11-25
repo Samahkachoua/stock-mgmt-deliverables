@@ -103,8 +103,13 @@ needs less explanation, not the one that is more configurable.
    drafts `draft.in.cancel` / `draft.out.cancel`;
    `cancel` in config/transactions.php; a transfer In transit: its dispatcher).
    Each report has its own (`Report::permission()`, `report.<key>.view`).
-   Settings › Roles shows one section per type (`permission.module`,
-   `Permission::MODULES` order).
+   Settings › Roles shows one role at a time (role list; a dropdown on a phone;
+   changes to several roles wait together for Save, unsaved roles marked) and
+   its permissions as a tree: sidebar section (`Permission::SECTIONS`) ›
+   module (`permission.module`, `Permission::MODULES` order) › permission, with
+   half-ticked branches, search and expand/collapse. Any action of a module
+   ticks its "see" permission (`Permission::requiredViews()`, also on save).
+   A new module goes into a section in `Permission::SECTIONS`.
 7. Store `TIMESTAMPTZ` in UTC (the app and the DB session run in UTC). One
    company-wide time zone (Settings › General, `app_setting` `timezone`,
    `App\Support\CompanyTime`) decides "today" (form defaults, future-date
@@ -342,7 +347,8 @@ components — never per page.
 - Phone top bar: menu button, page title, search button, user menu; theme
   and language move into the user menu. No warehouse selector (see rule 7).
 - Top bar search (`App\Support\Search\GlobalSearch`, `livewire:global-search`):
-  documents/drafts by number or reference note, items (name, code, barcode),
+  pages by name, first (sidebar entries, reports, Settings tabs the user may
+  open; current language or English; no DB query), documents/drafts by number or reference note, items (name, code, barcode),
   customers, serials, batches — each group only with the permission of the
   page it opens, always through the scoped models. "/" or Ctrl+K focuses it;
   a phone opens it as a full-screen panel. Nothing else goes in it.
@@ -373,6 +379,12 @@ components — never per page.
 - Phone: each row becomes a card — reference + status badge on top,
   then customer and date; the whole card is tappable.
 - Pagination becomes "Previous / Next" with "Page 2 of 9" on phone.
+- "Rows per page" (`App\Livewire\Concerns\WithPerPage`, `x-per-page` at the
+  start of the toolbar, before the search; shown only for components
+  using the trait): `config('ui.per_page_options')` + the list's
+  `PER_PAGE`; remembered per user and list in the session (`ListState::perPage`),
+  kept by "Clear filters", back to page 1 on change. Paginate with `rowsPerPage()`
+  (lists with exports: `perPage()`). List queries end on a unique key (`id`).
 
 **Transaction form**
 - Header card fields: 3 per row desktop, 2 tablet, 1 phone.

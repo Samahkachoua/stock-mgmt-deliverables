@@ -8,6 +8,8 @@ use App\Models\SerialNumber;
 use App\Models\StockBalance;
 use App\Models\StockDraft;
 use App\Models\StockTransaction;
+use App\Models\User;
+use App\Reports\Reports;
 use App\Support\Batches;
 use App\Support\Drafts\DraftTypes;
 use App\Support\Drafts\DraftUi;
@@ -15,12 +17,13 @@ use App\Support\Transactions\Statuses;
 use App\Support\Transactions\TransactionTypes;
 use App\Support\Transactions\TypeUi;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * The top bar search: documents (by number or the customer's own reference),
- * items (name, code, barcode), customers, serial numbers and batches.
+ * The top bar search: pages (by name), documents (by number or the customer's
+ * own reference), items (name, code, barcode), customers, serial numbers and batches.
  *
  * Every query goes through the models, so the warehouse scope (user_warehouse)
  * and the customer scope (customer portal users) always apply; each group also
@@ -49,6 +52,7 @@ final class GlobalSearch
         }
 
         $groups = [
+            ['key' => 'pages', 'label' => __('search.groups.pages'), 'rows' => self::pages($text)],
             ['key' => 'documents', 'label' => __('search.groups.documents'), 'rows' => self::documents($text)],
             ['key' => 'items', 'label' => __('search.groups.items'), 'rows' => self::items($text)],
             ['key' => 'customers', 'label' => __('search.groups.customers'), 'rows' => self::customers($text)],
@@ -57,6 +61,88 @@ final class GlobalSearch
         ];
 
         return array_values(array_filter($groups, fn (array $group) => $group['rows'] !== []));
+    }
+
+    /**
+     * Pages the user may open, by name: sidebar entries, reports (Reports page)
+     * and Settings tabs. The name matches in the current language or in English,
+     * names that start with the text first. No database query.
+     *
+     * @return list<Row>
+     */
+    private static function pages(string $text): array
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User) {
+            return [];
+        }
+
+        $pages = self::pageList($user);
+        $english = [];
+
+        if (app()->getLocale() !== 'en') {
+            $locale = app()->getLocale();
+            app()->setLocale('en');
+
+            try {
+                $english = array_column(self::pageList($user), 'title', 'url');
+            } finally {
+                app()->setLocale($locale);
+            }
+        }
+
+        $needle = mb_strtolower($text);
+        $found = [];
+
+        foreach ($pages as $page) {
+            $names = array_map('mb_strtolower', array_filter([$page['title'], $english[$page['url']] ?? null]));
+            $positions = array_filter(array_map(fn (string $name) => mb_strpos($name, $needle), $names), fn ($at) => $at !== false);
+
+            if ($positions !== []) {
+                $found[] = ['starts' => in_array(0, $positions, true), 'row' => $page];
+            }
+        }
+
+        // Stable: names that start with the text first, otherwise the sidebar's order.
+        usort($found, fn (array $a, array $b) => $b['starts'] <=> $a['starts']);
+
+        return array_column(array_slice($found, 0, self::PER_GROUP), 'row');
+    }
+
+    /**
+     * Every page the user may open, in the current language, one per URL.
+     *
+     * @return list<Row>
+     */
+    private static function pageList(User $user): array
+    {
+        $pages = [];
+        $add = function (string $title, string $meta, string $url, string $icon) use (&$pages) {
+            $pages[$url] ??= ['title' => $title, 'code' => null, 'meta' => $meta, 'url' => $url, 'icon' => $icon, 'tone' => 'text-muted'];
+        };
+
+        foreach (config('ui.nav') as $section) {
+            foreach ($section['items'] as $item) {
+                if ($user->can($item['permission'])) {
+                    $add(__($item['label']), $section['label'] === null ? '' : __($section['label']), route($item['route']), $item['icon']);
+                }
+            }
+        }
+
+        if ($user->can('reports.open')) {
+            foreach (Reports::listedFor($user) as $report) {
+                $add($report->title(), __('nav.reports'), route('reports.show', $report->key()), $report->icon());
+            }
+        }
+
+        foreach (config('ui.settings_tabs') as $tab) {
+            if ($user->can($tab['permission'])) {
+                $add(__($tab['label']), __('nav.settings'), route($tab['route']), $tab['icon']);
+            }
+        }
+
+        return array_values($pages);
     }
 
     /**

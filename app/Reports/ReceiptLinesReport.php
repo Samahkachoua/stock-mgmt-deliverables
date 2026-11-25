@@ -16,6 +16,16 @@ final class ReceiptLinesReport extends OperationLinesReport
         return 'receipt-lines';
     }
 
+    public function icon(): string
+    {
+        return 'move_to_inbox';
+    }
+
+    public function group(): string
+    {
+        return 'operations';
+    }
+
     protected function type(): string
     {
         return 'IN';

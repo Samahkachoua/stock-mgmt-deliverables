@@ -7,6 +7,11 @@ return [
     'reason_required' => 'Indiquez pourquoi.',
     // Quitter un formulaire non enregistré (App\Livewire\Concerns\WarnsBeforeLeaving).
     'discard' => [
+        'roles' => [
+            'title' => 'Abandonner vos modifications des rôles ?',
+            'body' => 'Les autorisations cochées ou décochées ne sont pas enregistrées et seront perdues.',
+            'button' => 'Abandonner les modifications',
+        ],
         'item' => [
             'title' => 'Abandonner vos modifications de :name ?',
             'title_new' => 'Abandonner ce nouvel article ?',

@@ -16,6 +16,16 @@ final class OrderLinesReport extends DraftLinesReport
         return 'order-lines';
     }
 
+    public function icon(): string
+    {
+        return 'content_paste_go';
+    }
+
+    public function group(): string
+    {
+        return 'operations';
+    }
+
     protected function type(): string
     {
         return 'OUT';

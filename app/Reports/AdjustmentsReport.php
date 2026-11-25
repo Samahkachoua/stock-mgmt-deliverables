@@ -24,6 +24,11 @@ final class AdjustmentsReport extends PostedLinesReport
         return 'tune';
     }
 
+    public function group(): string
+    {
+        return 'exceptions';
+    }
+
     protected function type(): string
     {
         return 'ADJUSTMENT';

@@ -21,8 +21,8 @@ use Symfony\Component\HttpFoundation\Response;
  * filters match, read back from its HTML (ExportTable::fromHtml): what the
  * screen says, column for column, without the hidden columns.
  *
- * The component uses RemembersListState and DefersRows, paginates with
- * perPage() and passes its paginator to the view as `rows`.
+ * The component uses RemembersListState, WithPerPage and DefersRows, paginates
+ * with perPage() and passes its paginator to the view as `rows`.
  */
 trait ExportsList
 {
@@ -40,12 +40,15 @@ trait ExportsList
     /** The same check the list makes on opening: an export never shows more than the list. */
     abstract protected function authorizeExport(): void;
 
+    /** Rows per page the viewer chose (WithPerPage). */
+    abstract protected function rowsPerPage(): int;
+
     /**
      * Rows per page; every matching row (up to EXPORT_MAX + 1) while exporting.
      */
     protected function perPage(): int
     {
-        return $this->exportingAll ? self::EXPORT_MAX + 1 : static::PER_PAGE;
+        return $this->exportingAll ? self::EXPORT_MAX + 1 : $this->rowsPerPage();
     }
 
     public function export(string $format): ?Response

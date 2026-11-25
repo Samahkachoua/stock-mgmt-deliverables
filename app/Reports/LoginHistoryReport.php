@@ -27,7 +27,12 @@ final class LoginHistoryReport extends Report
 
     public function icon(): string
     {
-        return 'lock_clock';
+        return 'lock';
+    }
+
+    public function group(): string
+    {
+        return 'security';
     }
 
     public function filters(): array

@@ -146,6 +146,33 @@ it('limits a customer portal user to their own customer', function () {
         ->and(found('beans'))->not->toHaveKey('items');
 });
 
+it('finds pages, reports and settings tabs by name, before everything else', function () {
+    $this->actingAs(userWithRole('ADMIN', $this->stock->warehouse));
+
+    expect(array_keys(found('stock'))[0])->toBe('pages')
+        ->and(found('stock')['pages'])->toContain('Stock', 'Stock card')
+        ->and(urls('roles', 'pages'))->toBe([route('settings.roles')])
+        ->and(urls('audit log', 'pages'))->toBe([route('reports.show', 'audit-log')]);
+});
+
+it('offers only the pages the user may open', function () {
+    $this->actingAs(userWithPermissions($this->stock->warehouse, ['stock.view']));
+
+    expect(found('stock')['pages'])->toContain('Stock')->not->toContain('Stock card')
+        ->and(found('roles'))->not->toHaveKey('pages')
+        ->and(found('settings'))->not->toHaveKey('pages');
+});
+
+it('finds a page by its name in the user’s language or in English', function () {
+    $this->actingAs(userWithRole('ADMIN', $this->stock->warehouse));
+    app()->setLocale('ar');
+
+    expect(urls('الأدوار', 'pages'))->toBe([route('settings.roles')])
+        ->and(urls('roles', 'pages'))->toBe([route('settings.roles')])
+        ->and(found('roles')['pages'])->toBe(['الأدوار'])
+        ->and(app()->getLocale())->toBe('ar');
+});
+
 it('renders grouped results as links in the top bar', function () {
     Livewire::actingAs($this->stock->user)
         ->test(GlobalSearch::class)

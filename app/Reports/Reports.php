@@ -34,6 +34,26 @@ final class Reports
         LoginHistoryReport::class,
     ];
 
+    /** Sections of the Reports page, in order (Report::group(), reports.groups.*). */
+    public const GROUPS = ['stock', 'exceptions', 'operations', 'security'];
+
+    /**
+     * The listed reports by section, in GROUPS order; a section with nothing
+     * the user may open is left out.
+     *
+     * @return array<string, list<Report>>
+     */
+    public static function groupedFor(User $user): array
+    {
+        $grouped = array_fill_keys(self::GROUPS, []);
+
+        foreach (self::listedFor($user) as $report) {
+            $grouped[$report->group()][] = $report;
+        }
+
+        return array_filter($grouped);
+    }
+
     /**
      * @return array<string, Report> keyed by URL segment
      */

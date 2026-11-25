@@ -4,6 +4,12 @@
 return [
     'title' => 'Rapports',
     'subtitle' => 'Le stock et son historique en lecture seule, avec export Excel et PDF.',
+    'groups' => [
+        'stock' => 'Stock',
+        'exceptions' => 'Pertes et écarts',
+        'operations' => 'Détail des opérations',
+        'security' => 'Activité et sécurité',
+    ],
     'lines' => '{0} :count ligne|{1} :count ligne|[2,*] :count lignes',
 
     'filters' => [
@@ -135,7 +141,7 @@ return [
 
     'dormant_stock' => [
         'title' => 'Stock dormant',
-        'description' => 'Les articles en stock qui n’ont pas bougé depuis un moment, les plus anciens d’abord.',
+        'description' => 'Les articles en stock qui n’ont pas bougé depuis un moment.',
         'days' => 'Sans mouvement depuis (jours)',
         'idle' => ':days jours',
     ],
@@ -172,12 +178,12 @@ return [
 
     'order_lines' => [
         'title' => 'Détail des commandes',
-        'description' => 'Chaque article de chaque commande, avec sa date de livraison, sa priorité et son bon de livraison.',
+        'description' => 'Chaque article commandé, avec sa date et son bon de livraison.',
     ],
 
     'delivery_note_lines' => [
         'title' => 'Détail des bons de livraison',
-        'description' => 'Chaque article de chaque bon de livraison : commandé, livré, chauffeur et date de livraison.',
+        'description' => 'Chaque article livré : commandé, livré et chauffeur.',
     ],
 
     'draft_receipt_lines' => [
@@ -192,12 +198,12 @@ return [
 
     'opening_balance_lines' => [
         'title' => 'Détail des stocks initiaux',
-        'description' => 'Chaque article saisi en stock initial, avec son lot et sa date d’expiration.',
+        'description' => 'Chaque article du stock initial, avec son lot et son expiration.',
     ],
 
     'delivery_differences' => [
         'title' => 'Écarts de livraison',
-        'description' => 'Les lignes de bons de livraison où le client a reçu moins que la commande, ou un autre article, et pourquoi.',
+        'description' => 'Livré moins que commandé, ou un autre article, et pourquoi.',
     ],
 
     'audit_log' => [
@@ -278,7 +284,7 @@ return [
 
     'login_history' => [
         'title' => 'Historique des connexions',
-        'description' => 'Chaque connexion au système, réussie ou non, avec l’adresse et l’appareil.',
+        'description' => 'Chaque connexion, réussie ou non, avec l’adresse et l’appareil.',
         'search' => 'Personne, e-mail, adresse IP ou code pays',
         'all_results' => 'Tous les résultats',
         'all_failed' => 'Toutes les connexions échouées',

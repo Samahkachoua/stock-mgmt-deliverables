@@ -140,6 +140,7 @@ return [
         'previous' => 'Previous',
         'next' => 'Next',
         'page_of' => 'Page :page of :pages',
+        'rows_per_page' => 'Rows per page',
         'no_matches_title' => 'Nothing matches these filters',
         'no_matches_body' => 'Try another search or clear the filters.',
     ],

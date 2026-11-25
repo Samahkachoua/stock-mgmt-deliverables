@@ -3,10 +3,12 @@
 namespace App\Livewire\Settings;
 
 use App\Livewire\Concerns\ConfirmsActions;
+use App\Livewire\Concerns\WarnsBeforeLeaving;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Support\Audit;
 use App\Support\Format;
+use App\Support\Ids;
 use App\Support\Notify;
 use App\Support\Permissions;
 use Illuminate\Contracts\View\View;
@@ -20,21 +22,31 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * Settings › Roles: a roles × permissions matrix (role_permission), grouped by
- * permission module. System roles can't be deleted; other roles can be added
- * and, once nobody has them, deleted. Every change is written to audit_log and
- * clears the cached permission map.
+ * Settings › Roles: one role at a time (the list at the start), its permissions
+ * (role_permission) as a tree: section (as in the sidebar) › module › permission.
+ * Changes to several roles are kept until Save, which writes them all. System
+ * roles can't be deleted; other roles can be added and, once nobody has them,
+ * deleted. Every change is written to audit_log and clears the cached
+ * permission map.
  *
  * @property-read Collection<int, Role> $roles
+ * @property-read Role|null $selectedRole
  * @property-read \Illuminate\Support\Collection<string, Collection<int, Permission>> $modules
  */
 #[Layout('components.layouts.app')]
 class Roles extends Component
 {
     use ConfirmsActions;
+    use WarnsBeforeLeaving;
+
+    /** Where the chosen role is remembered (session, like a list's filters). */
+    private const STATE_KEY = 'list_state.settings-roles.role';
 
     /** @var array<string, list<string>> role id => granted permission ids */
     public array $grants = [];
+
+    /** The role shown in the tree. */
+    public string $selectedRoleId = '';
 
     public bool $adding = false;
 
@@ -47,6 +59,26 @@ class Roles extends Component
         Gate::authorize('admin.users.manage');
 
         $this->loadGrants();
+        $this->selectedRoleId = $this->validRoleId(session(self::STATE_KEY));
+        $this->rememberSavedState();
+    }
+
+    public function selectRole(string $id): void
+    {
+        $this->selectedRoleId = $this->validRoleId($id);
+        session([self::STATE_KEY => $this->selectedRoleId]);
+    }
+
+    /** The role dropdown on a phone. */
+    public function updatedSelectedRoleId(): void
+    {
+        $this->selectRole($this->selectedRoleId);
+    }
+
+    #[Computed]
+    public function selectedRole(): ?Role
+    {
+        return $this->roles->firstWhere('id', $this->selectedRoleId);
     }
 
     /**
@@ -69,6 +101,32 @@ class Roles extends Component
             ->groupBy('module');
     }
 
+    /**
+     * The tree: sections in the sidebar's order, then "other"; modules in
+     * Permission::MODULES order; permissions seeing → doing → cancelling.
+     *
+     * @return list<array{key: string, label: string, modules: list<array{key: string, label: string, permissions: Collection<int, Permission>}>}>
+     */
+    #[Computed]
+    public function tree(): array
+    {
+        $sections = [];
+
+        foreach ($this->modules as $module => $permissions) {
+            $sections[Permission::section((string) $module)][] = [
+                'key' => (string) $module,
+                'label' => Permission::moduleLabel((string) $module),
+                'permissions' => $permissions,
+            ];
+        }
+
+        return collect([...array_keys(Permission::SECTIONS), 'other'])
+            ->filter(fn (string $key) => isset($sections[$key]))
+            ->map(fn (string $key) => ['key' => $key, 'label' => __('settings.roles.sections.'.$key), 'modules' => $sections[$key]])
+            ->values()
+            ->all();
+    }
+
     public function save(): void
     {
         Gate::authorize('admin.users.manage');
@@ -81,6 +139,8 @@ class Roles extends Component
             'grants.*' => ['array'],
             'grants.*.*' => ['integer', Rule::in($codes->keys()->all())],
         ]);
+
+        $this->addRequiredViews();
 
         if (! $this->keepsOwnUserManagement()) {
             $this->addError('grants', __('settings.roles.errors.keep_own_admin'));
@@ -149,7 +209,8 @@ class Roles extends Component
         $this->grants[$role->id] = [];
         $this->adding = false;
         Notify::success(__('settings.roles.added', ['name' => $role->name]), on: $this);
-        unset($this->roles);
+        unset($this->roles, $this->selectedRole);
+        $this->selectRole($role->id);
     }
 
     /**
@@ -162,6 +223,8 @@ class Roles extends Component
 
         $role = Role::withCount('users')->findOrFail($id);
         $this->resetErrorBag('delete.'.$id);
+        // The answer (or why not) shows on that role's page.
+        $this->selectRole($id);
 
         if ($blocked = $this->deleteBlocked($role)) {
             $this->addError('delete.'.$id, $blocked);
@@ -181,6 +244,10 @@ class Roles extends Component
     {
         if ($action === 'delete') {
             $this->delete($id);
+        }
+
+        if ($action === 'leave') {
+            $this->leaveTo($id);
         }
     }
 
@@ -214,15 +281,98 @@ class Roles extends Component
         $role->delete(); // role_permission rows go with it (ON DELETE CASCADE)
 
         Permissions::flush();
-        unset($this->grants[$id], $this->roles);
+        unset($this->grants[$id], $this->roles, $this->selectedRole);
+        $this->selectRole('');
         Notify::success(__('settings.roles.deleted', ['name' => $role->name]), on: $this);
     }
 
     public function render(): View
     {
+        $permissions = $this->modules->flatten();
+
         return view('livewire.settings.roles', [
-            'allPermissionIds' => $this->modules->flatten()->map(fn (Permission $permission) => (string) $permission->id)->values()->all(),
+            'allPermissionIds' => $permissions->map(fn (Permission $permission) => (string) $permission->id)->values()->all(),
+            'requiredViews' => Permission::requiredViews($permissions),
+            'changedRoleIds' => array_map('strval', array_keys($this->changedGrants())),
         ])->title(__('settings.tabs.roles'));
+    }
+
+    /**
+     * A chosen id if it is one of the roles, otherwise the first role.
+     */
+    private function validRoleId(mixed $id): string
+    {
+        if (Ids::valid($id) && $this->roles->contains('id', (string) $id)) {
+            return (string) $id;
+        }
+
+        return (string) $this->roles->first()?->id;
+    }
+
+    /**
+     * Ticking "Confirm draft receipts" without "See draft receipts" makes no
+     * sense: the module's "see" permission is added (the screen already does it).
+     */
+    private function addRequiredViews(): void
+    {
+        $required = Permission::requiredViews(Permission::all());
+
+        foreach ($this->grants as $roleId => $ids) {
+            $ids = array_map('strval', $ids);
+
+            foreach ($ids as $id) {
+                if (isset($required[$id]) && ! in_array($required[$id], $ids, true)) {
+                    $ids[] = $required[$id];
+                }
+            }
+
+            $this->grants[$roleId] = array_values(array_unique($ids));
+        }
+    }
+
+    /**
+     * Roles whose ticked boxes differ from what is saved.
+     *
+     * @return array<string, list<string>> role id => granted ids (sorted)
+     */
+    private function changedGrants(): array
+    {
+        $current = $this->currentGrants();
+        $changed = [];
+
+        foreach ($this->grants as $roleId => $ids) {
+            $after = collect($ids)->map(fn ($id) => (string) $id)->unique()->sort()->values()->all();
+            $before = collect($current[$roleId] ?? [])->map(fn ($id) => (string) $id)->sort()->values()->all();
+
+            if ($after !== $before) {
+                $changed[(string) $roleId] = $after;
+            }
+        }
+
+        return $changed;
+    }
+
+    /**
+     * "Changed" = differs from the saved permissions, so adding or deleting a
+     * role, or saving, never leaves a change behind.
+     *
+     * @return array<string, mixed>
+     */
+    protected function formState(): array
+    {
+        return $this->changedGrants();
+    }
+
+    /**
+     * @return array{title: string, body: string, button: string}
+     */
+    protected function leaveQuestion(): array
+    {
+        return [
+            'title' => __('confirm.discard.roles.title'),
+            'body' => __('confirm.discard.roles.body'),
+            'button' => __('confirm.discard.roles.button'),
+        ];
     }
 
     /**

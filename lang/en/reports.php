@@ -4,6 +4,12 @@
 return [
     'title' => 'Reports',
     'subtitle' => 'Read-only views of stock and its history, with Excel and PDF export.',
+    'groups' => [
+        'stock' => 'Stock',
+        'exceptions' => 'Losses and differences',
+        'operations' => 'Operation details',
+        'security' => 'Activity and security',
+    ],
     'lines' => '{0} :count lines|{1} :count line|[2,*] :count lines',
 
     'filters' => [
@@ -135,7 +141,7 @@ return [
 
     'dormant_stock' => [
         'title' => 'Dormant stock',
-        'description' => 'Items in stock that have not moved for a while, longest first.',
+        'description' => 'Items in stock that have not moved for a while.',
         'days' => 'Not moved for (days)',
         'idle' => ':days days',
     ],
@@ -172,12 +178,12 @@ return [
 
     'order_lines' => [
         'title' => 'Order details',
-        'description' => 'Every item of every order, with its delivery date, priority and delivery note.',
+        'description' => 'Every item ordered, with its delivery date and delivery note.',
     ],
 
     'delivery_note_lines' => [
         'title' => 'Delivery note details',
-        'description' => 'Every item of every delivery note: ordered, delivered, driver and delivery date.',
+        'description' => 'Every item delivered: ordered, delivered and driver.',
     ],
 
     'draft_receipt_lines' => [
@@ -192,12 +198,12 @@ return [
 
     'opening_balance_lines' => [
         'title' => 'Opening balance details',
-        'description' => 'Every item entered as an opening balance, with its batch and expiry date.',
+        'description' => 'Every opening balance item, with its batch and expiry date.',
     ],
 
     'delivery_differences' => [
         'title' => 'Delivery discrepancies',
-        'description' => 'Delivery note lines where the customer got less than the order asked for, or another item, and why.',
+        'description' => 'Delivered less than ordered, or another item, and why.',
     ],
 
     'audit_log' => [
@@ -278,7 +284,7 @@ return [
 
     'login_history' => [
         'title' => 'Login history',
-        'description' => 'Every sign-in to the system, successful or not, with the address and device.',
+        'description' => 'Every sign-in, successful or not, with address and device.',
         'search' => 'Person, email, IP address or country code',
         'all_results' => 'All results',
         'all_failed' => 'All failed sign-ins',

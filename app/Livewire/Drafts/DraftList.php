@@ -5,6 +5,7 @@ namespace App\Livewire\Drafts;
 use App\Livewire\Concerns\DefersRows;
 use App\Livewire\Concerns\ExportsList;
 use App\Livewire\Concerns\RemembersListState;
+use App\Livewire\Concerns\WithPerPage;
 use App\Models\Customer;
 use App\Models\CustomerBranch;
 use App\Models\User;
@@ -34,7 +35,7 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.app')]
 class DraftList extends Component
 {
-    use DefersRows, ExportsList, RemembersListState, WithoutUrlPagination, WithPagination;
+    use DefersRows, ExportsList, RemembersListState, WithoutUrlPagination, WithPagination, WithPerPage;
 
     public const PER_PAGE = 8;
 
@@ -162,7 +163,7 @@ class DraftList extends Component
     private function drafts(DraftUi $kind, bool $draftsFirst): LengthAwarePaginator
     {
         if ($this->dates()->invalid()) {
-            return new LengthAwarePaginator([], 0, self::PER_PAGE, 1);
+            return new LengthAwarePaginator([], 0, $this->rowsPerPage(), 1);
         }
 
         return $this->pageInRange(fn (int $page) => DraftDocuments::page($kind, $this->filters() + [

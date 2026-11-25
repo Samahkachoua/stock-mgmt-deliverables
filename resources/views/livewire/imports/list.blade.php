@@ -34,9 +34,12 @@
         ];
     @endphp
 
-    <div data-list-toolbar class="flex flex-wrap items-center justify-end gap-2 print:hidden">
-        <x-list-columns :columns="$columns" list="imports" />
-        <x-report.export-buttons exportable />
+    <div data-list-toolbar class="flex flex-wrap items-center gap-2 print:hidden">
+        <x-per-page />
+        <div class="ms-auto flex flex-wrap items-center gap-2">
+            <x-list-columns :columns="$columns" list="imports" />
+            <x-report.export-buttons exportable />
+        </div>
     </div>
 
     <x-data-table

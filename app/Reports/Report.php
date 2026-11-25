@@ -92,6 +92,14 @@ abstract class Report
         return 'report';
     }
 
+    /**
+     * The section of the Reports page it is listed under (Reports::GROUPS).
+     */
+    public function group(): string
+    {
+        return 'stock';
+    }
+
     public function title(): string
     {
         return __('reports.'.$this->langKey().'.title');
@@ -186,13 +194,13 @@ abstract class Report
      * @param  array<string, string>  $filters
      * @return LengthAwarePaginator<int, array{cells: array<string, Cell>, link: string|null}>
      */
-    public function paginate(array $filters, User $user, int $page): LengthAwarePaginator
+    public function paginate(array $filters, User $user, int $page, int $perPage = self::PER_PAGE): LengthAwarePaginator
     {
         if ($this->blocked($filters) !== null) {
-            return new LengthAwarePaginator([], 0, static::PER_PAGE, 1);
+            return new LengthAwarePaginator([], 0, $perPage, 1);
         }
 
-        $paginator = $this->query($filters, $user)->paginate(static::PER_PAGE, ['*'], 'page', $page);
+        $paginator = $this->query($filters, $user)->paginate($perPage, ['*'], 'page', $page);
         $rows = collect($paginator->items());
         $this->loadProducts($rows->pluck('product_id')->all());
 

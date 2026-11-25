@@ -13,6 +13,16 @@ final class DraftReceiptLinesReport extends DraftLinesReport
         return 'draft-receipt-lines';
     }
 
+    public function icon(): string
+    {
+        return 'assignment_returned';
+    }
+
+    public function group(): string
+    {
+        return 'operations';
+    }
+
     protected function type(): string
     {
         return 'IN';

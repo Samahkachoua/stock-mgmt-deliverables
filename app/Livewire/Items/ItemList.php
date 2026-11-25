@@ -5,6 +5,7 @@ namespace App\Livewire\Items;
 use App\Livewire\Concerns\DefersRows;
 use App\Livewire\Concerns\ExportsList;
 use App\Livewire\Concerns\RemembersListState;
+use App\Livewire\Concerns\WithPerPage;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Reports\Filter;
@@ -23,7 +24,7 @@ use Livewire\WithPagination;
 #[Layout('components.layouts.app')]
 class ItemList extends Component
 {
-    use DefersRows, ExportsList, RemembersListState, WithoutUrlPagination, WithPagination;
+    use DefersRows, ExportsList, RemembersListState, WithoutUrlPagination, WithPagination, WithPerPage;
 
     public const PER_PAGE = 10;
 
@@ -87,6 +88,7 @@ class ItemList extends Component
             ->when($this->storage !== Filter::NO_STORAGE && array_key_exists($this->storage, $storages), fn ($query) => $query->where('storage_status', $this->storage))
             ->when(trim($this->search) !== '', fn ($query) => $query->search($this->search))
             ->orderBy('sku')
+            ->orderBy('id')
             ->paginate($this->perPage())));
 
         return view('livewire.items.list', [

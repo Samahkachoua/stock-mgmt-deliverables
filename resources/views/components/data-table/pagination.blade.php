@@ -1,5 +1,8 @@
 {{--
-    "Showing 1 to 8 of 84" + Previous / pages / Next, for a Livewire component using WithPagination.
+    "Showing 1 to 8 of 84" · Previous / pages / Next, for a Livewire component
+    using WithPagination. ("Rows per page" is in the toolbar above the table: x-per-page.)
+    Wraps instead of overlapping: the page buttons go to the end of the line,
+    or to a line of their own when there is no room.
     Phone: Previous / Next with "Page 2 of 9" between them (CLAUDE.md "Responsive layout").
 --}}
 @props(['paginator'])
@@ -16,8 +19,8 @@
     $strong = fn ($value) => '<span class="font-semibold text-fg">'.e(\App\Support\Format::qty($value)).'</span>';
 @endphp
 
-<nav class="flex flex-wrap items-center justify-between gap-4 border-t border-default px-card py-2 md:px-edge" aria-label="{{ __('transactions.list.pagination') }}">
-    <p @class(['text-body text-muted', 'max-md:hidden' => $paginator->hasPages()])>
+<nav class="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-default px-card py-2 md:px-edge" aria-label="{{ __('transactions.list.pagination') }}">
+    <p @class(['min-w-0 text-body text-muted', 'max-md:hidden' => $paginator->hasPages()])>
         {!! __('transactions.list.showing', [
             'from' => $strong($paginator->firstItem()),
             'to' => $strong($paginator->lastItem()),
@@ -26,7 +29,7 @@
     </p>
 
     @if ($paginator->hasPages())
-        <div class="flex items-center gap-1 max-md:w-full max-md:justify-between">
+        <div class="ms-auto flex items-center gap-1 max-md:w-full max-md:justify-between">
             <button type="button" wire:click="previousPage" @disabled($paginator->onFirstPage()) class="{{ $button }} text-fg hover:bg-card-hover disabled:cursor-not-allowed disabled:text-subtle disabled:hover:bg-transparent">
                 <x-icon name="chevron_left" class="size-4 rtl:-scale-x-100" />
                 {{ __('transactions.list.previous') }}

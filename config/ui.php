@@ -27,6 +27,10 @@ return [
     // (CLAUDE.md "Loading states"). Off in tests, which read the rows directly.
     'defer_rows' => (bool) env('UI_DEFER_ROWS', true),
 
+    // "Rows per page" choices under every list (App\Livewire\Concerns\WithPerPage).
+    // A list's own default (its PER_PAGE) is always offered too.
+    'per_page_options' => [8, 10, 25, 50, 100, 500],
+
     // Colour classes per transaction type token (which type uses which token:
     // config/transactions.php).
     'types' => [

@@ -26,7 +26,7 @@ final class DormantStockReport extends Report
 
     public function icon(): string
     {
-        return 'history';
+        return 'schedule';
     }
 
     public function filters(): array

@@ -28,15 +28,63 @@ it('shows every role and permission grouped by module', function () {
             === collect(['draft.in.cancel', 'draft.in.create', 'draft.in.view', 'draft.out.activity', 'draft.out.cancel', 'draft.out.create', 'draft.out.view', 'report.stock_by_expiry.view', 'stock.adjustment.view', 'stock.damage.view', 'stock.in.view', 'stock.item.view', 'stock.opening.view', 'stock.out.view', 'stock.transfer.view', 'stock.view'])->map(fn (string $code) => permissionId($code))->sort()->values()->all());
 });
 
-it('offers an "all permissions" box under every role, listing every permission', function () {
+it('shows one role at a time, with an "all permissions" box listing every permission', function () {
     $test = Livewire::actingAs(userWithRole('ADMIN'))->test(Roles::class);
+    $first = $test->get('selectedRoleId');
 
     $test->assertViewHas('allPermissionIds', fn (array $ids) => collect($ids)->sort()->values()->all()
         === Permission::pluck('id')->map(fn ($id) => (string) $id)->sort()->values()->all());
 
-    foreach (Role::all() as $role) {
-        $test->assertSee(__('settings.roles.select_all_for', ['role' => $role->label()]));
-    }
+    $test->assertSee(__('settings.roles.select_all_for', ['role' => Role::find($first)->label()]))
+        ->assertDontSee(__('settings.roles.select_all_for', ['role' => role('AUDITOR')->label()]))
+        ->call('selectRole', role('AUDITOR')->id)
+        ->assertSet('selectedRoleId', role('AUDITOR')->id)
+        ->assertSee(__('settings.roles.select_all_for', ['role' => role('AUDITOR')->label()]));
+});
+
+it('remembers the chosen role and ignores an unknown one', function () {
+    $admin = userWithRole('ADMIN');
+
+    Livewire::actingAs($admin)->test(Roles::class)->call('selectRole', role('AUDITOR')->id);
+
+    Livewire::actingAs($admin)->test(Roles::class)
+        ->assertSet('selectedRoleId', role('AUDITOR')->id)
+        ->call('selectRole', '999999')
+        ->assertSet('selectedRoleId', (string) Role::orderByDesc('is_system')->orderBy('created_at')->orderBy('code')->value('id'))
+        ->set('selectedRoleId', 'abc')
+        ->assertSet('selectedRoleId', (string) Role::orderByDesc('is_system')->orderBy('created_at')->orderBy('code')->value('id'));
+});
+
+it('groups every permission into a section and module of the tree', function () {
+    $tree = Livewire::actingAs(userWithRole('ADMIN'))->test(Roles::class)->instance()->tree;
+
+    $inTree = collect($tree)->flatMap(fn (array $section) => collect($section['modules'])->flatMap(fn (array $module) => $module['permissions']->pluck('code')))->sort()->values()->all();
+
+    expect($inTree)->toBe(Permission::orderBy('code')->pluck('code')->sort()->values()->all())
+        ->and(array_column($tree, 'key'))->toBe(['inbound', 'outbound', 'inventory', 'reports', 'setup'])
+        ->and(collect($tree)->firstWhere('key', 'inbound')['modules'][0]['key'])->toBe('DRAFT_IN');
+});
+
+it('adds the "see" permission an action needs when saving', function () {
+    Livewire::actingAs(userWithRole('ADMIN'))
+        ->test(Roles::class)
+        ->set('grants.'.role('CUSTOMER')->id, [permissionId('stock.in.create'), permissionId('report.expiry.view')])
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(role('CUSTOMER')->permissions()->orderBy('code')->pluck('code')->all())
+        ->toBe(['report.expiry.view', 'stock.in.create', 'stock.in.view']);
+});
+
+it('marks roles with unsaved changes until they are saved', function () {
+    $test = Livewire::actingAs(userWithRole('ADMIN'))
+        ->test(Roles::class)
+        ->assertSet('unsaved', false)
+        ->set('grants.'.role('CUSTOMER')->id, [permissionId('stock.view')])
+        ->assertSet('unsaved', true)
+        ->assertViewHas('changedRoleIds', [role('CUSTOMER')->id]);
+
+    $test->call('save')->assertSet('unsaved', false)->assertViewHas('changedRoleIds', []);
 });
 
 it('saves the matrix and the change applies at once', function () {

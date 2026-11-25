@@ -13,6 +13,16 @@ final class OpeningBalanceLinesReport extends OperationLinesReport
         return 'opening-balance-lines';
     }
 
+    public function icon(): string
+    {
+        return 'account_balance_wallet';
+    }
+
+    public function group(): string
+    {
+        return 'operations';
+    }
+
     protected function type(): string
     {
         return 'OPENING_BALANCE';

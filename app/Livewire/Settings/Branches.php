@@ -119,6 +119,7 @@ class Branches extends MasterDataPage
             ->join('customer', 'customer.id', '=', 'customer_branch.customer_id')
             ->orderBy('customer.name')
             ->orderBy('customer_branch.name')
+            ->orderBy('customer_branch.id')
             ->select('customer_branch.*')
             ->paginate($this->perPage());
     }

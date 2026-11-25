@@ -143,6 +143,7 @@ class Units extends MasterDataPage
                 'items_count' => DB::table('product_unit')->selectRaw('count(distinct product_id)')->whereColumn('product_unit.unit_id', 'unit.id'),
             ])
             ->orderBy('code')
+            ->orderBy('unit.id')
             ->paginate($this->perPage());
     }
 

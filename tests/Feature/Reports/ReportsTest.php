@@ -426,6 +426,24 @@ it('lists the reports the user may open', function () {
     $this->actingAs($d->tripoliOperator)->get(route('stock'))->assertOk()->assertDontSee('href="'.route('reports').'"', false);
 });
 
+it('lists the reports in sections, leaving out a section with nothing to open', function () {
+    $d = $this->data;
+
+    $this->actingAs($d->admin)->get(route('reports'))
+        ->assertOk()
+        ->assertSeeInOrder([
+            __('reports.groups.stock'), __('reports.stock_card.title'),
+            __('reports.groups.exceptions'), __('reports.damage.title'),
+            __('reports.groups.operations'), __('reports.receipt_lines.title'),
+            __('reports.groups.security'), __('reports.audit_log.title'),
+        ])
+        ->assertDontSee('id="report-find"', false);
+
+    $this->actingAs($d->beirutManager)->get(route('reports'))
+        ->assertSee('data-report-group="stock"', false)
+        ->assertDontSee('data-report-group="security"', false);
+});
+
 it('opens home with large links, approvals waiting and transfers arriving, and no charts', function () {
     $d = $this->data;
     DB::table('approval_threshold')->insert(['scope' => 'GLOBAL', 'transaction_type' => 'DAMAGE', 'qty_base' => 1]);

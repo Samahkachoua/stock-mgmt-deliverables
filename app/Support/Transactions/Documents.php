@@ -59,7 +59,9 @@ final class Documents
             ->when($type->deliverySteps(), fn ($query) => $query->selectSub(DB::table('stock_transaction_line')->selectRaw('count(*) > 0')->whereColumn('transaction_id', 'stock_transaction.id')->whereNotNull('shortage_reason'), 'short'))
             ->when($filters['pending_first'] ?? false, fn ($query) => $query->orderByRaw("(stock_transaction.status = 'PENDING_APPROVAL') DESC"))
             ->orderByDesc('stock_transaction.document_date')
-            ->orderByDesc('stock_transaction.created_at');
+            ->orderByDesc('stock_transaction.created_at')
+            // Unique last key: rows never repeat or go missing between pages.
+            ->orderByDesc('stock_transaction.id');
 
         return $query->paginate($perPage, page: $page)->through(fn (StockTransaction $row) => [
             'id' => $row->id,

@@ -7,7 +7,7 @@
 
     Layout (CLAUDE.md "Responsive layout"): the filters first, with equal widths,
     4 per row on desktop and 2 on tablet; then the toolbar right above the table:
-    the search and "Clear filters" at the start, Columns, Excel and PDF at the end.
+    "Rows per page" (x-per-page), the search and "Clear filters" at the start, Columns, Excel and PDF at the end.
     On a phone the filters sit behind a "Filters · 2" button next to the search,
     in a panel with "Apply" and "Clear filters".
 --}}
@@ -114,6 +114,8 @@
 
     {{-- Toolbar, right above the table: search and "Clear filters" | Columns, Excel, PDF. --}}
     <div data-list-toolbar class="flex flex-wrap items-end gap-3">
+        <x-per-page />
+
         @foreach ($searches as $filter)
             @php($id = 'report-filter-'.$filter->name)
             <div class="min-w-0 flex-1 basis-48 md:max-w-sm">
@@ -134,7 +136,7 @@
         @endif
 
         {{-- Clears the filters this list remembers for the user (session), back to the first page. --}}
-        <button type="button" wire:click="resetFilters" @class([$clear, 'max-md:hidden' => $others !== [], 'ms-auto' => ! $tools])>
+        <button type="button" wire:click="resetFilters" data-clear-filters @class([$clear, 'max-md:hidden' => $others !== [], 'ms-auto' => ! $tools])>
             <x-icon name="filter_alt_off" />
             {{ __('transactions.filters.reset') }}
         </button>

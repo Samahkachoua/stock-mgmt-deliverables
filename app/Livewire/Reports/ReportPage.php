@@ -4,6 +4,7 @@ namespace App\Livewire\Reports;
 
 use App\Livewire\Concerns\DefersRows;
 use App\Livewire\Concerns\RemembersListState;
+use App\Livewire\Concerns\WithPerPage;
 use App\Models\User;
 use App\Reports\Export\Exporter;
 use App\Reports\Report;
@@ -28,7 +29,10 @@ use Symfony\Component\HttpFoundation\Response;
 #[Layout('components.layouts.app')]
 class ReportPage extends Component
 {
-    use DefersRows, RemembersListState, WithoutUrlPagination, WithPagination;
+    use DefersRows, RemembersListState, WithoutUrlPagination, WithPagination, WithPerPage;
+
+    /** Rows per page until the viewer picks another (WithPerPage). */
+    public const PER_PAGE = Report::PER_PAGE;
 
     /** Report key, from the route. */
     #[Locked]
@@ -108,7 +112,7 @@ class ReportPage extends Component
         return view($this->view(), [
             'definition' => $report,
             'choices' => collect($report->filters())->mapWithKeys(fn ($filter) => [$filter->name => $filter->choices($user, $this->filters)])->all(),
-            'rows' => $this->rowsOnceLoaded(fn () => $this->pageInRange(fn (int $page) => $report->paginate($this->filters, $user, $page))),
+            'rows' => $this->rowsOnceLoaded(fn () => $this->pageInRange(fn (int $page) => $report->paginate($this->filters, $user, $page, $this->rowsPerPage()))),
             'summary' => $missing === null ? $report->summary($this->filters, $user) : [],
             'missing' => $missing,
             'dateError' => $report->dates($this->filters)->invalid(),

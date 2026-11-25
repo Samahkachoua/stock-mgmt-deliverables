@@ -139,6 +139,7 @@ return [
         'previous' => 'Précédent',
         'next' => 'Suivant',
         'page_of' => 'Page :page sur :pages',
+        'rows_per_page' => 'Lignes par page',
         'no_matches_title' => 'Rien ne correspond à ces filtres',
         'no_matches_body' => 'Essayez une autre recherche ou effacez les filtres.',
     ],

@@ -19,6 +19,16 @@ final class DeliveryNoteLinesReport extends OperationLinesReport
         return 'delivery-note-lines';
     }
 
+    public function icon(): string
+    {
+        return 'outbox';
+    }
+
+    public function group(): string
+    {
+        return 'operations';
+    }
+
     protected function type(): string
     {
         return 'OUT';

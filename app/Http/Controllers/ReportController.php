@@ -10,7 +10,7 @@ use Illuminate\View\View;
 class ReportController extends Controller
 {
     /**
-     * The Reports page: one large link per report the user may open.
+     * The Reports page: one link per report the user may open, in sections.
      * Each report's filters and exports live on its own page
      * (App\Livewire\Reports\ReportPage), kept in the session, not the URL.
      */
@@ -19,6 +19,9 @@ class ReportController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User, 403);
 
-        return view('reports.index', ['reports' => Reports::listedFor($user)]);
+        return view('reports.index', [
+            'reports' => Reports::listedFor($user),
+            'groups' => Reports::groupedFor($user),
+        ]);
     }
 }

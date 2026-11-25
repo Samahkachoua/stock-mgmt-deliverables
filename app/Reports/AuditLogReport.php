@@ -34,14 +34,19 @@ final class AuditLogReport extends Report
         return 'audit-log';
     }
 
-    public function permission(): string
-    {
-        return 'audit.view';
-    }
-
     public function icon(): string
     {
         return 'history';
+    }
+
+    public function group(): string
+    {
+        return 'security';
+    }
+
+    public function permission(): string
+    {
+        return 'audit.view';
     }
 
     public function filters(): array

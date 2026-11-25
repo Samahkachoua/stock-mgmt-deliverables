@@ -7,6 +7,11 @@ return [
     'reason_required' => 'Explain why.',
     // Leaving a form with unsaved changes (App\Livewire\Concerns\WarnsBeforeLeaving).
     'discard' => [
+        'roles' => [
+            'title' => 'Discard your changes to roles?',
+            'body' => 'The permissions you ticked or unticked haven’t been saved and will be lost.',
+            'button' => 'Discard changes',
+        ],
         'item' => [
             'title' => 'Discard your changes to :name?',
             'title_new' => 'Discard this new item?',

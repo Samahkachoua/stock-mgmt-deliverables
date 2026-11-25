@@ -47,6 +47,8 @@ final class DraftDocuments
             ->when($filters['drafts_first'] ?? false, fn ($query) => $query->orderByRaw("(stock_draft.status = 'DRAFT') DESC"))
             ->orderByDesc('stock_draft.document_date')
             ->orderByDesc('stock_draft.created_at')
+            // Unique last key: rows never repeat or go missing between pages.
+            ->orderByDesc('stock_draft.id')
             ->paginate($perPage, page: $page)
             ->through(fn (StockDraft $row) => [
                 'id' => $row->id,

@@ -18,6 +18,16 @@ final class DamageReport extends PostedLinesReport
         return 'damage';
     }
 
+    public function icon(): string
+    {
+        return 'report';
+    }
+
+    public function group(): string
+    {
+        return 'exceptions';
+    }
+
     protected function type(): string
     {
         return 'DAMAGE';
