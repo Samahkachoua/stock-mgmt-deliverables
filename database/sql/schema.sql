@@ -80,6 +80,11 @@ CREATE TABLE app_user (
     notify_new_orders BOOLEAN NOT NULL DEFAULT TRUE,
     -- The same for draft receipts (only with their confirm permission); "Email about draft receipts".
     notify_draft_receipts BOOLEAN NOT NULL DEFAULT TRUE,
+    -- Email when an Adjustment / Damage in their warehouses waits for their approval (only with
+    -- the type's approve permission); Settings › Users "Email about approval requests".
+    notify_approvals BOOLEAN NOT NULL DEFAULT TRUE,
+    -- Email when their own Adjustment / Damage is approved or rejected; "Email about my approval results".
+    notify_approval_results BOOLEAN NOT NULL DEFAULT TRUE,
     -- Set when an administrator types the password (Settings › Users): the user must
     -- choose their own at the next sign-in. Cleared by Change password or a reset.
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
@@ -807,6 +812,43 @@ CREATE INDEX idx_login_log_created ON login_log (created_at DESC, id DESC);
 CREATE INDEX idx_login_log_user ON login_log (user_id, id DESC);
 -- Failed sign-ins from one address (password guessing).
 CREATE INDEX idx_login_log_ip ON login_log (ip_address, created_at DESC);
+
+-- In-app notifications (App\Support\Notifications\Notifier): one row per
+-- recipient. kind ACTION = something waits for them (an approval request, an
+-- Order / Draft receipt to confirm): every eligible user gets one, at most one
+-- open row per record (an edit updates it), and all of them close
+-- (resolved_at) when someone approves, rejects, confirms or cancels the
+-- record. kind INFO = what happened to their own record (approved /
+-- rejected): only read or unread. The text is built when shown, from event +
+-- params, in the reader's language. Rows older than 90 days are deleted
+-- nightly (notifications:prune).
+CREATE TABLE notification (
+    id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id      BIGINT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+    kind         VARCHAR(10) NOT NULL CHECK (kind IN ('ACTION', 'INFO')),
+    event        VARCHAR(40) NOT NULL,     -- e.g. approval.requested, draft.updated
+    entity       VARCHAR(30) NOT NULL CHECK (entity IN ('stock_transaction', 'stock_draft')),
+    entity_id    BIGINT NOT NULL,
+    actor_id     BIGINT REFERENCES app_user(id) ON DELETE SET NULL,
+    params       JSONB NOT NULL DEFAULT '{}'::jsonb,
+    read_at      TIMESTAMPTZ,
+    resolved_at  TIMESTAMPTZ,
+    resolved_by  BIGINT REFERENCES app_user(id) ON DELETE SET NULL,
+    outcome      VARCHAR(20),              -- APPROVED, REJECTED, CONFIRMED, CANCELLED (resolved rows)
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- The bell and the Notifications page: one user's newest first.
+CREATE INDEX idx_notification_user ON notification (user_id, updated_at DESC, id DESC);
+-- The unread count.
+CREATE INDEX idx_notification_unread ON notification (user_id) WHERE read_at IS NULL AND resolved_at IS NULL;
+-- Closing every open row of a record.
+CREATE INDEX idx_notification_open_entity ON notification (entity, entity_id) WHERE resolved_at IS NULL;
+-- One open "waits for you" row per person and record.
+CREATE UNIQUE INDEX uq_notification_open ON notification (user_id, entity, entity_id) WHERE kind = 'ACTION' AND resolved_at IS NULL;
+-- Pruning.
+CREATE INDEX idx_notification_created ON notification (created_at);
 
 -- ----------------------------------------------------------------------------
 -- IMPORT (Excel staging)

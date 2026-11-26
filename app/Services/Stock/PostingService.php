@@ -21,9 +21,11 @@ use App\Support\Audit;
 use App\Support\Batches;
 use App\Support\CompanyTime;
 use App\Support\Deliveries\DeliveryNotifier;
+use App\Support\Drafts\DraftNotifier;
 use App\Support\Drafts\DraftTypes;
 use App\Support\Format;
 use App\Support\Ids;
+use App\Support\Notifications\ApprovalNotifier;
 use App\Support\Transactions\TransactionTypes;
 use App\Support\Transactions\TypeUi;
 use Carbon\CarbonImmutable;
@@ -685,6 +687,8 @@ final class PostingService
                 ['doc_no' => $header->doc_no, 'status' => 'POSTED'],
                 $by->id,
             );
+
+            app(ApprovalNotifier::class)->decided((string) $header->id, $by, 'APPROVED');
         }));
     }
 
@@ -722,6 +726,8 @@ final class PostingService
                 ['doc_no' => $header->doc_no, 'status' => 'REJECTED', 'reason' => $reason],
                 $by->id,
             );
+
+            app(ApprovalNotifier::class)->decided((string) $header->id, $by, 'REJECTED', $reason);
         });
     }
 
@@ -817,6 +823,9 @@ final class PostingService
                 ['doc_no' => $header->doc_no, 'status' => 'POSTED', 'documents' => array_map(fn (StockTransaction $t) => $t->doc_no, $created)],
                 $by->id,
             );
+
+            // Nobody needs to confirm it any more: the other confirmers' notifications close.
+            app(DraftNotifier::class)->confirmed((string) $header->id, $by);
 
             return $created;
         }));
@@ -1467,6 +1476,11 @@ final class PostingService
             'status' => $header->status,
             'lines' => $lineNo,
         ] + ($selfApproved ? ['self_approved' => true] : []), $by->id);
+
+        // Over the limit: everyone who may approve it in this warehouse is told.
+        if ($pending) {
+            app(ApprovalNotifier::class)->requested($transactionId, $by);
+        }
 
         return StockTransaction::withoutGlobalScopes()->findOrFail($transactionId);
     }

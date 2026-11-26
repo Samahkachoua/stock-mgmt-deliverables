@@ -7,6 +7,7 @@ use App\Http\Controllers\ItemStockController;
 use App\Http\Controllers\ListPresetController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\LogoutController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PasswordResetLinkController;
 use App\Http\Controllers\ReportController;
@@ -25,6 +26,7 @@ use App\Livewire\Imports\ImportList;
 use App\Livewire\Imports\ImportUpload;
 use App\Livewire\Items\ItemForm;
 use App\Livewire\Items\ItemList;
+use App\Livewire\Notifications\NotificationList;
 use App\Livewire\Reports\ReportPage;
 use App\Livewire\Settings;
 use App\Livewire\Stock\StockByExpiryPage;
@@ -58,6 +60,12 @@ Route::middleware(['auth', 'password.changed', 'warehouse'])->group(function () 
     // Owner dashboard: figures, charts and short tables (dashboard.view, ADMIN for now).
     // Account menu › Change password: every signed-in user, for their own account.
     Route::get('/account/password', ChangePassword::class)->name('account.password');
+
+    // Notifications (the top bar's bell): every signed-in user, their own only.
+    Route::get('/notifications', NotificationList::class)->name('notifications');
+    Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])
+        ->name('notifications.open')
+        ->whereNumber('notification');
 
     Route::get('/dashboard', Dashboard::class)->name('dashboard')->middleware('can:dashboard.view');
 

@@ -14,6 +14,8 @@ use App\Support\Drafts\DraftTypes;
 use App\Support\Drafts\DraftUi;
 use App\Support\Notify;
 use App\Support\Permissions;
+use App\Support\Transactions\TransactionTypes;
+use App\Support\Transactions\TypeUi;
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -78,6 +80,12 @@ class Users extends Component
 
     /** "Email about draft receipts": the same, with the draft receipts confirm permission. */
     public bool $notifyDraftReceipts = true;
+
+    /** "Email about approval requests": only with an Adjustment / Damage approve permission. */
+    public bool $notifyApprovals = true;
+
+    /** "Email about my approval results": only with an Adjustment / Damage create permission. */
+    public bool $notifyApprovalResults = true;
 
     public function mount(): void
     {
@@ -152,6 +160,40 @@ class Users extends Component
     }
 
     /**
+     * Whether the ticked roles may approve Adjustments / Damage records, so
+     * the approval request email setting applies.
+     */
+    #[Computed]
+    public function approvesRequests(): bool
+    {
+        return $this->grantsTypePermission(fn (TypeUi $type) => $type->approvePermission());
+    }
+
+    /**
+     * Whether the ticked roles may create a type that needs approval, so the
+     * approval result email setting applies.
+     */
+    #[Computed]
+    public function makesRequests(): bool
+    {
+        return $this->grantsTypePermission(fn (TypeUi $type) => $type->approvePermission() === null ? null : $type->createPermission());
+    }
+
+    /**
+     * @param  callable(TypeUi): ?string  $permission  the permission of each type to look for
+     */
+    private function grantsTypePermission(callable $permission): bool
+    {
+        $byRole = Permissions::byRole();
+        $granted = collect($this->roleIds)->flatMap(fn ($roleId) => $byRole[(string) $roleId] ?? []);
+
+        return collect(TransactionTypes::all())
+            ->map($permission)
+            ->filter()
+            ->contains(fn (string $code) => $granted->contains($code));
+    }
+
+    /**
      * @param  callable(DraftUi): bool  $which  the kinds of draft to look at
      */
     private function confirmsDrafts(callable $which): bool
@@ -186,17 +228,18 @@ class Users extends Component
     }
 
     /**
-     * Whether the ticked roles could confirm orders / draft receipts before a
-     * role change (set in updating(), read in updated() of the same request).
+     * Whether the ticked roles could confirm orders / draft receipts, approve
+     * requests and make them before a role change (set in updating(), read in
+     * updated() of the same request).
      *
-     * @var array{0: bool, 1: bool}|null
+     * @var array{0: bool, 1: bool, 2: bool, 3: bool}|null
      */
     private ?array $couldConfirm = null;
 
     public function updating(string $property): void
     {
         if (str_starts_with($property, 'roleIds')) {
-            $this->couldConfirm = [$this->confirmsOrders(), $this->confirmsDraftReceipts()];
+            $this->couldConfirm = [$this->confirmsOrders(), $this->confirmsDraftReceipts(), $this->approvesRequests(), $this->makesRequests()];
         }
     }
 
@@ -205,10 +248,12 @@ class Users extends Component
         // The email settings follow the roles: ticked when a role that may
         // confirm those drafts is added, off when no role may any more.
         if (str_starts_with($property, 'roleIds')) {
-            unset($this->confirmsOrders, $this->confirmsDraftReceipts);
-            [$couldOrders, $couldReceipts] = $this->couldConfirm ?? [false, false];
+            unset($this->confirmsOrders, $this->confirmsDraftReceipts, $this->approvesRequests, $this->makesRequests);
+            [$couldOrders, $couldReceipts, $couldApprove, $couldRequest] = $this->couldConfirm ?? [false, false, false, false];
             $this->notifyNewOrders = $this->confirmsOrders() && ($couldOrders ? $this->notifyNewOrders : true);
             $this->notifyDraftReceipts = $this->confirmsDraftReceipts() && ($couldReceipts ? $this->notifyDraftReceipts : true);
+            $this->notifyApprovals = $this->approvesRequests() && ($couldApprove ? $this->notifyApprovals : true);
+            $this->notifyApprovalResults = $this->makesRequests() && ($couldRequest ? $this->notifyApprovalResults : true);
         }
 
         // Branches belong to a customer: another customer, no branches chosen.
@@ -286,6 +331,8 @@ class Users extends Component
             // decide what the box shows when it is offered again.
             $user->notify_new_orders = $this->confirmsOrders() ? $data['notifyNewOrders'] : ($isNew ? false : $user->notify_new_orders);
             $user->notify_draft_receipts = $this->confirmsDraftReceipts() ? $data['notifyDraftReceipts'] : ($isNew ? false : $user->notify_draft_receipts);
+            $user->notify_approvals = $this->approvesRequests() ? $data['notifyApprovals'] : ($isNew ? false : $user->notify_approvals);
+            $user->notify_approval_results = $this->makesRequests() ? $data['notifyApprovalResults'] : ($isNew ? false : $user->notify_approval_results);
 
             if ($data['password'] !== '') {
                 $user->password_hash = $data['password']; // hashed by the model cast
@@ -369,6 +416,8 @@ class Users extends Component
             'active' => ['boolean', $this->staySignedIn($editingSelf)],
             'notifyNewOrders' => ['boolean'],
             'notifyDraftReceipts' => ['boolean'],
+            'notifyApprovals' => ['boolean'],
+            'notifyApprovalResults' => ['boolean'],
         ];
     }
 
@@ -457,6 +506,8 @@ class Users extends Component
             'active' => (bool) $user->active,
             'notify_new_orders' => (bool) $user->notify_new_orders,
             'notify_draft_receipts' => (bool) $user->notify_draft_receipts,
+            'notify_approvals' => (bool) $user->notify_approvals,
+            'notify_approval_results' => (bool) $user->notify_approval_results,
             'roles' => $user->roles()->orderBy('code')->pluck('code')->all(),
             'warehouses' => $user->warehouses()->orderBy('code')->pluck('code')->all(),
             // The warehouse they actually start in (a user saved before defaults existed has none stored).
@@ -476,10 +527,12 @@ class Users extends Component
         $this->preferred_lang = $user->preferred_lang ?? app()->getLocale();
         $this->active = $user->active ?? true;
         $this->roleIds = $user->exists ? $user->roles()->pluck('role.id')->all() : [];
-        unset($this->confirmsOrders, $this->confirmsDraftReceipts);
+        unset($this->confirmsOrders, $this->confirmsDraftReceipts, $this->approvesRequests, $this->makesRequests);
         // Shown as saved, and off for someone who may not confirm them (a new user has no roles yet).
         $this->notifyNewOrders = ($user->notify_new_orders ?? true) && $this->confirmsOrders();
         $this->notifyDraftReceipts = ($user->notify_draft_receipts ?? true) && $this->confirmsDraftReceipts();
+        $this->notifyApprovals = ($user->notify_approvals ?? true) && $this->approvesRequests();
+        $this->notifyApprovalResults = ($user->notify_approval_results ?? true) && $this->makesRequests();
         $this->warehouseIds = $user->exists ? $user->warehouses()->pluck('warehouse.id')->all() : [];
         $this->defaultWarehouseId = $user->exists ? (string) $user->defaultWarehouseId() : '';
         $this->customerId = (string) $user->customer_id;

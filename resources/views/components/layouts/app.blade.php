@@ -126,6 +126,10 @@
                         <x-language-switch />
                         <div class="h-6 w-px bg-default" aria-hidden="true"></div>
                     </div>
+                    {{-- Notifications: what waits for the user, on every size. --}}
+                    @auth
+                        <livewire:notification-bell />
+                    @endauth
                     <x-user-menu />
                 </div>
             </header>

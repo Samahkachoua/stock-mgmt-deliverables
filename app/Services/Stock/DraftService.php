@@ -82,21 +82,23 @@ final class DraftService
         }
 
         try {
-            $saved = DB::transaction(fn () => $this->store($kind, $input, $by, $draft));
+            return DB::transaction(function () use ($kind, $input, $by, $draft) {
+                $saved = $this->store($kind, $input, $by, $draft);
+
+                // Tell the people who can confirm the draft: once when it is added, and
+                // on each edit that changed something (in this transaction: a failed save tells nobody).
+                if ($draft === null) {
+                    $this->notifier->saved((string) $saved->id, DraftEmail::CREATED, $by);
+                } elseif ($this->lastSaveChanged) {
+                    $this->notifier->saved((string) $saved->id, DraftEmail::UPDATED, $by);
+                }
+
+                return $saved;
+            });
         } catch (UniqueConstraintViolationException $e) {
             // Two submissions of the same form at the same moment: the other one saved it.
             return ($draft === null ? $this->alreadySaved($input, $by) : null) ?? throw $e;
         }
-
-        // Tell the people who can confirm the draft: once when it is added, and
-        // on each edit that changed something.
-        if ($draft === null) {
-            $this->notifier->notify($saved, DraftEmail::CREATED);
-        } elseif ($this->lastSaveChanged) {
-            $this->notifier->notify($saved, DraftEmail::UPDATED);
-        }
-
-        return $saved;
     }
 
     /**
@@ -168,9 +170,9 @@ final class DraftService
                 ['doc_no' => $header->doc_no, 'status' => 'CANCELLED', 'reason' => $reason],
                 $by->id,
             );
-        });
 
-        $this->notifier->notify($draft, DraftEmail::CANCELLED);
+            $this->notifier->cancelled((string) $header->id, $by, $reason);
+        });
     }
 
     /**

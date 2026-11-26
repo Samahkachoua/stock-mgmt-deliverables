@@ -140,6 +140,21 @@
                     </label>
                     <p id="notify-draft-receipts-hint" class="ms-8 text-body text-muted">{{ __('settings.users.notify_draft_receipts_hint') }}</p>
                 @endif
+                {{-- Adjustments / Damage over the approval limit: requests for approvers, results for requesters. --}}
+                @if ($this->approvesRequests)
+                    <label class="mt-2 flex min-h-control cursor-pointer items-center gap-3">
+                        <input type="checkbox" wire:model="notifyApprovals" aria-describedby="notify-approvals-hint" class="size-5 rounded border-control accent-brand">
+                        <span class="text-body text-fg">{{ __('settings.users.notify_approvals') }}</span>
+                    </label>
+                    <p id="notify-approvals-hint" class="ms-8 text-body text-muted">{{ __('settings.users.notify_approvals_hint') }}</p>
+                @endif
+                @if ($this->makesRequests)
+                    <label class="mt-2 flex min-h-control cursor-pointer items-center gap-3">
+                        <input type="checkbox" wire:model="notifyApprovalResults" aria-describedby="notify-approval-results-hint" class="size-5 rounded border-control accent-brand">
+                        <span class="text-body text-fg">{{ __('settings.users.notify_approval_results') }}</span>
+                    </label>
+                    <p id="notify-approval-results-hint" class="ms-8 text-body text-muted">{{ __('settings.users.notify_approval_results_hint') }}</p>
+                @endif
 
                 <div class="mt-4 flex flex-wrap justify-end gap-3">
                     {{-- An existing account: email the same link as "Forgot password?". --}}

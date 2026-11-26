@@ -14,6 +14,13 @@ Schedule::command('stock:reconcile')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Notifications are kept 90 days (App\Support\Notifications\Notifier::KEEP_DAYS).
+Schedule::command('notifications:prune')
+    ->dailyAt('02:30')
+    ->timezone(config('app.timezone'))
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Uploaded import files and finished queue jobs are kept; old failed jobs are pruned.
 Schedule::command('queue:prune-failed --hours=720')->weekly();
 

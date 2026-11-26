@@ -69,10 +69,11 @@ it('emails a new order to everyone who can confirm it in its warehouse', functio
     Mail::assertQueued(DraftEmail::class, fn (DraftEmail $mail) => $mail->draftId === $draft->id);
 });
 
-it('also emails the person who made the order when they can confirm it', function () {
+it('tells nobody when the person who made the order can confirm it themselves', function () {
     $this->drafts->save(orderInput($this), $this->manager);
 
-    expect(orderEmailsTo(DraftEmail::CREATED))->toContain($this->manager->email);
+    expect(orderEmailsTo(DraftEmail::CREATED))->toBe([])
+        ->and(DB::table('notification')->count())->toBe(0);
 });
 
 it('emails the confirmers when an order is changed, but not for a save that changes nothing', function () {

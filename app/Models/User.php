@@ -22,6 +22,8 @@ use Illuminate\Notifications\Notifiable;
  * @property string $preferred_theme
  * @property bool $notify_new_orders email about orders they may confirm (App\Support\Drafts\DraftNotifier)
  * @property bool $notify_draft_receipts email about draft receipts they may confirm (App\Support\Drafts\DraftNotifier)
+ * @property bool $notify_approvals email about Adjustments / Damage waiting for their approval (App\Support\Notifications\ApprovalNotifier)
+ * @property bool $notify_approval_results email when their own Adjustment / Damage is approved or rejected
  * @property bool $must_change_password set when an administrator typed the password (EnsurePasswordChanged)
  * @property bool $active
  */
@@ -79,6 +81,8 @@ class User extends Authenticatable
             'active' => 'boolean',
             'notify_new_orders' => 'boolean',
             'notify_draft_receipts' => 'boolean',
+            'notify_approvals' => 'boolean',
+            'notify_approval_results' => 'boolean',
             'must_change_password' => 'boolean',
         ];
     }

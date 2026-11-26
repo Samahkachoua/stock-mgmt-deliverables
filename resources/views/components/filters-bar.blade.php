@@ -21,6 +21,8 @@
     'statuses' => null,
     // Item storage status (`storage`): code => label, App\Reports\Filter::NO_STORAGE for "Not set".
     'storages' => null,
+    // Notifications page (`group`): group => label.
+    'groups' => null,
     'dates' => false,
     'dateError' => false,
     'directions' => null,
@@ -39,6 +41,7 @@
         // Always set (the user's default warehouse, or all): not counted as an active filter.
         $warehouses === null ? null : $select('warehouse', 'keyboard_arrow_down', __('transactions.filters.warehouse'), $warehouses),
         $customers === null ? null : $select('customer', 'keyboard_arrow_down', __('transactions.filters.customer'), ['' => __('transactions.filters.all_customers')] + $customers),
+        $groups === null ? null : $select('group', 'keyboard_arrow_down', __('notifications.filters.group'), ['' => __('notifications.filters.all_groups')] + $groups),
         $branches === null ? null : $select('branch', 'keyboard_arrow_down', __('drafts.filters.branch'), ['' => __('drafts.filters.all_branches')] + $branches),
         $statuses === null ? null : $select('status', 'keyboard_arrow_down', __('transactions.filters.status'), ['' => $allStatuses ?? __('transactions.filters.all_statuses')] + $statuses),
         $storages === null ? null : $select('storage', 'keyboard_arrow_down', __('reports.filters.storage_status'), ['' => __('reports.filters.all_storage')] + $storages),
