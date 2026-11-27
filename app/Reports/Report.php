@@ -119,6 +119,27 @@ abstract class Report
     }
 
     /**
+     * A Blade view that shows the page's rows instead of the table (it gets
+     * `rows`, a page of paginate() with each row's details()), or null for the
+     * table. Exports still use columns() and row().
+     */
+    public function rowsView(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * What rowsView() needs of a row beyond its cells.
+     *
+     * @param  array<string, string>  $filters
+     * @return array<string, mixed>
+     */
+    public function details(object $row, array $filters): array
+    {
+        return [];
+    }
+
+    /**
      * How the Excel export groups rows like a pivot table (App\Reports\Export\GroupedRows),
      * or null for one plain row per report row: `group` the columns shown
      * once per group (consecutive rows with the same values), `sum` the
@@ -192,7 +213,7 @@ abstract class Report
      * One page of rows, mapped to cells.
      *
      * @param  array<string, string>  $filters
-     * @return LengthAwarePaginator<int, array{cells: array<string, Cell>, link: string|null}>
+     * @return LengthAwarePaginator<int, array{cells: array<string, Cell>, link: string|null, details: array<string, mixed>}>
      */
     public function paginate(array $filters, User $user, int $page, int $perPage = self::PER_PAGE): LengthAwarePaginator
     {
@@ -207,6 +228,7 @@ abstract class Report
         return $paginator->setCollection($rows->map(fn (object $row) => [
             'cells' => $this->row($row, $filters),
             'link' => $this->link($row),
+            'details' => $this->rowsView() === null ? [] : $this->details($row, $filters),
         ]));
     }
 

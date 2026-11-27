@@ -25,6 +25,37 @@
             </dl>
         @endif
 
+        @if ($definition->rowsView() !== null)
+            {{-- The report shows its rows its own way (Report::rowsView()): same loading, empty state and pages. --}}
+            <x-table-loading :busy="! $rowsLoaded" class="flex flex-col gap-section">
+                @if (! $rowsLoaded)
+                    <div wire:init="loadRows" class="flex flex-col gap-section" aria-hidden="true">
+                        @for ($card = 0; $card < 3; $card++)
+                            <div class="flex flex-col gap-3 rounded-xl border border-default bg-card p-card shadow-card">
+                                <span class="block h-4 w-48 max-w-full animate-pulse rounded bg-card-hover"></span>
+                                <span class="block h-3 w-32 max-w-full animate-pulse rounded bg-card-hover"></span>
+                                <span class="block h-20 w-full animate-pulse rounded-lg bg-card-hover"></span>
+                            </div>
+                        @endfor
+                    </div>
+                @elseif ($rows->isEmpty())
+                    <div class="flex flex-col items-center rounded-xl border border-default bg-card px-card py-empty text-center shadow-card">
+                        <x-icon name="inventory_2" class="size-9 text-muted" />
+                        <h2 class="mt-3 text-lead font-semibold text-fg">{{ __('reports.page.empty_title') }}</h2>
+                        <p class="mt-1 max-w-md text-body text-muted">{{ __('reports.page.empty_body') }}</p>
+                        <button type="button" wire:click="resetFilters" class="mt-4 h-control rounded-lg border border-control bg-card px-4 text-body font-semibold text-fg hover:bg-card-hover">
+                            {{ __('transactions.filters.reset') }}
+                        </button>
+                    </div>
+                @else
+                    @include($definition->rowsView(), ['rows' => $rows])
+
+                    <div class="overflow-hidden rounded-xl border border-default bg-card shadow-card [&>nav]:border-t-0">
+                        <x-data-table.pagination :paginator="$rows" />
+                    </div>
+                @endif
+            </x-table-loading>
+        @else
         <x-data-table
             :columns="$columns"
             :paginator="$rows"
@@ -42,5 +73,6 @@
                 <x-report.row :row="$row" :columns="$columns" wire:key="report-row-{{ $rows->firstItem() + $loop->index }}" />
             @endforeach
         </x-data-table>
+        @endif
     @endif
 </div>

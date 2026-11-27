@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\DraftController;
-use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ImportFileController;
 use App\Http\Controllers\ItemStockController;
 use App\Http\Controllers\ListPresetController;
@@ -21,6 +20,7 @@ use App\Livewire\Dashboard;
 use App\Livewire\Drafts\DraftForm;
 use App\Livewire\Drafts\DraftList;
 use App\Livewire\Drafts\DraftPage;
+use App\Livewire\Home;
 use App\Livewire\Imports\ImportJobPage;
 use App\Livewire\Imports\ImportList;
 use App\Livewire\Imports\ImportUpload;
@@ -54,8 +54,9 @@ Route::post('/locale/{locale}', LocaleController::class)->name('locale.update');
 Route::post('/logout', LogoutController::class)->middleware('auth')->name('logout');
 
 Route::middleware(['auth', 'password.changed', 'warehouse'])->group(function () {
-    // Home: large links to what the user can do; no dashboard widgets by design.
-    Route::get('/', HomeController::class)->name('home');
+    // Home: what needs the user now, quick starts and a few figures; one page for
+    // staff and another for customer users (App\Livewire\Home).
+    Route::get('/', Home::class)->name('home');
 
     // Owner dashboard: figures, charts and short tables (dashboard.view, ADMIN for now).
     // Account menu › Change password: every signed-in user, for their own account.

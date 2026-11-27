@@ -1,18 +1,141 @@
 <?php
 
-// The page after signing in (App\Http\Controllers\HomeController).
+// The page after signing in (App\Livewire\Home): one version for staff
+// (App\Support\Home\StaffHome), one for customer users (CustomerHome).
 return [
     'page_title' => 'Accueil',
-    'title' => 'Bonjour, :name',
-    'subtitle' => 'Que souhaitez-vous faire ?',
-    'waiting' => 'En attente de vous',
-    'arriving' => 'Transferts en route vers vos entrepôts',
-    // A status card read aloud: "3 Adjustments to approve".
+    'title' => ':greeting, :name',
+    'greeting' => [
+        'morning' => 'Bonjour',
+        'afternoon' => 'Bon après-midi',
+        'evening' => 'Bonsoir',
+    ],
+    'subtitle_staff' => ':date · Voici ce qui vous attend aujourd’hui',
+    'subtitle_customer' => ':date · Vos commandes et votre stock en un coup d’œil',
+    'warehouse' => 'Entrepôt',
+    'all_warehouses' => 'Tous mes entrepôts',
+
+    'attention' => 'À traiter',
+    'attention_count' => '{0} :count élément|{1} :count élément|[2,*] :count éléments',
     'waiting_card' => ':count :label',
+    'caught_up_on' => 'Rien en attente pour :',
+    'all_caught_up' => 'Tout est à jour, rien en attente :',
+    'arriving' => 'Transferts en route vers vous',
+    'chips' => [
+        'overdue' => 'En retard',
+        'on_way' => 'En route',
+        'waiting' => 'En attente',
+        'incoming' => 'À recevoir',
+        'expiring' => 'Expire bientôt',
+        'open' => 'Ouvert',
+    ],
+    'actions' => [
+        'review' => 'Voir maintenant',
+        'open_list' => 'Ouvrir la liste',
+        'approve' => 'Approuver',
+        'track' => 'Suivre',
+        'view_stock' => 'Voir le stock',
+    ],
+    'cards' => [
+        'dispatched' => 'Expédiés, pas encore livrés',
+        'dispatched_note' => 'Le plus ancien : :number, :days',
+        'to_dispatch' => 'Bons de livraison à expédier',
+        'orders' => 'Commandes à confirmer',
+        'receipts' => 'Réceptions prévues à recevoir',
+        'oldest_waiting' => 'Le plus ancien attend depuis :days',
+        'arriving_note' => 'Le plus ancien est en route depuis :days',
+    ],
+    'days' => '{0} moins d’un jour|{1} :count jour|[2,*] :count jours',
+    'lines' => '{0} :count ligne|{1} :count ligne|[2,*] :count lignes',
+
     'start' => 'Commencer quelque chose',
+    'more' => 'Plus :',
+    'new_item' => 'Ajouter un article',
     'nothing_to_create' => 'Vous pouvez consulter le stock et les opérations, mais pas en créer. Demandez à un administrateur si besoin.',
+
+    'glance' => [
+        'title' => ':warehouse en bref',
+        'items' => 'Articles en stock',
+        'items_note' => '{0} Pas encore de stock|{1} Pour :count client|[2,*] Pour :count clients',
+        'orders' => 'Commandes en cours',
+        'orders_note' => ':confirm à confirmer · :dispatch à expédier · :transit en route',
+        'expiring' => 'Expirent dans :days jours',
+        'lots' => '{0} lot|{1} lot|[2,*] lots',
+        'expiring_none' => 'Rien n’expire bientôt',
+        'expiring_first' => 'Le premier : :date, :item',
+    ],
+
+    'queue' => [
+        'title' => 'Travail du jour',
+        'all_orders' => 'Voir toutes les commandes',
+        'empty' => 'Rien en attente. Tout est à jour.',
+        'awaiting_delivery' => ':customer · en livraison depuis :days',
+        'ready_to_dispatch' => ':customer · :lines · prêt à expédier',
+        'order' => ':customer · :lines',
+        'order_late' => ':customer · :lines · :days de retard',
+        'order_today' => ':customer · :lines · à livrer aujourd’hui',
+        'order_due' => ':customer · :lines · à livrer le :date',
+        'to_approve' => ':customer · attend l’approbation depuis :days',
+        'arriving' => 'De :warehouse · en route depuis :days',
+    ],
+
+    'customer' => [
+        'check' => [
+            'title' => 'Consulter votre stock',
+            'label' => 'Nom ou code de l’article',
+            'placeholder' => 'Nom ou code de l’article',
+            'view' => 'Afficher',
+            'total' => 'Total',
+            'expiry' => 'Par date d’expiration',
+            'submit' => 'Rechercher',
+            'recent' => 'Récents :',
+        ],
+        'cards' => [
+            'expiring' => '{0} Lot expirant sous :days jours|{1} Lot expirant sous :days jours|[2,*] Lots expirant sous :days jours',
+            'expiring_note' => 'Le premier le :date (:item)',
+            'on_way' => '{0} Commande en route|{1} Commande en route|[2,*] Commandes en route',
+            'on_way_note' => ':number · :lines',
+            'editable' => '{0} Commande encore modifiable ou annulable|{1} Commande encore modifiable ou annulable|[2,*] Commandes encore modifiables ou annulables',
+            'editable_note' => 'Verrouillée dès que l’entrepôt la confirme',
+        ],
+        'snapshot' => [
+            'title' => 'Votre stock en bref',
+            'open_stock' => 'Voir tout le stock',
+            'items' => 'Articles en stock',
+            'lots' => 'Lots en stock',
+            'expiring' => 'Expirent dans :days jours',
+            'by_expiry' => 'Lots selon le délai avant expiration',
+            'lot_count' => '{0} :count lot|{1} :count lot|[2,*] :count lots',
+            'buckets' => [
+                'expired' => 'Expirés',
+                'd30' => '0 à 30 jours',
+                'd60' => '31 à 60 jours',
+                'd90' => '61 à 90 jours',
+                'later' => 'Plus de 90 jours',
+            ],
+        ],
+        'soonest' => [
+            'title' => 'Expirent en premier',
+            'all' => 'Tout voir par expiration',
+            'empty' => 'Aucun article avec date d’expiration en stock.',
+            'item' => 'Article',
+            'batch' => 'Lot',
+            'qty' => 'Quantité',
+            'expires' => 'Expire',
+            'no_batch' => 'Sans lot',
+            'left' => ':date · :days',
+            'days' => '{0} aujourd’hui|{1} :count jour|[2,*] :count jours',
+        ],
+        'orders' => [
+            'title' => 'Vos commandes en cours',
+            'all' => 'Toutes les commandes',
+            'empty' => 'Aucune commande en cours. Les commandes que l’entrepôt n’a pas encore confirmées apparaissent ici.',
+            'line' => ':lines · enregistrée le :saved',
+        ],
+    ],
+
     'recent' => [
-        'title' => 'Reprendre là où vous en étiez',
+        'title' => 'Activité récente',
         'empty' => 'Les opérations que vous créez ou traitez apparaîtront ici.',
         'line' => ':customer · :event',
         // Nouns ("your last action"), so no agreement with the operation's gender.

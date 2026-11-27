@@ -560,18 +560,45 @@ never ad-hoc spinners per page.
 
 ## UX rules for "no training needed"
 - Nothing that isn't in the approved designs: no barcode scanning UI, no
-  photo/file attachments on transactions, no dashboard widgets on Home or
-  the operator pages (Home's "Pick up where you left off" list of the user's
-  last 8 documents/drafts, `App\Support\Home\RecentActivity`, is links, not a
-  widget: number, status and date per row; an empty state when there is
-  nothing yet). Home is three full-width blocks: "Waiting for you" figure
-  cards (icon box, `text-stat` number, label; one balanced row of up to 4),
-  compact "Start something new" tiles (one row of up to 7 on desktop), then
-  the recent list (rows size by container queries, `@container`). Max 1280px wide,
-  checked by `tests/Browser/HomeLayoutTest.php` from 320 to 1920px. Figures and charts live only on the owner dashboard
-  (`/dashboard`, permission `dashboard.view`, ADMIN by default; built from
-  `App\Reports\Dashboard`, each figure = the row count of the report it
-  opens). If a new field seems useful, ask before adding it.
+  photo/file attachments on transactions, no dashboard widgets on the
+  operator pages. **Home** (`App\Livewire\Home`) has two versions on one
+  frame, chosen by `User::isCustomerUser()`:
+  - Staff (`App\Support\Home\StaffHome`, `livewire.home.staff`):
+    - greeting
+    - warehouse filter (users with several; session `list_state.home`)
+    - "Needs your attention" cards: dispatched not delivered, notes to
+      dispatch, orders to confirm, approvals, transfers arriving, draft
+      receipts
+    - "Start something new": main brand button + 2 secondary,
+      `config('ui.home_primary')` first, the rest as "More" buttons
+    - "<Warehouse> at a glance": items in stock, open orders, lots expiring
+      in 30 days
+    - "Today's work queue" beside "Recent activity"
+  - Customer user (`CustomerHome`, `livewire.home.customer`):
+    - "Check your stock" search: opens the Stock / Stock by expiry page
+      through its session state; last 3 searches as chips
+    - attention cards: lots expiring, orders on their way, orders still
+      editable
+    - "Your stock snapshot" with a bar of lots by time to expiry
+    - "Expiring soonest"
+    - "Your open orders"
+    - "Recent activity"
+  - Shared rules for both versions:
+    - Each card counts one list and opens it filtered (`Home::open()`,
+      session list state, never the URL). It shows only with the permission
+      of the page it opens. Cards with 0 drop into one "All caught up on …"
+      line.
+    - Figures are items and lots, never quantities of different items
+      added up.
+    - Buttons use the brand/secondary styles and status labels use
+      `x-badge`. Types keep their colour on icons only.
+    - Shared components are `x-home.*`. Max 1280px wide, checked by
+      `tests/Browser/HomeLayoutTest.php` (both versions) from 320 to 1920px.
+  - Charts and the full set of figures live on the owner dashboard
+    (`/dashboard`, permission `dashboard.view`, ADMIN by default; built
+    from `App\Reports\Dashboard`, each figure = the row count of the report
+    it opens). There is no minimum stock level (no "low stock"). If a new
+    field seems useful, ask before adding it.
 - The system suggests instead of asking: base unit pre-selected, nearest expiry
   date pre-selected (changeable) for Delivery note/Transfer/Damage, today's date pre-filled.
 - Prevent errors instead of reporting them: live availability hint and

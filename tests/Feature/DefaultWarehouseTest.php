@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Home;
 use App\Livewire\Settings\Users;
 use App\Livewire\Transactions\TransactionForm;
 use App\Livewire\Transactions\TransactionList;
@@ -144,11 +145,12 @@ it('counts waiting approvals and arriving transfers across all the user\'s wareh
     $this->stock->post('IN', [$this->stock->line('BEANS', 5)]);
     $this->stock->dispatch([$this->stock->line('BEANS', 1)], $this->tripoli);
 
-    $this->actingAs($receiver)
-        ->get(route('home'))
-        ->assertOk()
-        ->assertSee(__('home.arriving'))
-        ->assertSee('data-waiting="active"', false);
+    // Home starts on the default warehouse (nothing arrives there), "All my warehouses" counts both.
+    $this->actingAs($receiver)->get(route('home'))->assertOk()->assertSee(__('home.arriving'))->assertDontSee('data-attention="arriving"', false);
+
+    Livewire::actingAs($receiver)->test(Home::class)
+        ->set('warehouse', 'all')
+        ->assertSee('data-attention="arriving"', false);
 });
 
 it('explains when the user has no warehouse', function () {

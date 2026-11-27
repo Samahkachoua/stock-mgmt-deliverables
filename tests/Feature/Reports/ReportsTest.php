@@ -4,12 +4,15 @@ use App\Livewire\Reports\ReportPage;
 use App\Livewire\Stock\StockPage;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Reports\AuditLogReport;
 use App\Reports\Reports;
 use App\Services\Stock\PostingService;
+use App\Support\Audit;
 use App\Support\Format;
 use App\Support\StorageStatuses;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Lang;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\Support\Exports;
@@ -341,6 +344,61 @@ it('shows the audit log only with audit.view, limited to the user’s documents'
         // In words, not codes: "Status: In transit → Completed".
         ->and($receipt['changes'])->toContain('Status: In transit → Completed')
         ->and($receipt['changes'])->not->toContain('DISPATCHED');
+
+    // On screen each entry is a card with Field | Old | New, from before_data / after_data.
+    $this->actingAs($d->auditorTripoli)->get(route('reports.show', 'audit-log'))->assertOk();
+    $page = Reports::get('audit-log')->paginate(
+        Reports::get('audit-log')->normalize(['action' => 'RECEIVE'], $d->auditorTripoli),
+        $d->auditorTripoli,
+        1,
+    );
+    $entry = $page->items()[0]['details'];
+    expect($entry['record'])->toBe($d->shortTransfer->doc_no)
+        ->and($entry['who'])->toBe($d->tripoliOperator->full_name)
+        ->and($entry['changes'])->toContain(['field' => 'Status', 'old' => 'In transit', 'new' => 'Completed']);
+
+    reportPage($d->auditorTripoli, $d->tripoli, 'audit-log')
+        ->call('loadRows')
+        ->assertSee(__('reports.audit_log.field'))
+        ->assertSee(__('reports.audit_log.old'))
+        ->assertSee(__('reports.audit_log.new'))
+        ->assertSee($d->shortTransfer->doc_no);
+});
+
+it('names every audit log field in English, Arabic and French, and shows names instead of ids', function () {
+    $d = $this->data;
+    $keys = collect(DB::select(
+        'SELECT DISTINCT k FROM (SELECT jsonb_object_keys(before_data::jsonb) k FROM audit_log WHERE jsonb_typeof(before_data::jsonb) = ?
+         UNION ALL SELECT jsonb_object_keys(after_data::jsonb) FROM audit_log WHERE jsonb_typeof(after_data::jsonb) = ?) x',
+        ['object', 'object'],
+    ))->pluck('k')->merge([
+        // Written by settings pages and deliveries the test data may not reach.
+        'contact_email', 'contact_phone', 'manager_email', 'address', 'city', 'storage_status', 'default_warehouse',
+        'customer_id', 'branch_id', 'warehouse_id', 'date', 'delivery_date', 'note', 'priority', 'password_changed',
+        'driver_id', 'driver_name', 'driver_phone', 'driver_licence_no', 'driver_national_id', 'truck_no',
+    ])->unique();
+
+    foreach (['en', 'ar', 'fr'] as $locale) {
+        $missing = $keys->reject(fn (string $key) => Lang::has('reports.audit_log.fields.'.$key, $locale, false))->values()->all();
+        expect($missing)->toBe([], "Untranslated audit fields in $locale");
+
+        // Every kind of record and every action has a name too (and is in the filters).
+        foreach ([...AuditLogReport::ENTITIES, ...DB::table('audit_log')->distinct()->pluck('entity')] as $entity) {
+            expect(Lang::has('reports.audit_log.entities.'.$entity, $locale, false))->toBeTrue("No $locale name for record $entity");
+        }
+        foreach ([...AuditLogReport::ACTIONS, ...DB::table('audit_log')->distinct()->pluck('action')] as $action) {
+            expect(Lang::has('reports.audit_log.actions.'.$action, $locale, false))->toBeTrue("No $locale name for action $action");
+        }
+    }
+    expect(DB::table('audit_log')->distinct()->pluck('entity')->diff(AuditLogReport::ENTITIES)->all())->toBe([])
+        ->and(DB::table('audit_log')->distinct()->pluck('action')->diff(AuditLogReport::ACTIONS)->all())->toBe([]);
+
+    // customer_id / warehouse_id read as names, not numbers.
+    Audit::record('customer', $d->acme->id, 'UPDATE', ['customer_id' => null], ['customer_id' => $d->acme->id, 'warehouse_id' => $d->beirut->id], $d->admin->id);
+    $entry = collect(onScreen($d->admin, $d->beirut, 'audit-log', ['entity' => 'customer', 'action' => 'UPDATE'])['rows'])->first();
+
+    expect($entry['changes'])->toContain('Customer: ∅ → '.$d->acme->name)
+        ->and($entry['changes'])->toContain('Warehouse: '.$d->beirut->name);
 });
 
 // Exports match the screen
@@ -454,16 +512,17 @@ it('opens home with large links, approvals waiting and transfers arriving, and n
         ->assertOk()
         ->assertSee('href="'.route('damage.create').'"', false)
         ->assertSee(__('transactions.types.damage.to_approve'))
-        // Something waiting stands out; nothing waiting is muted.
-        ->assertSeeInOrder(['data-waiting="idle"', __('transactions.types.adjustment.to_approve'), 'data-waiting="active"', __('transactions.types.damage.to_approve')], false)
+        // Something waiting is a card; nothing waiting is named on the "All caught up on" line.
+        ->assertSee('data-attention="approve.DAMAGE"', false)
+        ->assertDontSee('data-attention="approve.ADJUSTMENT"', false)
+        ->assertSeeInOrder(['data-caught-up', __('transactions.types.adjustment.to_approve')], false)
         ->assertDontSee('no approval needed')
         ->assertDontSee('<canvas', false);
 
     $this->actingAs($d->tripoliOperator)
         ->get(route('home'))
         ->assertSee(__('home.arriving'))
-        ->assertSee('data-waiting="active"', false)
-        ->assertSee(route('transfer.incoming'), false)
+        ->assertSee('data-attention="arriving"', false)
         ->assertDontSee(__('transactions.types.damage.to_approve'))
         ->assertDontSee('href="'.route('opening-balance.create').'"', false);
 });

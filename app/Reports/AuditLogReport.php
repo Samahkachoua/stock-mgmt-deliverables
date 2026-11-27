@@ -4,7 +4,9 @@ namespace App\Reports;
 
 use App\Models\StockTransaction;
 use App\Models\User;
+use App\Support\Drafts\DraftTypes;
 use App\Support\Format;
+use App\Support\StorageStatuses;
 use App\Support\Transactions\Statuses;
 use App\Support\Transactions\TransactionTypes;
 use Carbon\CarbonImmutable;
@@ -22,12 +24,33 @@ use Illuminate\Support\Facades\Lang;
 final class AuditLogReport extends Report
 {
     /** audit_log.entity values with a name in reports.audit_log.entities. */
-    public const ENTITIES = ['stock_transaction', 'product', 'app_user', 'role', 'unit', 'warehouse', 'customer', 'import_job'];
+    public const ENTITIES = ['stock_transaction', 'stock_draft', 'product', 'app_user', 'role', 'unit', 'warehouse', 'customer', 'customer_branch', 'driver', 'import_job'];
 
-    public const ACTIONS = ['CREATE', 'UPDATE', 'DELETE', 'POST', 'SUBMIT', 'APPROVE', 'REJECT', 'DISPATCH', 'RECEIVE', 'CANCEL', 'IMPORT'];
+    public const ACTIONS = ['CREATE', 'UPDATE', 'DELETE', 'POST', 'SUBMIT', 'APPROVE', 'REJECT', 'CONFIRM', 'DISPATCH', 'RECEIVE', 'DELIVER', 'CANCEL', 'IMPORT'];
+
+    /** Badge tone of each action (config ui.badges); others are 'draft'. */
+    private const TONES = [
+        'POST' => 'completed', 'APPROVE' => 'completed', 'CONFIRM' => 'completed', 'RECEIVE' => 'completed', 'DELIVER' => 'completed', 'IMPORT' => 'completed',
+        'SUBMIT' => 'pending',
+        'DISPATCH' => 'transit',
+        'REJECT' => 'rejected', 'DELETE' => 'rejected',
+        'CANCEL' => 'cancelled',
+    ];
 
     /** Keys that identify the record in its snapshot, in order of preference. */
     private const IDENTIFIERS = ['doc_no', 'file', 'sku', 'email', 'code', 'name', 'full_name', 'name_en'];
+
+    /** Snapshot fields holding an id, and the table whose `name` is shown instead. */
+    private const REFERENCES = [
+        'customer_id' => 'customer',
+        'branch_id' => 'customer_branch',
+        'warehouse_id' => 'warehouse',
+        'to_warehouse_id' => 'warehouse',
+        'driver_id' => 'driver',
+    ];
+
+    /** @var array<string, array<string, string>> table => id => name, for referenced() */
+    private array $names = [];
 
     public function key(): string
     {
@@ -92,6 +115,10 @@ final class AuditLogReport extends Report
             ->leftJoin('stock_transaction as t', fn (JoinClause $join) => $join
                 ->on('t.id', '=', 'a.entity_id')
                 ->where('a.entity', '=', 'stock_transaction'))
+            // Orders and draft receipts: their number, and their type for the name and link.
+            ->leftJoin('stock_draft as d', fn (JoinClause $join) => $join
+                ->on('d.id', '=', 'a.entity_id')
+                ->where('a.entity', '=', 'stock_draft'))
             ->where(fn ($query) => $query
                 ->where(fn ($query) => $query->where('a.entity', 'stock_transaction')->whereIn('a.entity_id', $visibleDocuments))
                 // Master data and users: not for a customer's own login.
@@ -102,9 +129,11 @@ final class AuditLogReport extends Report
             ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query
                 ->whereRaw('lower(u.full_name) like ?', [$like])
                 ->orWhereRaw('lower(t.doc_no) like ?', [$like])
+                ->orWhereRaw('lower(d.doc_no) like ?', [$like])
                 ->orWhereRaw('lower(a.before_data::text) like ?', [$like])
                 ->orWhereRaw('lower(a.after_data::text) like ?', [$like])))
-            ->select(['a.id', 'a.entity', 'a.entity_id', 'a.action', 'a.created_at', 'a.before_data', 'a.after_data', 'u.full_name', 't.doc_no', 't.transaction_type'])
+            ->select(['a.id', 'a.entity', 'a.entity_id', 'a.action', 'a.created_at', 'a.before_data', 'a.after_data', 'u.full_name', 't.transaction_type', 'd.transaction_type as draft_type'])
+            ->selectRaw('coalesce(t.doc_no, d.doc_no) as doc_no')
             ->orderByDesc('a.created_at')
             ->orderByDesc('a.id');
     }
@@ -113,8 +142,8 @@ final class AuditLogReport extends Report
     {
         $before = json_decode((string) $row->before_data, true) ?: [];
         $after = json_decode((string) $row->after_data, true) ?: [];
-        $entity = Lang::has('reports.audit_log.entities.'.$row->entity) ? __('reports.audit_log.entities.'.$row->entity) : $row->entity;
-        $action = Lang::has('reports.audit_log.actions.'.$row->action) ? __('reports.audit_log.actions.'.$row->action) : $row->action;
+        $entity = $this->entityName($row);
+        $action = $this->actionName($row->action);
 
         return [
             'when' => Format::dateTime(CarbonImmutable::parse($row->created_at)->setTimezone($this->today()->getTimezone())),
@@ -128,7 +157,67 @@ final class AuditLogReport extends Report
 
     public function link(object $row): ?string
     {
-        return $row->doc_no === null ? null : $this->documentLink($row->transaction_type, $row->doc_no);
+        $drafts = DraftTypes::all();
+
+        return match (true) {
+            $row->doc_no === null => null,
+            $row->entity === 'stock_draft' => isset($drafts[$row->draft_type]) ? $drafts[$row->draft_type]->route('show', $row->doc_no) : null,
+            default => $this->documentLink($row->transaction_type, $row->doc_no),
+        };
+    }
+
+    /**
+     * What kind of record the entry is about: "Order", "Draft receipt",
+     * "Item"...; as stored when it has no name.
+     */
+    private function entityName(object $row): string
+    {
+        $drafts = DraftTypes::all();
+
+        return match (true) {
+            $row->entity === 'stock_draft' && isset($drafts[$row->draft_type]) => $drafts[$row->draft_type]->label('singular'),
+            Lang::has('reports.audit_log.entities.'.$row->entity) => __('reports.audit_log.entities.'.$row->entity),
+            default => $row->entity,
+        };
+    }
+
+    private function actionName(string $action): string
+    {
+        return Lang::has('reports.audit_log.actions.'.$action) ? __('reports.audit_log.actions.'.$action) : $action;
+    }
+
+    /**
+     * On screen each entry is a card with a Field | Old | New table
+     * (reports/audit-log-rows); the exports keep one row per entry.
+     */
+    public function rowsView(): string
+    {
+        return 'reports.audit-log-rows';
+    }
+
+    /**
+     * @param  array<string, string>  $filters
+     * @return array{action: string, tone: string, entity: string, record: string, ltr: bool, who: string, when: string, at: string, changes: list<array{field: string, old: string|null, new: string|null}>}
+     */
+    public function details(object $row, array $filters): array
+    {
+        $before = json_decode((string) $row->before_data, true) ?: [];
+        $after = json_decode((string) $row->after_data, true) ?: [];
+        $at = CarbonImmutable::parse($row->created_at)->setTimezone($this->today()->getTimezone());
+
+        return [
+            'action' => $this->actionName($row->action),
+            // Badge colour, as the status badges of the lists (config ui.badges).
+            'tone' => self::TONES[$row->action] ?? 'draft',
+            'entity' => $this->entityName($row),
+            'record' => (string) ($row->doc_no ?? $this->identifier($after + $before) ?? '#'.$row->entity_id),
+            // References and codes read left to right; names may be Arabic.
+            'ltr' => $row->doc_no !== null,
+            'who' => $row->full_name === null ? __('reports.audit_log.system') : (string) $row->full_name,
+            'when' => Format::dateTime($at),
+            'at' => $at->toIso8601String(),
+            'changes' => $this->changeRows($before, $after),
+        ];
     }
 
     /**
@@ -154,26 +243,38 @@ final class AuditLogReport extends Report
      */
     private function changes(array $before, array $after): string
     {
-        $lines = [];
+        return collect($this->changeRows($before, $after))->map(fn (array $change) => match (true) {
+            $change['old'] === null => $change['field'].': '.$change['new'],
+            $change['new'] === null => $change['field'].': '.$change['old'].' → '.__('reports.audit_log.removed'),
+            default => $change['field'].': '.$change['old'].' → '.$change['new'],
+        })->implode("\n");
+    }
+
+    /**
+     * The fields that changed, with their value before and after (null: not
+     * in that snapshot, e.g. no "before" when the record was created).
+     *
+     * @param  array<string, mixed>  $before
+     * @param  array<string, mixed>  $after
+     * @return list<array{field: string, old: string|null, new: string|null}>
+     */
+    private function changeRows(array $before, array $after): array
+    {
+        $rows = [];
 
         foreach (array_unique([...array_keys($before), ...array_keys($after)]) as $key) {
             $old = array_key_exists($key, $before) ? $this->value((string) $key, $before[$key]) : null;
             $new = array_key_exists($key, $after) ? $this->value((string) $key, $after[$key]) : null;
-            $field = $this->field((string) $key);
 
-            // Unchanged values, and the reference (already in the Record column), are left out.
+            // Unchanged values, and the reference (already in the record's name), are left out.
             if ($old === $new || $key === 'doc_no') {
                 continue;
             }
 
-            $lines[] = match (true) {
-                $old === null => $field.': '.$new,
-                $new === null => $field.': '.$old.' → '.__('reports.audit_log.removed'),
-                default => $field.': '.$old.' → '.$new,
-            };
+            $rows[] = ['field' => $this->field((string) $key), 'old' => $old, 'new' => $new];
         }
 
-        return implode("\n", $lines);
+        return $rows;
     }
 
     /**
@@ -198,8 +299,23 @@ final class AuditLogReport extends Report
             is_bool($value) => __($value ? 'reports.audit_log.yes' : 'reports.audit_log.no'),
             $key === 'status' && is_string($value) && config('transactions.statuses.'.$value) !== null => Statuses::label($value),
             $key === 'type' && is_string($value) && isset($types[$value]) => __('types.'.$types[$value]->token()),
+            $key === 'priority' && is_string($value) => DraftTypes::priorityLabel($value),
+            $key === 'storage_status' && is_string($value) => StorageStatuses::name($value) ?? $value,
+            isset(self::REFERENCES[$key]) && is_scalar($value) => $this->referenced($key, (string) $value),
             is_scalar($value) => (string) $value,
             default => (string) json_encode($value, JSON_UNESCAPED_UNICODE),
         };
+    }
+
+    /**
+     * The name of the record an id field points to ("Acme Foods" for
+     * customer_id 12), or the id when that record is gone. Looked up once
+     * per page.
+     */
+    private function referenced(string $key, string $id): string
+    {
+        $table = self::REFERENCES[$key];
+
+        return $this->names[$table][$id] ??= (string) (DB::table($table)->where('id', $id)->value('name') ?? '#'.$id);
     }
 }

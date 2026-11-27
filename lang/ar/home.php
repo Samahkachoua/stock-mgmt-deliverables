@@ -1,18 +1,142 @@
 <?php
 
-// The page after signing in (App\Http\Controllers\HomeController).
+// The page after signing in (App\Livewire\Home): one version for staff
+// (App\Support\Home\StaffHome), one for customer users (CustomerHome).
+// Counts use explicit ranges (0, 1, 2, 3–10, 11+) for Arabic plural forms.
 return [
     'page_title' => 'الرئيسية',
-    'title' => 'مرحبًا، :name',
-    'subtitle' => 'ماذا تريد أن تفعل؟',
-    'waiting' => 'بانتظارك',
-    'arriving' => 'تحويلات في الطريق إلى مستودعاتك',
-    // A status card read aloud: "3 Adjustments to approve".
+    'title' => ':greeting، :name',
+    'greeting' => [
+        'morning' => 'صباح الخير',
+        'afternoon' => 'مساء الخير',
+        'evening' => 'مساء الخير',
+    ],
+    'subtitle_staff' => ':date · هذا ما ينتظرك اليوم',
+    'subtitle_customer' => ':date · نظرة سريعة على طلباتك ومخزونك',
+    'warehouse' => 'المستودع',
+    'all_warehouses' => 'كل مستودعاتي',
+
+    'attention' => 'بحاجة إلى انتباهك',
+    'attention_count' => '{0} لا شيء|{1} عنصر واحد|{2} عنصران|[3,10] :count عناصر|[11,*] :count عنصرًا',
     'waiting_card' => ':label: :count',
+    'caught_up_on' => 'لا شيء بانتظارك في:',
+    'all_caught_up' => 'لا شيء بانتظارك:',
+    'arriving' => 'تحويلات في الطريق إليك',
+    'chips' => [
+        'overdue' => 'متأخر',
+        'on_way' => 'في الطريق',
+        'waiting' => 'بالانتظار',
+        'incoming' => 'وارد',
+        'expiring' => 'ينتهي قريبًا',
+        'open' => 'مفتوح',
+    ],
+    'actions' => [
+        'review' => 'راجِع الآن',
+        'open_list' => 'افتح القائمة',
+        'approve' => 'وافِق',
+        'track' => 'تتبّع',
+        'view_stock' => 'اعرض المخزون',
+    ],
+    'cards' => [
+        'dispatched' => 'مشحونة ولم تُسلَّم بعد',
+        'dispatched_note' => 'الأقدم: :number، منذ :days',
+        'to_dispatch' => 'إشعارات تسليم بانتظار الشحن',
+        'orders' => 'طلبات بانتظار التأكيد',
+        'receipts' => 'مسودات استلام بانتظار الاستلام',
+        'oldest_waiting' => 'الأقدم ينتظر منذ :days',
+        'arriving_note' => 'الأقدم في الطريق منذ :days',
+    ],
+    'days' => '{0} أقل من يوم|{1} يوم واحد|{2} يومين|[3,10] :count أيام|[11,*] :count يومًا',
+    'lines' => '{0} لا بنود|{1} بند واحد|{2} بندان|[3,10] :count بنود|[11,*] :count بندًا',
+
     'start' => 'ابدأ عملية جديدة',
+    'more' => 'المزيد:',
+    'new_item' => 'إضافة صنف جديد',
     'nothing_to_create' => 'يمكنك الاطلاع على المخزون والعمليات دون إنشائها. اطلب ذلك من المسؤول عند الحاجة.',
+
+    'glance' => [
+        'title' => ':warehouse في لمحة',
+        'items' => 'أصناف في المخزون',
+        'items_note' => '{0} لا مخزون بعد|{1} لعميل واحد|{2} لعميلين|[3,10] لـ :count عملاء|[11,*] لـ :count عميلًا',
+        'orders' => 'طلبات مفتوحة',
+        'orders_note' => ':confirm للتأكيد · :dispatch للشحن · :transit في الطريق',
+        'expiring' => 'تنتهي خلال :days يومًا',
+        'lots' => '{0} دفعة|{1} دفعة|{2} دفعتان|[3,10] دفعات|[11,*] دفعة',
+        'expiring_none' => 'لا شيء ينتهي قريبًا',
+        'expiring_first' => 'الأقرب: :date، :item',
+    ],
+
+    'queue' => [
+        'title' => 'مهام اليوم',
+        'all_orders' => 'كل الطلبات',
+        'empty' => 'لا شيء بانتظارك.',
+        'awaiting_delivery' => ':customer · قيد التوصيل منذ :days',
+        'ready_to_dispatch' => ':customer · :lines · جاهز للشحن',
+        'order' => ':customer · :lines',
+        'order_late' => ':customer · :lines · متأخر :days',
+        'order_today' => ':customer · :lines · التسليم اليوم',
+        'order_due' => ':customer · :lines · التسليم في :date',
+        'to_approve' => ':customer · بانتظار الموافقة منذ :days',
+        'arriving' => 'من :warehouse · في الطريق منذ :days',
+    ],
+
+    'customer' => [
+        'check' => [
+            'title' => 'تحقّق من مخزونك',
+            'label' => 'اسم الصنف أو رمزه',
+            'placeholder' => 'اسم الصنف أو رمزه',
+            'view' => 'العرض',
+            'total' => 'الإجمالي',
+            'expiry' => 'حسب تاريخ الانتهاء',
+            'submit' => 'بحث',
+            'recent' => 'عمليات بحث سابقة:',
+        ],
+        'cards' => [
+            'expiring' => '{0} دفعات تنتهي خلال :days يومًا|{1} دفعة تنتهي خلال :days يومًا|[2,*] دفعات تنتهي خلال :days يومًا',
+            'expiring_note' => 'الأولى في :date (:item)',
+            'on_way' => '{0} طلبات في الطريق|{1} طلب في الطريق|[2,*] طلبات في الطريق',
+            'on_way_note' => ':number · :lines',
+            'editable' => '{0} طلبات يمكنك تعديلها أو إلغاؤها|{1} طلب يمكنك تعديله أو إلغاؤه|[2,*] طلبات يمكنك تعديلها أو إلغاؤها',
+            'editable_note' => 'يُقفل بعد أن يؤكده المستودع',
+        ],
+        'snapshot' => [
+            'title' => 'مخزونك في لمحة',
+            'open_stock' => 'عرض كل المخزون',
+            'items' => 'أصناف في المخزون',
+            'lots' => 'دفعات في المخزون',
+            'expiring' => 'تنتهي خلال :days يومًا',
+            'by_expiry' => 'الدفعات حسب المدة المتبقية حتى الانتهاء',
+            'lot_count' => '{0} لا دفعات|{1} دفعة واحدة|{2} دفعتان|[3,10] :count دفعات|[11,*] :count دفعة',
+            'buckets' => [
+                'expired' => 'منتهية',
+                'd30' => '0–30 يومًا',
+                'd60' => '31–60 يومًا',
+                'd90' => '61–90 يومًا',
+                'later' => 'أكثر من 90 يومًا',
+            ],
+        ],
+        'soonest' => [
+            'title' => 'الأقرب انتهاءً',
+            'all' => 'عرض الكل حسب الانتهاء',
+            'empty' => 'لا أصناف بتاريخ انتهاء في المخزون.',
+            'item' => 'الصنف',
+            'batch' => 'الدفعة',
+            'qty' => 'الكمية',
+            'expires' => 'ينتهي',
+            'no_batch' => 'بلا دفعة',
+            'left' => ':date · :days',
+            'days' => '{0} اليوم|{1} يوم واحد|{2} يومان|[3,10] :count أيام|[11,*] :count يومًا',
+        ],
+        'orders' => [
+            'title' => 'طلباتك المفتوحة',
+            'all' => 'كل الطلبات',
+            'empty' => 'لا طلبات مفتوحة. تظهر هنا الطلبات التي لم يؤكدها المستودع بعد.',
+            'line' => ':lines · حُفظ في :saved',
+        ],
+    ],
+
     'recent' => [
-        'title' => 'تابع من حيث توقفت',
+        'title' => 'النشاط الأخير',
         'empty' => 'ستظهر هنا العمليات التي تنشئها أو تعمل عليها.',
         'line' => ':customer · :event',
         // Nouns ("your last action"), so the sentence needs no gender.

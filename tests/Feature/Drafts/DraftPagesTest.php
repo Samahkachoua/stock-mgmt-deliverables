@@ -3,6 +3,7 @@
 use App\Livewire\Drafts\DraftForm;
 use App\Livewire\Drafts\DraftList;
 use App\Livewire\Drafts\DraftPage;
+use App\Livewire\Home;
 use App\Livewire\Settings\Branches;
 use App\Livewire\Settings\Users;
 use App\Livewire\Transactions\TransactionList;
@@ -346,16 +347,18 @@ it('lists drafts the user may see, and opens list, details and print pages', fun
     $this->get(route('home'))->assertSee(route('draft-receipts'), false);
 });
 
-it('offers New Draft Receipt / Order on Home to whoever may create them, above the document they become', function () {
-    // OPERATOR creates both drafts and the documents: each draft sits just above its document.
+it('offers New Draft Receipt / Order on Home to whoever may create them, the most used first', function () {
+    // OPERATOR creates both drafts and the documents: Order, Receipt and Transfer first
+    // (config ui.home_primary), then the rest in sidebar order.
     // A delivery note has no "New": it always comes from an order.
     $operator = userWithRole('OPERATOR', $this->stock->warehouse);
-    $labels = $this->actingAs($operator)->get(route('home'))->viewData('create')->map(fn ($kind) => $kind->label('new'))->all();
+    $labels = Livewire::actingAs($operator)->test(Home::class)->viewData('create')->pluck('title')->all();
 
     expect(array_slice($labels, 0, 4))->toBe([
-        __('drafts.types.receipt.new'), __('transactions.types.receive.new'),
-        __('drafts.types.order.new'), __('transactions.types.transfer.new'),
+        __('drafts.types.order.new'), __('transactions.types.receive.new'),
+        __('transactions.types.transfer.new'), __('drafts.types.receipt.new'),
     ])->and($labels)->not->toContain(__('transactions.types.delivery_note.new'));
+    $this->actingAs($operator);
     $this->get(route('home'))
         ->assertSee(route('draft-receipts.create'), false)
         ->assertSee(route('orders.create'), false);

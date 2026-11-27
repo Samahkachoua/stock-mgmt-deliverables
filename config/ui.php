@@ -111,6 +111,11 @@ return [
     // Seconds a success or warning toast stays on screen (errors stay until closed).
     'toast_seconds' => 10,
 
+    // Home "Start something new": these come first (type / draft slugs), the first
+    // the user may create is the main button, the next two secondary; the rest
+    // follow in sidebar order as smaller buttons under "More".
+    'home_primary' => ['orders', 'receive', 'transfer'],
+
     // Settings tabs (docs/design/stitch-exports/settings). Each tab is its own page
     // with its own permission; the Settings sidebar item opens for anyone who may
     // open at least one tab (the `settings.open` gate).
